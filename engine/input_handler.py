@@ -2,25 +2,38 @@ from ursina import held_keys, mouse, Vec3, camera
 from ursina import time
 import math
 
+from engine.physics import (
+    KinematicState,
+    apply_gravity,
+    integrate_vertical,
+    simple_flat_ground_check,
+    perform_jump,
+    update_timers,
+    register_jump_press,
+    can_consume_jump,
+    raycast_ground_height,
+)
+
 
 class InputHandler:
     def __init__(self, player_entity):
         self.player = player_entity
         self.mouse_sensitivity = 20
         self.movement_speed = 5
-        self.jump_height = 2
-        self.gravity = -9.81
-        self.velocity_y = 0
-        self.grounded = True
+        # Mario-like baseline: higher jump, lighter gravity
+        self.jump_height = 3.5
+        self.gravity = -8.0
+        self._physics_state = KinematicState(velocity_y=0.0, grounded=True)
         
         # Lock mouse for first-person control
         mouse.locked = True
         
     def input(self, key):
         """Handle key press events"""
-        if key == 'space' and self.grounded:
-            self.velocity_y = self.jump_height
-            self.grounded = False
+        if key == 'space':
+            # Record a jump request; actual jump will be performed in update()
+            # based on coyote-time and buffering rules.
+            register_jump_press(self._physics_state)
             
         # Toggle mouse lock with escape key
         if key == 'escape':
@@ -64,14 +77,29 @@ class InputHandler:
             
             # Apply movement
             self.player.position += movement
-        
-        # Apply gravity
-        if not self.grounded:
-            self.velocity_y += self.gravity * dt
-            self.player.y += self.velocity_y * dt
-            
-            # Simple ground collision check (assuming ground at y=1)
-            if self.player.y <= 2:  # Player feet at ground level
-                self.player.y = 2
-                self.velocity_y = 0
-                self.grounded = True
+
+        # Vertical physics: gravity and terrain-based ground using raycast
+        apply_gravity(self._physics_state, dt, gravity=self.gravity, max_fall_speed=-20)
+
+        def _ground_check(entity):
+            # Use raycast to find the terrain height beneath the player.
+            return raycast_ground_height(entity)
+
+        integrate_vertical(
+            self.player,
+            self._physics_state,
+            dt,
+            ground_check=_ground_check,
+        )
+
+        # Update coyote-time and jump-buffer timers now that grounded is up to date
+        update_timers(self._physics_state, dt)
+
+        # If we have a buffered jump and are within coyote time, perform the jump
+        # Use generous Mario-like coyote and buffer windows
+        if can_consume_jump(self._physics_state, coyote_time=0.2, jump_buffer_time=0.2):
+            perform_jump(self._physics_state, self.jump_height)
+
+        # Variable jump height: early release = short hop
+        if self._physics_state.velocity_y > 0 and not held_keys['space']:
+            self._physics_state.velocity_y *= 0.55
