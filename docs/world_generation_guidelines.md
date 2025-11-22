@@ -101,14 +101,19 @@
 - **Height Function**: Gentle sine waves with y=0 baseline, ±2 block variation
 - **Meshing**: Greedy meshing for top faces, side face culling based on height differences
 - **Performance**: Single mesh per chunk with optimized vertex count
+- **Collision**: Mesh colliders for raycast-based ground detection
+- **Network Sync**: Terrain is client-side identical for all players
 
 ### 🔄 Current Design
 
 - **Static Terrain**: No block destruction/placement baseline
 - **Action-RPG Focus**: Readable combat spaces, gentle slopes
 - **Ground Level**: y=0 as primary walkable surface
+- **Physics Integration**: Raycast-based ground detection for player movement
+- **Multiplayer**: All clients generate identical worlds using same seed/function
 
 ### 📋 Future Extensions
+
 These are explicitly **out of scope** for the baseline but should be considered when extending the system:
 
 - Player-driven block destruction/placement

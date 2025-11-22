@@ -1,12 +1,22 @@
-from ursina import Entity, camera, color, Vec3, raycast
+from ursina import Entity, camera, color, Vec3, raycast, destroy, scene
 from engine.input_handler import InputHandler
+from network.client import get_client
 
 class Player(Entity):
-    def __init__(self, start_pos=(0,2,0)):
+    def __init__(self, start_pos=(0,2,0), networking: bool = False):
         # Player parent entity
         super().__init__(
             position=start_pos
         )
+
+        # Networking setup
+        self.networking = networking
+        self.network_client = get_client() if networking else None
+        self.send_rate = 10  # Send updates 10 times per second
+        self.last_send_time = 0
+        
+        # Remote players storage
+        self.remote_players = {}
 
         # Basic mannequin: 3 stacked cubes
         self.build_body()
@@ -48,6 +58,11 @@ class Player(Entity):
         dt = time.dt
         self.input_handler.update(dt)
         self.update_camera()
+        
+        # Handle networking
+        if self.networking and self.network_client:
+            self.update_networking(dt)
+            self.update_remote_players()
     
     def update_camera(self):
         """Update camera position with collision prevention"""
@@ -107,3 +122,55 @@ class Player(Entity):
             scale=(0.3, 1, 0.4),
             y=0.3
         )
+    
+    def update_networking(self, dt):
+        """Send position updates to server at controlled rate."""
+        if not self.network_client or not self.network_client.is_connected():
+            return
+        
+        self.last_send_time += dt
+        if self.last_send_time >= 1.0 / self.send_rate:
+            # Send current position and rotation
+            pos = [self.x, self.y, self.z]
+            self.network_client.send_state_update(pos, self.rotation_y)
+            self.last_send_time = 0
+    
+    def update_remote_players(self):
+        """Update remote player entities based on server data."""
+        if not self.network_client:
+            return
+        
+        remote_data = self.network_client.get_remote_players()
+        
+        # Remove players that no longer exist
+        for player_id in list(self.remote_players.keys()):
+            if player_id not in remote_data:
+                # Remove the entity
+                if self.remote_players[player_id] in scene.children:
+                    destroy(self.remote_players[player_id])
+                del self.remote_players[player_id]
+        
+        # Update or create remote player entities
+        for player_id, state in remote_data.items():
+            if player_id not in self.remote_players:
+                # Create new remote player entity
+                self.remote_players[player_id] = self.create_remote_player()
+            
+            # Update position and rotation
+            remote_entity = self.remote_players[player_id]
+            pos = state.get('pos', [0, 0, 0])
+            rot_y = state.get('rot_y', 0)
+            
+            remote_entity.position = pos
+            remote_entity.rotation_y = rot_y
+    
+    def create_remote_player(self):
+        """Create a simple entity to represent a remote player."""
+        # Simple colored cube to represent other players
+        remote = Entity(
+            model='cube',
+            color=color.azure,
+            scale=(0.3, 1.8, 0.3),
+            position=(0, 2, 0)
+        )
+        return remote
