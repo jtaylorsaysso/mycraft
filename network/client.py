@@ -2,7 +2,7 @@ import asyncio
 import json
 import threading
 import time
-from typing import Dict, Callable, Optional, Any
+from typing import Dict, Callable, Optional, Any, List
 from queue import Queue, Empty
 
 from util.logger import get_logger, log_metric
@@ -31,10 +31,14 @@ class GameClient:
             "state_snapshot": self._handle_state_snapshot,
             "player_join": self._handle_player_join,
             "player_leave": self._handle_player_leave,
+            "admin_response": self._handle_admin_response,
         }
         
         # Current state of remote players
         self.remote_players: Dict[str, Dict] = {}
+
+        # Admin console log (text lines)
+        self._admin_log: List[str] = []
 
         # Telemetry
         self.logger = get_logger("net.client")
@@ -202,6 +206,14 @@ class GameClient:
             del self.remote_players[player_id]
         print(f"Player {player_id} left the game")
     
+    def _handle_admin_response(self, message: Dict):
+        """Handle admin console output from server."""
+        lines = message.get("lines", []) or []
+        for line in lines:
+            text = str(line)
+            self._admin_log.append(text)
+            self.logger.info(f"ADMIN: {text}")
+    
     def send_state_update(self, pos: list, rot_y: float):
         """Send player state update to server."""
         if not self.connected:
@@ -214,6 +226,23 @@ class GameClient:
         }
         self.send_queue.put(message)
         self._sent_updates += 1
+
+    def send_admin_command(self, command: str) -> None:
+        """Send an admin command string to the server."""
+        if not self.connected:
+            return
+        command = (command or "").strip()
+        if not command:
+            return
+        message = {
+            "type": "admin_command",
+            "command": command,
+        }
+        self.send_queue.put(message)
+
+    def get_admin_log(self) -> List[str]:
+        """Get a copy of the current admin console log lines."""
+        return list(self._admin_log)
 
     
     def get_remote_players(self) -> Dict[str, Dict]:

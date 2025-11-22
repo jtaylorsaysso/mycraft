@@ -22,6 +22,33 @@ Client A                     Server                     Client B
     | <--- state_snapshot -- |                           |
 ```
 
+## In-Client Admin Console
+
+Any connected client can open an admin console inside the game window to manage the server and the host player.
+
+### Opening the Console
+
+- Press the `/` key in-game.
+- The console input appears at the bottom of the screen.
+- Mouse unlocks and movement pauses while the console is open.
+- Press Enter to send a command; press `/` again to close the console.
+
+### Supported Commands
+
+- `/help` or `/?` – Show command list.
+- `/list` – List all players, including the logical host player.
+- `/kick <player_id>` – Disconnect a player (cannot kick the host).
+- `/hostpos x y z` – Move the host player to a position.
+- `/hostrot yaw` – Set the host player’s Y rotation.
+- `/quit` – Shut down the server (ends the game for everyone).
+
+### Host Player
+
+- The server maintains a logical “host player” (`host_player`) that is part of `state_snapshot` broadcasts.
+- It is rendered by clients as an azure cube, just like other remote players.
+- It has no network client; it’s controlled only via admin commands.
+- Use `/hostpos` and `/hostrot` to move it for testing or staging purposes.
+
 ## Quick Start
 
 ### 1. Start Server
@@ -91,6 +118,31 @@ Client sends position/rotation to server:
   "type": "state_update",
   "pos": [10.5, 2.0, 10.2],
   "rot_y": 45.0
+}
+```
+
+#### admin_command
+
+Client sends an admin command to the server.
+
+```json
+{
+  "type": "admin_command",
+  "command": "/list"
+}
+```
+
+#### admin_response
+
+Server replies with command output lines.
+
+```json
+{
+  "type": "admin_response",
+  "lines": [
+    "- host_player (host) pos=[10, 2, 10] rot_y=0",
+    "- player_1 pos=[...] rot_y=..."
+  ]
 }
 ```
 

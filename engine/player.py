@@ -1,4 +1,4 @@
-from ursina import Entity, camera, color, Vec3, raycast, destroy, scene
+from ursina import Entity, camera, color, Vec3, raycast, destroy, scene, Text, InputField, mouse
 from engine.input_handler import InputHandler
 from network.client import get_client
 
@@ -17,6 +17,24 @@ class Player(Entity):
         
         # Remote players storage
         self.remote_players = {}
+
+        # Admin console UI
+        self.console_open = False
+        self.console_max_lines = 8
+        self.console_input = InputField(
+            parent=camera.ui,
+            position=(-0.45, -0.45),
+            scale_x=0.9,
+            scale_y=0.05,
+            enabled=False,
+        )
+        self.console_log = Text(
+            parent=camera.ui,
+            text="",
+            position=(-0.45, -0.3),
+            origin=(-0.5, -0.5),
+            scale=0.7,
+        )
 
         # Basic mannequin: 3 stacked cubes
         self.build_body()
@@ -49,7 +67,23 @@ class Player(Entity):
         self.camera_safety_margin = 0.1
         
     def input(self, key):
-        """Delegate input handling to InputHandler"""
+        if key == '/':
+            if self.networking and self.network_client:
+                self.console_open = not self.console_open
+                self.console_input.enabled = self.console_open
+                self.console_input.active = self.console_open
+                mouse.locked = not self.console_open
+            return
+
+        if self.console_open:
+            if key == 'enter':
+                if self.networking and self.network_client:
+                    command = self.console_input.text
+                    self.console_input.text = ""
+                    self.network_client.send_admin_command(command)
+                return
+            return
+
         self.input_handler.input(key)
         
     def update(self):
@@ -63,6 +97,11 @@ class Player(Entity):
         if self.networking and self.network_client:
             self.update_networking(dt)
             self.update_remote_players()
+
+            # Update admin console scrollback from client log
+            log_lines = self.network_client.get_admin_log()
+            if log_lines:
+                self.console_log.text = "\n".join(log_lines[-self.console_max_lines:])
     
     def update_camera(self):
         """Update camera position with collision prevention"""
