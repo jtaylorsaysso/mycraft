@@ -1,4 +1,5 @@
 from ursina import Entity, load_model, color, Mesh, Vec3, Vec2
+from util.logger import get_logger, time_block, log_metric
 
 
 class World:
@@ -7,7 +8,11 @@ class World:
 
     def __init__(self):
         self.chunks = {}
-        self.generate_chunks()
+        self.logger = get_logger("world")
+
+        total_chunks = (self.CHUNK_GRID_RADIUS * 2 + 1) ** 2
+        with time_block("world_generate", self.logger, {"chunks": total_chunks}):
+            self.generate_chunks()
 
     def get_height(self, x, z):
         """Return terrain height at world coordinate (x, z).
@@ -247,3 +252,12 @@ class World:
         # Parent entity for this chunk (single renderable + collider)
         chunk_entity = Entity(model=mesh, texture='grass', collider='mesh')
         self.chunks[(chunk_x, chunk_z)] = chunk_entity
+
+        # Log simple mesh stats for baseline metrics
+        vertex_count = len(vertices)
+        triangle_count = len(triangles) // 3
+        log_metric(
+            "chunk_mesh_triangles",
+            float(triangle_count),
+            labels={"chunk_x": chunk_x, "chunk_z": chunk_z, "vertices": vertex_count},
+        )

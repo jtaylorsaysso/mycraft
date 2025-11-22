@@ -4,6 +4,8 @@ import socket
 from typing import Dict, Set
 import time
 
+from util.logger import get_logger, time_block, log_metric
+
 
 class GameServer:
     """Simple TCP server for LAN multiplayer on port 5420."""
@@ -17,6 +19,7 @@ class GameServer:
         self.next_player_id = 1
         self.tick_rate = 20  # Broadcast state 20 times per second
         self.tick_interval = 1.0 / self.tick_rate
+        self.logger = get_logger("net.server")
         
     async def start(self):
         """Start the TCP server."""
@@ -28,8 +31,8 @@ class GameServer:
         
         # Print the actual listening address
         addr = self.server.sockets[0].getsockname()
-        print(f"MyCraft server listening on {addr[0]}:{addr[1]}")
-        print(f"Other players can connect to your LAN IP at port {addr[1]}")
+        self.logger.info(f"Server listening on {addr[0]}:{addr[1]}")
+        self.logger.info(f"Other players can connect to your LAN IP at port {addr[1]}")
         
         # Start the broadcast task
         asyncio.create_task(self.broadcast_state_loop())
@@ -65,7 +68,9 @@ class GameServer:
         # Notify all clients about the new player
         await self.broadcast_player_join(player_id)
         
-        print(f"Player {player_id} connected from {writer.get_extra_info('peername')}")
+        self.logger.info(
+            f"Player {player_id} connected from {writer.get_extra_info('peername')} | total_clients={len(self.clients)}"
+        )
         
         try:
             # Process messages from this client
@@ -108,7 +113,7 @@ class GameServer:
         if player_id in self.player_states:
             del self.player_states[player_id]
         
-        print(f"Player {player_id} disconnected")
+        self.logger.info(f"Player {player_id} disconnected | total_clients={len(self.clients)}")
         
         # Notify other clients
         await self.broadcast_player_leave(player_id)
@@ -134,8 +139,15 @@ class GameServer:
     async def broadcast_state_loop(self):
         """Periodically broadcast all player states to clients."""
         while True:
+            start = time.perf_counter()
             await asyncio.sleep(self.tick_interval)
             await self.broadcast_state()
+            loop_ms = (time.perf_counter() - start) * 1000.0
+            log_metric(
+                "server_tick_ms",
+                loop_ms,
+                labels={"players": len(self.player_states), "clients": len(self.clients)},
+            )
     
     async def broadcast_state(self):
         """Broadcast current state of all players."""
@@ -148,7 +160,13 @@ class GameServer:
             "timestamp": time.time()
         }) + "\n"
         
-        await self.broadcast_to_all(message)
+        payload_bytes = len(message.encode("utf-8"))
+        with time_block(
+            "server_broadcast_state",
+            self.logger,
+            {"players": len(self.player_states), "clients": len(self.clients), "bytes": payload_bytes},
+        ):
+            await self.broadcast_to_all(message)
     
     async def broadcast_to_all(self, message: str, exclude: str = None):
         """Send a message to all connected clients."""
