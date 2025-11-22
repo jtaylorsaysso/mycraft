@@ -1,4 +1,4 @@
-from ursina import Entity, camera, color
+from ursina import Entity, camera, color, Vec3, raycast
 from engine.input_handler import InputHandler
 
 class Player(Entity):
@@ -19,25 +19,65 @@ class Player(Entity):
         
     def setup_third_person_camera(self):
         """Create an over-the-shoulder third-person camera setup"""
-        # Create a camera pivot that rotates with the player
-        self.camera_pivot = Entity(parent=self)
+        # Create a camera pivot at torso height (center of player)
+        self.camera_pivot = Entity(parent=self, y=1.0)
         
-        # Position camera behind and above the player (over-the-shoulder view)
-        camera.position = (0, 5, -10)  # 2 units up, 5 units behind
+        # Camera offset: right, up, back (so player appears on left side)
+        self.camera_offset = Vec3(1, 2, -4)
+        
+        # Camera settings
         camera.parent = self.camera_pivot
+        camera.position = self.camera_offset
+        camera.fov = 60  # Field of view
         
-        # Make camera look at the player
-        camera.look_at(self)
+        # Look ahead in facing direction
+        target = self.camera_pivot.world_position + self.forward * 3
+        camera.look_at(target)
+        
+        # Camera collision prevention settings
+        self.min_camera_distance = 1.0
+        self.camera_safety_margin = 0.1
         
     def input(self, key):
         """Delegate input handling to InputHandler"""
         self.input_handler.input(key)
         
     def update(self):
-        """Delegate update logic to InputHandler"""
+        """Delegate update logic to InputHandler and update camera"""
         from ursina import time
         dt = time.dt
         self.input_handler.update(dt)
+        self.update_camera()
+    
+    def update_camera(self):
+        """Update camera position with collision prevention"""
+        # Calculate desired world position
+        desired_world_pos = (
+            self.camera_pivot.world_position +
+            self.camera_pivot.right * self.camera_offset.x +
+            self.camera_pivot.up * self.camera_offset.y +
+            self.camera_pivot.back * abs(self.camera_offset.z)
+        )
+        
+        # Raycast from pivot to desired position
+        origin = self.camera_pivot.world_position
+        direction = (desired_world_pos - origin).normalized()
+        distance = (desired_world_pos - origin).length()
+        
+        # Check for collisions (ignore player and its parts)
+        hit_info = raycast(origin, direction, distance=distance, ignore=[self])
+        
+        if hit_info.hit:
+            # Clamp camera to safe distance before obstacle
+            clamped_dist = max(self.min_camera_distance, hit_info.distance - self.camera_safety_margin)
+            camera.world_position = origin + direction * clamped_dist
+        else:
+            # Use desired position
+            camera.world_position = desired_world_pos
+        
+        # Always look ahead in facing direction
+        target = self.camera_pivot.world_position + self.forward * 3
+        camera.look_at(target)
 
     def build_body(self):
         # Head
