@@ -107,7 +107,7 @@ class Player(Entity):
         
     def update(self):
         """Delegate update logic to InputHandler and update camera"""
-        from ursina import time
+        from ursina import time, Entity, invoke
         dt = time.dt
         self.input_handler.update(dt)
         self.update_camera()
@@ -202,7 +202,6 @@ class Player(Entity):
                         # Camera shake on hit
                         camera.shake(duration=0.2, magnitude=0.5)
                         # Simple UI overlay flash
-                        from ursina import Entity, invoke
                         flash = Entity(
                             parent=camera.ui,
                             model='quad',
