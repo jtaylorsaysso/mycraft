@@ -1,6 +1,8 @@
 from ursina import Entity, camera, color, Vec3, raycast, destroy, scene, Text, InputField, mouse
+
 from engine.input_handler import InputHandler
 from network.client import get_client
+
 
 class Player(Entity):
     def __init__(self, start_pos=(0,2,0), networking: bool = False):
@@ -10,6 +12,11 @@ class Player(Entity):
         )
 
         # Networking setup
+        self._active_hitboxes = []
+        self.camera_safety_margin = None
+        self.min_camera_distance = None
+        self.camera_offset = None
+        self.camera_pivot = None
         self.networking = networking
         self.network_client = get_client() if networking else None
         self.send_rate = 10  # Send updates 10 times per second
@@ -44,6 +51,9 @@ class Player(Entity):
         
         # Initialize input handler
         self.input_handler = InputHandler(self)
+        
+        # Simple attack state
+        self.attack_cooldown = 0.0
         
     def setup_third_person_camera(self):
         """Create an over-the-shoulder third-person camera setup"""
@@ -84,6 +94,10 @@ class Player(Entity):
                 return
             return
 
+        if key == 'left mouse down':
+            self.attack()
+            return
+
         self.input_handler.input(key)
         
     def update(self):
@@ -92,6 +106,77 @@ class Player(Entity):
         dt = time.dt
         self.input_handler.update(dt)
         self.update_camera()
+        
+        # Update attack cooldown
+        if self.attack_cooldown > 0.0:
+            self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
+        
+        # Clean up expired hitboxes and handle manual overlap checks
+        if hasattr(self, '_active_hitboxes'):
+            to_remove = []
+            for hitbox in self._active_hitboxes:
+                hitbox.life_time -= dt
+                if hitbox.life_time <= 0:
+                    destroy(hitbox)
+                    to_remove.append(hitbox)
+                    continue
+
+                # Manual overlap check with slime entities
+                for other in scene.entities:
+                    if getattr(other, 'is_slime', False) and not getattr(other, 'is_dead', False):
+                        # Simple distance-based overlap check
+                        dist = (hitbox.world_position - other.world_position).length()
+                        if dist < 2.0:  # increased threshold to account for offset
+                            # Apply damage
+                            other.hp = getattr(other, 'hp', 1) - 1
+
+                            # Simple knockback away from player
+                            knock_dir = (other.world_position - self.world_position).normalized()
+                            other.position += knock_dir * 0.5
+
+                            # Camera shake on hit
+                            camera.shake(duration=0.2, magnitude=0.5)
+
+                            # Flash slime white briefly
+                            from ursina import invoke, curve
+                            original_color = other.color
+                            other.color = color.white
+                            def restore_color():
+                                other.color = original_color
+                            invoke(restore_color, delay=0.1)
+
+                            # Particle burst at impact point (safe pattern)
+                            impact_pos = (hitbox.world_position + other.world_position) / 2
+                            for i in range(6):
+                                particle = Entity(
+                                    model='quad',
+                                    color=color.white,
+                                    scale=0,
+                                    position=impact_pos,
+                                    add_to_scene_entities=False
+                                )
+                                import random
+                                offset = Vec3(
+                                    random.uniform(-0.3, 0.3),
+                                    random.uniform(-0.3, 0.3),
+                                    random.uniform(-0.3, 0.3)
+                                )
+                                particle.position += offset
+                                particle.animate_scale(0.2, 0.3, curve=curve.out_expo)
+                                particle.animate_color(color.clear, duration=0.3, curve=curve.out_expo)
+                                destroy(particle, delay=0.3)
+
+                            if other.hp <= 0:
+                                other.is_dead = True
+                                destroy(other)
+
+                            destroy(hitbox)
+                            to_remove.append(hitbox)
+                            break
+
+            for hb in to_remove:
+                if hb in self._active_hitboxes:
+                    self._active_hitboxes.remove(hb)
         
         # Handle networking
         if self.networking and self.network_client:
@@ -113,7 +198,7 @@ class Player(Entity):
             self.camera_pivot.back * abs(self.camera_offset.z)
         )
         
-        # Raycast from pivot to desired position
+        # Ray cast from pivot to desired position
         origin = self.camera_pivot.world_position
         direction = (desired_world_pos - origin).normalized()
         distance = (desired_world_pos - origin).length()
@@ -213,3 +298,32 @@ class Player(Entity):
             position=(0, 2, 0)
         )
         return remote
+
+    def attack(self):
+        """Spawn a short-lived sword hitbox in front of the player."""
+
+        # Basic cooldown to prevent spamming
+        if self.attack_cooldown > 0.0:
+            return
+
+        self.attack_cooldown = 0.35
+
+        # Position hitbox slightly in front of player and around slime mid-height
+        forward = self.forward
+        spawn_pos = self.world_position + forward * 1.5 + Vec3(0, 0.5, 0)  # increased forward offset
+
+        hitbox = Entity(
+            model='cube',
+            color=color.rgba(255, 0, 0, 150),
+            scale=(0.6, 0.6, 0.6),
+            position=spawn_pos,
+            collider='box',  # Keep collider for future collision work
+        )
+
+        hitbox.life_time = 0.2
+        hitbox.owner = self
+
+        # Store hitbox on player to update in Player.update instead of assigning a dynamic function
+        if not hasattr(self, '_active_hitboxes'):
+            self._active_hitboxes = []
+        self._active_hitboxes.append(hitbox)

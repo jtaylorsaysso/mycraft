@@ -5,26 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="386392c8-4266-41ed-90a4-7a27b7d08a4d" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/mycraft.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/engine/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/engine/game_app.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/engine/input_handler.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/engine/player.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/engine/remote_player.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/engine/world.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/network/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/network/client.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/network/protocol.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/network/server.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/run_client.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/run_server.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/util/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/util/config.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/util/logger.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/engine/player.py" beforeDir="false" afterPath="$PROJECT_DIR$/engine/player.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -41,9 +24,9 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 6
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 6
+}</component>
   <component name="ProjectId" id="35qEC1CKpaFME507pafvHoIVzZy" />
   <component name="ProjectLevelVcsManager">
     <ConfirmationsSetting value="2" id="Add" />
@@ -59,7 +42,7 @@
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
     "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
-    "git-widget-placeholder": "master",
+    "git-widget-placeholder": "dungeon",
     "junie.onboarding.icon.badge.shown": "true",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
@@ -86,6 +69,7 @@
       <option name="presentableId" value="Default" />
       <updated>1763829069904</updated>
       <workItem from="1763829070890" duration="4000000" />
+      <workItem from="1763951915727" duration="481000" />
     </task>
     <servers />
   </component>
