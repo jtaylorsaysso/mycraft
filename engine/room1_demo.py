@@ -2,6 +2,9 @@ from ursina import Ursina, Entity, color, Vec3, time
 
 from engine.player import Player
 
+# Global list for AI entities to avoid dynamic update assignment
+_ai_entities = []
+
 
 class Slime(Entity):
     """Simple slime AI with patrol/aggro/chase states."""
@@ -135,6 +138,7 @@ def setup_room1_arena():
         position=(8, 0.5, 12),
         collider='box',
     )
+    _ai_entities.append(slime)
 
     # Player spawn roughly centered toward south side of room
     player = Player(start_pos=(8, 2, 4), networking=False)
@@ -147,9 +151,12 @@ def run_room1_demo():
     app = Ursina()
     player, slime = setup_room1_arena()
 
-    # Update slime AI each frame (avoid dynamic update assignment)
-    def update():
-        slime.update_ai(player)
+    # Update AI entities via Player.update (safer pattern)
+    original_update = player.update
+    def update_with_ai():
+        original_update()
+        for ai in _ai_entities:
+            ai.update_ai(player)
+    player.update = update_with_ai
 
-    app.update = update
     app.run()

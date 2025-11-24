@@ -25,6 +25,11 @@ class Player(Entity):
         # Remote players storage
         self.remote_players = {}
 
+        # Player health and damage
+        self.hp = 10
+        self.damage_cooldown = 0
+        self.damage_cooldown_time = 1.0  # 1 second between hits
+
         # Admin console UI
         self.console_open = False
         self.console_max_lines = 8
@@ -111,6 +116,10 @@ class Player(Entity):
         if self.attack_cooldown > 0.0:
             self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
         
+        # Update damage cooldown
+        if self.damage_cooldown > 0.0:
+            self.damage_cooldown = max(0.0, self.damage_cooldown - dt)
+        
         # Clean up expired hitboxes and handle manual overlap checks
         if hasattr(self, '_active_hitboxes'):
             to_remove = []
@@ -177,6 +186,38 @@ class Player(Entity):
             for hb in to_remove:
                 if hb in self._active_hitboxes:
                     self._active_hitboxes.remove(hb)
+        
+        # Check collision damage with slimes
+        if self.damage_cooldown <= 0:
+            for other in scene.entities:
+                if getattr(other, 'is_slime', False) and not getattr(other, 'is_dead', False):
+                    dist = (self.world_position - other.world_position).length()
+                    if dist < 1.0:  # touching
+                        self.hp -= 1
+                        self.damage_cooldown = self.damage_cooldown_time
+                        # Knockback away from slime
+                        knock_dir = (self.world_position - other.world_position).normalized()
+                        self.position += knock_dir * 2.0
+                        print("Applying knockback and visual feedback")
+                        # Camera shake on hit
+                        camera.shake(duration=0.2, magnitude=0.5)
+                        # Simple UI overlay flash
+                        from ursina import Entity, invoke
+                        flash = Entity(
+                            parent=camera.ui,
+                            model='quad',
+                            color=color.rgba(255, 0, 0, 64),
+                            scale=2,
+                            z=-1
+                        )
+                        invoke(destroy, flash, delay=0.1)
+                        print(f"Player hit! HP: {self.hp}")
+                        if self.hp <= 0:
+                            print("Player defeated!")
+                            # Simple respawn for demo
+                            self.position = (8, 2, 4)
+                            self.hp = 10
+                        break
         
         # Handle networking
         if self.networking and self.network_client:
