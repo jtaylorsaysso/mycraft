@@ -146,13 +146,18 @@ class Player(Entity):
                             # Camera shake on hit
                             camera.shake(duration=0.2, magnitude=0.5)
 
-                            # Flash slime white briefly
+                            # Flash slime white briefly (non-intrusive)
                             from ursina import invoke, curve
-                            original_color = other.color
-                            other.color = color.white
-                            def restore_color():
-                                other.color = original_color
-                            invoke(restore_color, delay=0.1)
+                            flash_quad = Entity(
+                                parent=other,
+                                model='cube',
+                                color=color.white,
+                                scale=1.1,
+                                z=-0.01
+                            )
+                            def remove_flash():
+                                destroy(flash_quad)
+                            invoke(remove_flash, delay=0.1)
 
                             # Particle burst at impact point (safe pattern)
                             impact_pos = (hitbox.world_position + other.world_position) / 2
