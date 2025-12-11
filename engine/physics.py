@@ -21,6 +21,8 @@ class KinematicState:
     """
 
     velocity_y: float = 0.0
+    velocity_x: float = 0.0
+    velocity_z: float = 0.0
     grounded: bool = True
     # Time since we were last on the ground. Used for coyote time.
     time_since_grounded: float = 0.0
@@ -41,27 +43,50 @@ def apply_gravity(state: KinematicState, dt: float, gravity: float = -9.81, max_
         state.velocity_y = max_fall_speed
 
 
-def integrate_vertical(
-    entity: SupportsY,
+def integrate_movement(
+    entity: Any,
     state: KinematicState,
     dt: float,
-    ground_check: Callable[[SupportsY], Optional[float]],
+    ground_check: Callable[[Any], Optional[float]],
+    wall_check: Optional[Callable[[Any, tuple[float, float, float]], bool]] = None
 ) -> None:
-    """Integrate vertical motion and resolve simple ground collisions.
-
-    - Moves the entity by velocity_y * dt
-    - Uses ground_check(entity) to get a ground height (if any)
-    - If the entity would end up below ground, snaps it to ground,
-      zeroes velocity and marks it as grounded.
-
-    This is intentionally simple and currently mirrors the existing
-    behavior in InputHandler, which assumes a flat ground plane.
-    More advanced checks (raycasts, slopes) can be plugged in later
-    via a different ground_check implementation without changing
-    callers.
+    """Integrate 3D motion and resolve collisions.
+    
+    Args:
+        entity: The entity to move (must have x, y, z, position).
+        state: The physics state containing velocity.
+        dt: Delta time.
+        ground_check: Function returning height of ground at entity's position.
+        wall_check: Optional function returning True if a move would hit a wall.
+                    Signature: (entity, movement_vector) -> hit_wall
     """
+    
+    # 1. Horizontal Movement (X/Z)
+    dx = state.velocity_x * dt
+    dz = state.velocity_z * dt
+    
+    # Simple collision check: try moving, if hit, slide or stop
+    # For now, we'll do a simple "try move one axis at a time" approach
+    # to allow sliding along walls.
+    
+    if wall_check:
+        # Try X movement
+        if dx != 0 and not wall_check(entity, (dx, 0, 0)):
+            entity.x += dx
+        else:
+            state.velocity_x = 0 # Hit wall on X, stop X momentum
+            
+        # Try Z movement
+        if dz != 0 and not wall_check(entity, (0, 0, dz)):
+            entity.z += dz
+        else:
+            state.velocity_z = 0 # Hit wall on Z, stop Z momentum
+    else:
+        # No collision checks, just move
+        entity.x += dx
+        entity.z += dz
 
-    # Apply vertical displacement
+    # 2. Vertical Movement (Y)
     entity.y += state.velocity_y * dt
 
     # Ask the caller where the ground is for this entity, if any
@@ -138,6 +163,39 @@ def raycast_ground_height(
 
     # Place the entity so that its feet (origin - foot_offset) rest on the hit.
     return hit_info.point.y + foot_offset
+
+
+def raycast_wall_check(
+    entity: Any,
+    movement: tuple[float, float, float],
+    distance_buffer: float = 0.5,
+    ignore: Optional[list] = None
+) -> bool:
+    """Check if moving by 'movement' would hit a wall.
+    
+    This casts a ray in the direction of movement.
+    """
+    try:
+        from ursina import Vec3, raycast
+    except Exception:
+        return False
+        
+    move_vec = Vec3(*movement)
+    dist = move_vec.length()
+    
+    if dist < 0.001:
+        return False
+        
+    direction = move_vec.normalized()
+    origin = entity.world_position + Vec3(0, 1.0, 0) # Cast from center mass/head height
+    
+    # Check slightly further than we are moving to prevent getting too close
+    check_dist = dist + distance_buffer 
+    
+    ignore_list = ignore or [entity]
+    hit_info = raycast(origin, direction, distance=check_dist, ignore=ignore_list)
+    
+    return hit_info.hit
 
 
 def update_timers(state: KinematicState, dt: float) -> None:

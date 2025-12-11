@@ -5,24 +5,30 @@ import math
 from engine.physics import (
     KinematicState,
     apply_gravity,
-    integrate_vertical,
+    integrate_movement,
     simple_flat_ground_check,
     perform_jump,
     update_timers,
     register_jump_press,
     can_consume_jump,
     raycast_ground_height,
+    raycast_wall_check,
 )
 
 
 class InputHandler:
     def __init__(self, player_entity):
         self.player = player_entity
-        self.mouse_sensitivity = 20
-        self.movement_speed = 5
+        self.player = player_entity
+        self.mouse_sensitivity = 40
+        self.movement_speed = 6
+        self.acceleration = 40   # Units per second^2
+        self.friction = 10       # Units per second^2 (on ground)
+        self.air_control = 0.3   # Multiplier for air movement control
+        
         # Mario-like baseline: higher jump, lighter gravity
         self.jump_height = 3.5
-        self.gravity = -8.0
+        self.gravity = -12.0 # Increased gravity for snappier fall
         self._physics_state = KinematicState(velocity_y=0.0, grounded=True)
         
         # Lock mouse for first-person control
@@ -57,6 +63,9 @@ class InputHandler:
         strafe_input = held_keys['d'] - held_keys['a']
         
         # Calculate movement direction based on player rotation
+        # Calculate target velocity based on inputs
+        target_velocity = Vec3(0, 0, 0)
+        
         if forward_input != 0 or strafe_input != 0:
             # Forward movement (relative to player rotation)
             forward = Vec3(
@@ -73,23 +82,65 @@ class InputHandler:
             ) * strafe_input
             
             # Combine movement vectors
-            movement = (forward + right).normalized() * self.movement_speed * dt
-            
-            # Apply movement
-            self.player.position += movement
+            move_dir = (forward + right).normalized()
+            target_velocity = move_dir * self.movement_speed
+
+        # Apply acceleration/friction to approach target velocity
+        # Different control in air vs ground
+        control_factor = 1.0 if self._physics_state.grounded else self.air_control
+        accel = self.acceleration * control_factor
+        
+        # Smoothly interpolate X velocity
+        if target_velocity.x != 0:
+            # Accelerating
+            diff_x = target_velocity.x - self._physics_state.velocity_x
+            change = accel * dt
+            if abs(diff_x) < change:
+                self._physics_state.velocity_x = target_velocity.x
+            else:
+                self._physics_state.velocity_x += math.copysign(change, diff_x)
+        else:
+            # Decelerating (Friction)
+            fric = self.friction * dt * control_factor * 5 # Stronger stopping friction
+            if abs(self._physics_state.velocity_x) < fric:
+                self._physics_state.velocity_x = 0
+            else:
+                self._physics_state.velocity_x -= math.copysign(fric, self._physics_state.velocity_x)
+
+        # Smoothly interpolate Z velocity
+        if target_velocity.z != 0:
+            # Accelerating
+            diff_z = target_velocity.z - self._physics_state.velocity_z
+            change = accel * dt
+            if abs(diff_z) < change:
+                self._physics_state.velocity_z = target_velocity.z
+            else:
+                self._physics_state.velocity_z += math.copysign(change, diff_z)
+        else:
+            # Decelerating (Friction)
+            fric = self.friction * dt * control_factor * 5
+            if abs(self._physics_state.velocity_z) < fric:
+                self._physics_state.velocity_z = 0
+            else:
+                self._physics_state.velocity_z -= math.copysign(fric, self._physics_state.velocity_z)
 
         # Vertical physics: gravity and terrain-based ground using raycast
-        apply_gravity(self._physics_state, dt, gravity=self.gravity, max_fall_speed=-20)
+        apply_gravity(self._physics_state, dt, gravity=self.gravity, max_fall_speed=-30)
 
         def _ground_check(entity):
             # Use raycast to find the terrain height beneath the player.
             return raycast_ground_height(entity)
 
-        integrate_vertical(
+        def _wall_check(entity, movement):
+             # Check if moving in this direction would hit something
+             return raycast_wall_check(entity, movement, distance_buffer=0.5)
+
+        integrate_movement(
             self.player,
             self._physics_state,
             dt,
             ground_check=_ground_check,
+            wall_check=_wall_check
         )
 
         # Update coyote-time and jump-buffer timers now that grounded is up to date

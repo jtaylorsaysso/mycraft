@@ -109,3 +109,26 @@ Planned features and improvements:
 
 * Python 3.12+
 * Ursina 8.2.0
+
+## Installation
+
+1. Clone the repository.
+2. Install dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+## Tester Guide
+
+### Quick Start
+1. **Server**: Open a terminal and run `python run_server.py`.
+2. **Client**: Open a separate terminal and run `python run_client.py --host localhost`.
+   - You should spawn at `(10, 2, 10)` initially.
+3. **Multiplayer**: To test with another computer on the same LAN:
+   - Run server on host machine.
+   - Run client on second machine: `python run_client.py --host <SERVER_LAN_IP>`.
+
+### Common Issues
+- **Firewall**: Ensure port 5420 is open if connecting from another machine.
+- **Controls**: Press `Esc` to free your mouse cursor.

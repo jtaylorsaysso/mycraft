@@ -14,7 +14,7 @@ def run(networking: bool = False):
     client = get_client()
     if networking and client and client.is_connected():
         # Use server-provided spawn position
-        spawn_pos = tuple(client.player_id and [10, 2, 10] or [10, 2, 10])  # TODO: Get from welcome message
+        spawn_pos = tuple(client.spawn_pos) if hasattr(client, 'spawn_pos') else (10, 2, 10)
     else:
         spawn_pos = (10, 2, 10)
     

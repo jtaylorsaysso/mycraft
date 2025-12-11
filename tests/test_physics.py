@@ -1,7 +1,7 @@
 from engine.physics import (
     KinematicState,
     apply_gravity,
-    integrate_vertical,
+    integrate_movement,
     simple_flat_ground_check,
     perform_jump,
     update_timers,
@@ -12,7 +12,9 @@ from engine.physics import (
 
 class DummyEntity:
     def __init__(self, y: float = 0.0):
+        self.x = 0.0
         self.y = y
+        self.z = 0.0
 
 
 def test_apply_gravity_respects_max_fall_speed():
@@ -33,7 +35,7 @@ def test_integrate_vertical_snaps_to_ground():
     def ground_check(e):
         return simple_flat_ground_check(e, ground_height=2.0)
 
-    integrate_vertical(entity, state, dt=1.0, ground_check=ground_check)
+    integrate_movement(entity, state, dt=1.0, ground_check=ground_check)
 
     assert entity.y == 2.0
     assert state.velocity_y == 0.0

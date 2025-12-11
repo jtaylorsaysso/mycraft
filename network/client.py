@@ -155,8 +155,8 @@ class GameClient:
     def _handle_welcome(self, message: Dict):
         """Handle welcome message from server."""
         self.player_id = message.get("player_id")
-        spawn_pos = message.get("spawn_pos", [10, 2, 10])
-        self.logger.info(f"Welcome as {self.player_id}, spawn_pos={spawn_pos}")
+        self.spawn_pos = message.get("spawn_pos", [10, 2, 10])
+        self.logger.info(f"Welcome as {self.player_id}, spawn_pos={self.spawn_pos}")
     
     def _handle_state_snapshot(self, message: Dict):
         """Handle state snapshot from server."""
