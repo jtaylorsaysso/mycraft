@@ -1,0 +1,14 @@
+# venv
+venv/
+
+# logs
+logs/
+
+# build
+build/
+
+
+
+.pytest_cache
+
+

@@ -1,5 +1,6 @@
 from ursina import Entity, camera, color, Vec3, raycast, destroy, scene, Text, InputField, mouse
 from engine.input_handler import InputHandler
+from engine.hud import HUD
 from network.client import get_client
 
 class Player(Entity):
@@ -44,6 +45,9 @@ class Player(Entity):
         
         # Initialize input handler
         self.input_handler = InputHandler(self)
+        
+        # Initialize HUD
+        self.hud = HUD(self, networking=networking)
         
     def setup_third_person_camera(self):
         """Create an over-the-shoulder third-person camera setup"""
@@ -92,6 +96,9 @@ class Player(Entity):
         dt = time.dt
         self.input_handler.update(dt)
         self.update_camera()
+        
+        # Update HUD
+        self.hud.update()
         
         # Handle networking
         if self.networking and self.network_client:

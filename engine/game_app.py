@@ -1,14 +1,31 @@
-from ursina import Ursina
+from ursina import Ursina, camera
 
 from engine.world import World
 from engine.player import Player
 from network.client import get_client
 
+# Global references for update loop
+_world = None
+_player = None
+
+def update():
+    """Called each frame by Ursina to update game state."""
+    global _world, _player
+    
+    if _world and _player:
+        # Update chunk loading/unloading based on player position
+        _world.update(_player.position)
+        
+        # Update chunk visibility based on camera frustum
+        _world.set_chunk_visibility(camera, _player.position)
+
 def run(networking: bool = False):
+    global _world, _player
+    
     app = Ursina()
 
-    # Create the world (flat field for MVP)
-    world = World()
+    # Create the world (now with dynamic chunk loading)
+    _world = World()
     
     # Get spawn position from server if connected
     client = get_client()
@@ -18,6 +35,6 @@ def run(networking: bool = False):
     else:
         spawn_pos = (10, 2, 10)
     
-    player = Player(start_pos=spawn_pos, networking=networking)
+    _player = Player(start_pos=spawn_pos, networking=networking)
 
     app.run()
