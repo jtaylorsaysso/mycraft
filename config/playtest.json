@@ -1,0 +1,11 @@
+{
+    "mouse_sensitivity": 40.0,
+    "movement_speed": 6.0,
+    "fly_speed": 12.0,
+    "jump_height": 3.5,
+    "gravity": -12.0,
+    "god_mode": false,
+    "debug_overlay": false,
+    "view_distance": 5,
+    "fov": 90
+}

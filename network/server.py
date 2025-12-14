@@ -9,24 +9,37 @@ import logging
 from util.logger import get_logger, time_block, log_metric
 from network.player_manager import PlayerManager
 from network.commands import CommandProcessor
+from network.discovery import DiscoveryBroadcaster
 
+
+import argparse
 
 class GameServer:
     """Simple TCP server for LAN multiplayer on port 5420."""
     
-    def __init__(self, host: str = "0.0.0.0", port: int = 5420):
+    def __init__(self, host: str = "0.0.0.0", port: int = 5420, broadcast_rate: int = 20, max_players: int = 16, debug: bool = False):
         self.host = host
         self.port = port
+        self.broadcast_rate = broadcast_rate
+        self.max_players = max_players
+        self.debug_mode = debug
+        
         self.server = None
         self.clients: Dict[str, asyncio.StreamWriter] = {}
         
         self.player_manager = PlayerManager()
         self.command_processor = CommandProcessor(self, self.player_manager)
+        
+        # Initialize discovery
+        self.discovery = DiscoveryBroadcaster(port, max_players)
 
-        self.tick_rate = 20  # Broadcast state 20 times per second
+        self.tick_rate = broadcast_rate  # Broadcast state X times per second
         self.tick_interval = 1.0 / self.tick_rate
         self.running = True
         self.logger = get_logger("net.server")
+        
+        if self.debug_mode:
+            self.logger.setLevel(logging.DEBUG)
         
         # Identify host player ID for reference
         self.host_player_id = self.player_manager.host_player_id
@@ -43,11 +56,17 @@ class GameServer:
         addr = self.server.sockets[0].getsockname()
         self.logger.info(f"Server listening on {addr[0]}:{addr[1]}")
         self.logger.info(f"Other players can connect to your LAN IP at port {addr[1]}")
+        self.logger.info(f"Config: rate={self.broadcast_rate}Hz, max_players={self.max_players}, debug={self.debug_mode}")
         
         # Start the broadcast task
         asyncio.create_task(self.broadcast_state_loop())
         
+        # Start discovery broadcasting
+        self.discovery.start(lambda: len(self.clients))
+        self.logger.info("LAN Discovery broadcasting started")
+        
         async with self.server:
+
             await self.server.serve_forever()
     
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
@@ -236,12 +255,24 @@ def get_lan_ip():
 
 async def main():
     """Main entry point for the game server."""
-    server = GameServer()
+    parser = argparse.ArgumentParser(description="MyCraft LAN Server")
+    parser.add_argument("--broadcast-rate", type=int, default=20, help="State broadcast rate in Hz (default: 20)")
+    parser.add_argument("--max-players", type=int, default=16, help="Max concurrent connections (default: 16)")
+    parser.add_argument("--debug", action="store_true", help="Enable verbose logging")
+    
+    args = parser.parse_args()
+    
+    server = GameServer(
+        broadcast_rate=args.broadcast_rate,
+        max_players=args.max_players,
+        debug=args.debug
+    )
     lan_ip = get_lan_ip()
     
     print(f"MyCraft LAN Server")
     print(f"Local IP: {lan_ip}")
     print(f"Port: 5420")
+    print(f"Config: rate={args.broadcast_rate}Hz, players={args.max_players}, debug={args.debug}")
     print(f"Tell family to connect to: {lan_ip}:5420")
     print("-" * 40)
     
@@ -255,7 +286,15 @@ async def main():
         while True:
             try:
                 line = await loop.run_in_executor(None, input, "server> ")
-            except (EOFError, KeyboardInterrupt):
+            except EOFError:
+                print("\n[INFO] Admin console stdin closed (background mode). Server continuing...")
+                # Keep the task alive but do nothing, so we don't trigger shutdown
+                try:
+                    while True:
+                        await asyncio.sleep(3600)
+                except asyncio.CancelledError:
+                    break
+            except KeyboardInterrupt:
                 print("\nConsole shutting down...")
                 break
 
@@ -273,7 +312,7 @@ async def main():
             for l in lines:
                 print(l)
 
-        # When console loop exits, stop the server loop.
+        # When console loop exits (via KeyboardInterrupt), stop the server loop.
         raise KeyboardInterrupt
 
     try:

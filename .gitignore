@@ -4,11 +4,27 @@ venv/
 # logs
 logs/
 
-# build
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Distribution / Build
 build/
+dist/
+*.egg-info/
 
+# Pytest
+.pytest_cache/
 
+# IDEs
+.idea/
+.vscode/
+*.swp
 
-.pytest_cache
+# Project Specific
+recordings/
+
 
 

@@ -3,9 +3,14 @@ from engine.input_handler import InputHandler
 from engine.hud import HUD
 from network.client import get_client
 from engine.remote_player import RemotePlayer
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from util.hot_config import HotConfig
 
 class Player(Entity):
-    def __init__(self, start_pos=(0,2,0), networking: bool = False, sensitivity: float = 40.0):
+    def __init__(self, start_pos=(0,2,0), networking: bool = False, sensitivity: float = 40.0, 
+                 god_mode: bool = False, config: Optional['HotConfig'] = None):
         # Player parent entity
         super().__init__(
             position=start_pos
@@ -29,6 +34,8 @@ class Player(Entity):
             scale_x=0.9,
             scale_y=0.05,
             enabled=False,
+            hide_char='*',
+            cursor='|'
         )
         self.console_log = Text(
             parent=camera.ui,
@@ -44,8 +51,8 @@ class Player(Entity):
         # Setup third-person camera
         self.setup_third_person_camera()
         
-        # Initialize input handler
-        self.input_handler = InputHandler(self, sensitivity=sensitivity)
+        # Initialize input handler with hot-config support
+        self.input_handler = InputHandler(self, sensitivity=sensitivity, god_mode=god_mode, config=config)
         
         # Initialize HUD
         self.hud = HUD(self, networking=networking)
