@@ -6,8 +6,8 @@
 - [ ] World generation uses simple sine waves - should be enhanced with proper noise (Perlin/Simplex) for more varied terrain
 - [x] ~~Only generates 3x3 chunk grid - needs dynamic chunk loading/unloading for larger worlds~~ - Implemented with configurable radius and throttling
 - [ ] UV coordinates are basic (0,0 to 1,1 per quad) - textures stretch across merged quads from greedy meshing
-- [ ] Texture atlas system needed for varied block types (grass, stone, dirt, etc.)
-- [ ] No biome system - all terrain uses same height function
+- [x] ~~Texture atlas system needed for varied block types~~ - Implemented with 16x16 grid (terrain.png) and per-face UV mapping
+- [x] ~~No biome system~~ - 6 biomes: Plains, Forest, Rocky, Desert, Mountain, Canyon with unique height functions
 
 ## Physics System
 
@@ -37,10 +37,10 @@
 - [x] ~~Position synchronization~~ - Players send updates at 10Hz
 - [x] ~~Remote player rendering~~ - Simple cube representation
 - [x] ~~Admin console system~~ - Basic slash commands implemented
-- [ ] Add player interpolation/extrapolation for smoother remote movement (currently snaps to positions)
+- [x] ~~Add player interpolation/extrapolation for smoother remote movement~~ - Implemented in `RemotePlayer` class with lerp
 - [ ] Implement player names/labels above heads
 - [ ] Add chat system for player communication (currently only admin console)
-- [ ] Improve remote player visuals - use same body model as local player
+- [x] ~~Improve remote player visuals~~ - Remote players now use 5-part mannequin model matching local player
 - [ ] Consider UDP for position updates (TCP for important events) - currently all TCP
 - [ ] Add connection timeout and retry logic
 - [ ] Implement player customization (colors, names, skins)
@@ -58,11 +58,11 @@
 ## Visual Polish
 
 - [ ] Player model is basic stacked cubes - needs proper character model
-- [ ] Remote players render as single cubes - should match local player appearance
+- [x] ~~Remote players render as single cubes~~ - Now use 5-part mannequin matching local player
 - [ ] No animations (walking, jumping, landing, idle)
 - [ ] No particle effects (dust clouds, jump/land impacts)
 - [ ] Basic static lighting - needs dynamic lighting and shadows
-- [ ] Single texture for all terrain - texture atlas system needed
+- [x] ~~Single texture for all terrain~~ - Texture atlas with 18 block types and per-face tiles
 - [ ] No skybox or atmosphere rendering
 
 ## Input Handling

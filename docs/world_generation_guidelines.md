@@ -99,11 +99,13 @@
 
 - **Chunk System**: 16×16 blocks per chunk with dynamic loading/unloading
 - **Dynamic Streaming**: Configurable load radius (default 3 chunks), unload radius (default 5 chunks)
-- **Height Function**: Gentle sine waves with y=0 baseline, ±2 block variation
+- **Height Function**: Biome-specific height functions with y=0 baseline
 - **Meshing**: Greedy meshing for top faces, side face culling based on height differences
 - **Performance**: Single mesh per chunk with optimized vertex count, frustum culling enabled
 - **Collision**: Mesh colliders for raycast-based ground detection
 - **Network Sync**: Terrain is client-side identical for all players
+- **Texture Atlas**: 16x16 tile grid from terrain.png with per-face UV mapping
+- **Block Registry**: 18 block types with color fallback and texture tiles
 
 ### 🔄 Current Design
 
@@ -113,20 +115,17 @@
 - **Physics Integration**: Raycast-based ground detection for player movement
 - **Multiplayer**: All clients generate identical worlds using same seed/function
 - **Infinite World**: Chunks load dynamically as player explores, enabling unlimited world size
-- **Block System**: Block registry with 8 block types using colored rendering (texture stubs for future)
-- **Biome System**: 4 distinct biomes (Plains, Forest, Rocky, Desert) with unique terrain characteristics
+- **Biome System**: 6 distinct biomes (Plains, Forest, Rocky, Desert, Mountain, Canyon) with unique terrain characteristics
 
 ### 📋 Future Extensions
 
 These are explicitly **out of scope** for the current implementation but should be considered when extending the system:
 
-- Texture implementation (colored blocks currently used as fallback)
 - Player-driven block destruction/placement
 - Multi-layer underground spaces and cave systems
 - Dynamic terrain deformation (explosions, spells, etc.)
 - LOD (Level of Detail) system for distant chunks
 - Perlin/Simplex noise for more varied terrain generation
-- Biome system for terrain variety
 
 ---
 

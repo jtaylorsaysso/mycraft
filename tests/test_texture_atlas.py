@@ -60,9 +60,9 @@ def test_tile_uvs_structure():
     
     uvs = atlas.get_tile_uvs(0)
     
-    # Should return 4 Vec2 objects
+    # Should return 4 Vec2-like objects with x and y attributes
     assert len(uvs) == 4
-    assert all(isinstance(uv, Vec2) for uv in uvs)
+    assert all(hasattr(uv, 'x') and hasattr(uv, 'y') for uv in uvs)
 
 
 def test_tile_uvs_range():

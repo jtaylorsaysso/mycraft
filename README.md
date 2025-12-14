@@ -47,14 +47,25 @@ Open terminal in this folder and run:
 
 ### Core Features
 - **Chunk-Based Terrain**: Infinite generation, greedy meshing, dynamic loading/culling.
-- **Physics**: Kinematic character controller, improved collision handling.
+- **Biome System**: 6 distinct biomes (Plains, Forest, Rocky, Desert, Mountain, Canyon).
+- **Texture Atlas**: 16x16 tile grid from `terrain.png` with per-face UV mapping.
+- **Block Registry**: 18 block types with color fallback and texture support.
+- **Physics**: Kinematic character controller, Mario-style jumping, collision handling.
 - **Networking**: TCP sync + UDP Broadcast discovery (Port 5420/5421).
 - **Performance**: Frustum culling, throttled chunk generation.
 
 ### Architecture
 ```text
 mycraft/
-├── engine/           # Core game logic (GameApp, World, Player, Physics)
+├── engine/           # Core game logic
+│   ├── game_app.py       # Main game loop
+│   ├── world.py          # Chunk management, terrain generation
+│   ├── biomes.py         # 6 biome definitions with height functions
+│   ├── blocks.py         # 18 block types registry
+│   ├── texture_atlas.py  # UV mapping for terrain.png
+│   ├── player.py         # Local player controller
+│   ├── remote_player.py  # Remote player with interpolation
+│   └── physics.py        # Kinematic physics system
 ├── network/          # TCP Server/Client + UDP Discovery
 ├── util/             # Logger, Config, Recorder
 ├── launcher.py       # Tkinter GUI Entry Point
@@ -85,4 +96,4 @@ python run_client.py --host 127.0.0.1 --preset creative --debug
 - **Target**: Casual playtesters & devs.
 - **Stack**: Python 3.12 + Ursina Engine.
 - **Status**: Pre-alpha playtest.
-- **Next Steps**: Biomes, RPG mechanics, Persistence.
+- **Next Steps**: Perlin/Simplex noise terrain, RPG mechanics, Persistence.
