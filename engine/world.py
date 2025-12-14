@@ -505,29 +505,33 @@ class World:
                 chunk_entity.enabled = False
                 continue
             
+            # Display all chunks within view distance for now (disable aggressive frustum culling)
+            # which was causing issues with initial rendering
+            chunk_entity.enabled = True
+            
             # Simple frustum culling: disable chunks behind player
             # Get chunk center in world coordinates
-            chunk_center_x = (cx + 0.5) * self.CHUNK_SIZE
-            chunk_center_z = (cz + 0.5) * self.CHUNK_SIZE
+            # chunk_center_x = (cx + 0.5) * self.CHUNK_SIZE
+            # chunk_center_z = (cz + 0.5) * self.CHUNK_SIZE
             
-            # Vector from camera to chunk
-            if hasattr(player_pos, 'x'):
-                cam_x, cam_z = player_pos.x, player_pos.z
-            else:
-                cam_x, cam_z = player_pos[0], player_pos[2]
+            # # Vector from camera to chunk
+            # if hasattr(player_pos, 'x'):
+            #     cam_x, cam_z = player_pos.x, player_pos.z
+            # else:
+            #     cam_x, cam_z = player_pos[0], player_pos[2]
             
-            to_chunk_x = chunk_center_x - cam_x
-            to_chunk_z = chunk_center_z - cam_z
+            # to_chunk_x = chunk_center_x - cam_x
+            # to_chunk_z = chunk_center_z - cam_z
             
-            # Camera forward direction (use player's forward since camera follows player)
-            from ursina import Vec3
-            cam_forward = camera.forward
+            # # Camera forward direction (use player's forward since camera follows player)
+            # from ursina import Vec3
+            # cam_forward = camera.forward
             
-            # Dot product to check if chunk is in front of camera
-            # If negative, chunk is behind camera
-            dot = to_chunk_x * cam_forward.x + to_chunk_z * cam_forward.z
+            # # Dot product to check if chunk is in front of camera
+            # # If negative, chunk is behind camera
+            # dot = to_chunk_x * cam_forward.x + to_chunk_z * cam_forward.z
             
-            if dot < -self.CHUNK_SIZE:  # Give some buffer for chunks slightly behind
-                chunk_entity.enabled = False
-            else:
-                chunk_entity.enabled = True
+            # if dot < -self.CHUNK_SIZE:  # Give some buffer for chunks slightly behind
+            #     chunk_entity.enabled = False
+            # else:
+            #     chunk_entity.enabled = True

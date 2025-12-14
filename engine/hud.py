@@ -9,7 +9,8 @@ Displays useful information to the player:
 - Player count (multiplayer)
 """
 
-from ursina import Entity, Text, color, time
+from ursina import Entity, Text, color, time, camera
+from engine.input_handler import KeyBindings
 
 
 class HUD:
@@ -25,6 +26,15 @@ class HUD:
         """
         self.player = player_entity
         self.networking = networking
+        
+        # Crosshair (center of screen)
+        self.crosshair = Entity(
+            parent=camera.ui,
+            model='quad',
+            texture='cursor',  # Ursina default cursor texture or custom
+            scale=0.02,
+            color=color.rgba(255, 255, 255, 150)
+        )
         
         # FPS Counter (top-right)
         self.fps_text = Text(
@@ -47,14 +57,15 @@ class HUD:
         # Control hints (bottom-left)
         controls = [
             "Controls:",
-            "W/A/S/D - Move",
+            f"{KeyBindings.FORWARD}/{KeyBindings.LEFT}/{KeyBindings.BACK}/{KeyBindings.RIGHT} - Move",
             "Mouse - Look Around",
-            "Space - Jump",
-            "Esc - Toggle Cursor"
+            f"{KeyBindings.JUMP} - Jump",
+            f"{KeyBindings.TOGGLE_MOUSE} - Toggle Cursor",
+            f"{KeyBindings.ATTACK.replace(' mouse', '')}/{KeyBindings.USE.replace(' mouse', '')} - Interact (Future)",
         ]
         
         if networking:
-            controls.append("/ - Admin Console")
+            controls.append(f"{KeyBindings.CMD} - Admin Console")
         
         self.controls_text = Text(
             text='\n'.join(controls),
@@ -140,6 +151,8 @@ class HUD:
         if self.networking:
             self.connection_text.enabled = visible
             self.player_count_text.enabled = visible
+            
+        self.crosshair.enabled = visible
     
     def hide_controls(self):
         """Hide the controls overlay (useful after player learns the game)."""

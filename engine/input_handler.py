@@ -16,6 +16,36 @@ from engine.physics import (
     raycast_wall_check,
 )
 
+# Standardized Control Scheme
+class KeyBindings:
+    # Movement
+    FORWARD = 'w'
+    BACK = 's'
+    LEFT = 'a'
+    RIGHT = 'd'
+    JUMP = 'space'
+    
+    # Actions
+    ATTACK = 'left mouse'   # Reserved for block breaking
+    USE = 'right mouse'     # Reserved for block placing/interaction
+    INVENTORY = 'e'         # Reserved
+    DROP = 'q'              # Reserved
+    CHAT = 't'              # Reserved
+    CMD = '/'               # Admin console
+    
+    # Functional
+    TOGGLE_MOUSE = 'escape'
+    
+    # God Mode / Flight
+    FLY_UP = 'space'
+    FLY_DOWN = 'shift'      # Shift is often Sprint, but standard for flight descent in creative modes
+    
+    # Debug / Dev
+    TOGGLE_DEBUG = 'f3'     # Reserved
+    TOGGLE_GOD = 'g'        # Common dev toggle
+
+
+
 if TYPE_CHECKING:
     from util.session_recorder import SessionRecorder, SessionPlayer
     from util.hot_config import HotConfig
@@ -63,6 +93,7 @@ class InputHandler:
             # Handle potential circular import if client_commands imports InputHandler for type checking
             self.command_processor = None
 
+    def set_recorder(self, recorder: 'SessionRecorder') -> None:
         """Set the session recorder for input capture."""
         self._recorder = recorder
     
@@ -104,13 +135,13 @@ class InputHandler:
             clean_key = key.replace('up_', '') if not pressed else key
             self._recorder.record_key(clean_key, pressed)
         
-        if key == 'space':
+        if key == KeyBindings.JUMP:
             # Record a jump request; actual jump will be performed in update()
             # based on coyote-time and buffering rules.
             register_jump_press(self._physics_state)
             
         # Toggle mouse lock with escape key
-        if key == 'escape':
+        if key == KeyBindings.TOGGLE_MOUSE:
             mouse.locked = not mouse.locked
             
         # Toggle god mode with G (debug feature)
@@ -140,8 +171,8 @@ class InputHandler:
                 self.player.camera_pivot.rotation_x = max(-89, min(89, self.player.camera_pivot.rotation_x))
         
         # Movement input
-        forward_input = held_keys['w'] - held_keys['s']
-        strafe_input = held_keys['d'] - held_keys['a']
+        forward_input = held_keys[KeyBindings.FORWARD] - held_keys[KeyBindings.BACK]
+        strafe_input = held_keys[KeyBindings.RIGHT] - held_keys[KeyBindings.LEFT]
         
         # Calculate movement direction based on player rotation
         # Calculate target velocity based on inputs
@@ -170,7 +201,7 @@ class InputHandler:
         if self.god_mode:
             # GOD MODE / FLIGHT LOGIC
             # Vertical movement with Space (Up) and Shift (Down)
-            vertical_input = held_keys['space'] - held_keys['shift']
+            vertical_input = held_keys[KeyBindings.FLY_UP] - held_keys[KeyBindings.FLY_DOWN]
             target_velocity.y = vertical_input * self.fly_speed
             
             # Simple direct movement for god mode (no inertia for precision)
@@ -253,5 +284,5 @@ class InputHandler:
                 perform_jump(self._physics_state, self.jump_height)
 
             # Variable jump height: early release = short hop
-            if self._physics_state.velocity_y > 0 and not held_keys['space']:
+            if self._physics_state.velocity_y > 0 and not held_keys[KeyBindings.JUMP]:
                 self._physics_state.velocity_y *= 0.55

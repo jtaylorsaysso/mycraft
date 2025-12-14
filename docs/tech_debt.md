@@ -30,7 +30,7 @@
 - [ ] Consider spatial partitioning for large numbers of physics objects
 - [ ] Side face meshing is non-greedy - could be optimized further
 - [ ] No LOD system for distant chunks
-- [x] ~~No frustum culling - all chunks always rendered~~ - Implemented basic frustum culling and view distance control
+- [ ] Aggressive frustum culling disabled - incorrectly hid chunks at spawn; needs robust implementation with camera forward vector checks
 
 ## Networking
 
