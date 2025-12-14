@@ -1,6 +1,7 @@
 from ursina import Entity, camera, color, Vec3, raycast, destroy, scene, Text, InputField, mouse
 from engine.input_handler import InputHandler
 from engine.hud import HUD
+from engine.animation import AnimatedMannequin, AnimationController
 from network.client import get_client
 from engine.remote_player import RemotePlayer
 from typing import Optional, TYPE_CHECKING
@@ -45,8 +46,9 @@ class Player(Entity):
             scale=0.7,
         )
 
-        # Basic mannequin: 3 stacked cubes
-        self.build_body()
+        # Animated mannequin with procedural animations
+        self.mannequin = AnimatedMannequin(parent=self)
+        self.animation_controller = AnimationController(self.mannequin)
 
         # Setup third-person camera
         self.setup_third_person_camera()
@@ -105,6 +107,9 @@ class Player(Entity):
         self.input_handler.update(dt)
         self.update_camera()
         
+        # Update animations based on physics state
+        self._update_animations(dt)
+        
         # Update HUD
         self.hud.update()
         
@@ -117,6 +122,20 @@ class Player(Entity):
             log_lines = self.network_client.get_admin_log()
             if log_lines:
                 self.console_log.text = "\n".join(log_lines[-self.console_max_lines:])
+    
+    def _update_animations(self, dt: float):
+        """Update mannequin animations based on physics state."""
+        # Get velocity from physics state
+        physics = self.input_handler._physics_state
+        velocity = Vec3(
+            physics.velocity_x,
+            physics.velocity_y,
+            physics.velocity_z
+        )
+        grounded = physics.grounded
+        
+        # Let animation controller determine and run appropriate animation
+        self.animation_controller.update(dt, velocity, grounded)
     
     def update_camera(self):
         """Update camera position with collision prevention"""
@@ -148,51 +167,7 @@ class Player(Entity):
         target = self.camera_pivot.world_position + self.forward * 3
         camera.look_at(target)
 
-    def build_body(self):
-        # Head
-        Entity(
-            parent=self,
-            model='cube',
-            color=color.rgb(150, 125, 100),
-            scale=0.3,
-            y=1.6
-        )
-
-        # Torso
-        Entity(
-            parent=self,
-            model='cube',
-            color=color.rgb(150, 125, 100),
-            scale=(0.3, 1.2, 0.4),
-            y=0.9
-        )
-
-        # Right Arm
-        Entity(
-            parent=self,
-            model='cube',
-            color=color.rgb(150, 125, 100),
-            scale=(0.15, 1.0, 0.15),
-            position=(0.25, 0.9, 0)
-        )
-
-        # Left Arm
-        Entity(
-            parent=self,
-            model='cube',
-            color=color.rgb(150, 125, 100),
-            scale=(0.15, 1.0, 0.15),
-            position=(-0.25, 0.9, 0)
-        )
-
-        # Legs
-        Entity(
-            parent=self,
-            model='cube',
-            color=color.rgb(150, 125, 100),
-            scale=(0.3, 1, 0.4),
-            y=0.3
-        )
+    # build_body() removed - now using AnimatedMannequin
     
     def update_networking(self, dt):
         """Send position updates to server at controlled rate."""

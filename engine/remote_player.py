@@ -1,65 +1,27 @@
 from ursina import Entity, color, Vec3, lerp, time
+from engine.animation import AnimatedMannequin, AnimationController
+
 
 class RemotePlayer(Entity):
     """
     Represents a remote player in the world.
-    Handles visual representation (mannequin) and position smoothing (interpolation).
+    Handles visual representation (animated mannequin) and position smoothing (interpolation).
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         
-        # Create body parts (Remote player is Azure to distinguish from local)
-        self.body_color = color.azure
-        
-        # Head
-        Entity(
-            parent=self,
-            model='cube',
-            color=self.body_color,
-            scale=0.3,
-            y=1.6
-        )
-
-        # Torso
-        Entity(
-            parent=self,
-            model='cube',
-            color=self.body_color,
-            scale=(0.3, 1.2, 0.4),
-            y=0.9
-        )
-
-        # Right Arm
-        Entity(
-            parent=self,
-            model='cube',
-            color=self.body_color,
-            scale=(0.15, 1.0, 0.15),
-            position=(0.25, 0.9, 0)
-        )
-
-        # Left Arm
-        Entity(
-            parent=self,
-            model='cube',
-            color=self.body_color,
-            scale=(0.15, 1.0, 0.15),
-            position=(-0.25, 0.9, 0)
-        )
-
-        # Legs
-        Entity(
-            parent=self,
-            model='cube',
-            color=self.body_color,
-            scale=(0.3, 1, 0.4),
-            y=0.3
-        )
+        # Create animated mannequin (Azure to distinguish from local player)
+        self.mannequin = AnimatedMannequin(parent=self, body_color=color.azure)
+        self.animation_controller = AnimationController(self.mannequin)
         
         # Interpolation state
         self.target_position = self.position
         self.target_rotation = self.rotation_y
         self.lerp_speed = 10.0  # Speed of interpolation
+        
+        # Velocity estimation for animations
+        self._last_position = Vec3(self.position.x, self.position.y, self.position.z)
+        self._estimated_velocity = Vec3(0, 0, 0)
 
     def set_target(self, pos, rot_y):
         """Update the target position and rotation."""
@@ -70,13 +32,27 @@ class RemotePlayer(Entity):
         if (self.target_position - self.position).length() > 5:
             self.position = self.target_position
             self.rotation_y = self.target_rotation
+            self._last_position = Vec3(self.position.x, self.position.y, self.position.z)
+            self._estimated_velocity = Vec3(0, 0, 0)
 
     def update(self):
         """Called every frame by Ursina."""
+        dt = time.dt
+        
+        # Estimate velocity from position change (for animations)
+        if dt > 0:
+            self._estimated_velocity = (self.target_position - self._last_position) / dt
+        self._last_position = Vec3(self.position.x, self.position.y, self.position.z)
+        
         # Interpolate position
-        self.position = lerp(self.position, self.target_position, time.dt * self.lerp_speed)
+        self.position = lerp(self.position, self.target_position, dt * self.lerp_speed)
         
         # Interpolate rotation (simple lerp)
         # Note: For full robustness, should use slerp or handle 0-360 wrap, 
         # but simple lerp is okay for limited Y-rotation in this prototype
-        self.rotation_y = lerp(self.rotation_y, self.target_rotation, time.dt * self.lerp_speed)
+        self.rotation_y = lerp(self.rotation_y, self.target_rotation, dt * self.lerp_speed)
+        
+        # Update animations based on estimated velocity
+        # Assume grounded since we don't have physics state for remote players
+        grounded = abs(self._estimated_velocity.y) < 0.5
+        self.animation_controller.update(dt, self._estimated_velocity, grounded)

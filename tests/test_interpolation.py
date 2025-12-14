@@ -26,6 +26,11 @@ class FakeVec3:
             return FakeVec3(self.x * other, self.y * other, self.z * other)
         return NotImplemented
 
+    def __truediv__(self, other):
+        if isinstance(other, (int, float)):
+            return FakeVec3(self.x / other, self.y / other, self.z / other)
+        return NotImplemented
+
     def length(self):
         return math.sqrt(self.x**2 + self.y**2 + self.z**2)
         
@@ -93,9 +98,9 @@ class TestInterpolation(unittest.TestCase):
         
     def test_initialization(self):
         self.assertEqual(self.player.lerp_speed, 10.0)
-        # Check visuals were created (children of player)
-        # Head, Torso, arm_R, arm_L, Legs = 5 parts
-        self.assertEqual(len(self.player.children), 5)
+        # Check that mannequin was created (AnimatedMannequin as child)
+        self.assertTrue(hasattr(self.player, 'mannequin'))
+        self.assertTrue(hasattr(self.player, 'animation_controller'))
         
     def test_interpolation_movement(self):
         target = FakeVec3(2, 0, 0)

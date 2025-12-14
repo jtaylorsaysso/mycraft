@@ -59,7 +59,7 @@
 
 - [ ] Player model is basic stacked cubes - needs proper character model
 - [x] ~~Remote players render as single cubes~~ - Now use 5-part mannequin matching local player
-- [ ] No animations (walking, jumping, landing, idle)
+- [x] ~~No animations (walking, jumping, landing, idle)~~ - Procedural animations implemented with AnimatedMannequin and AnimationController
 - [ ] No particle effects (dust clouds, jump/land impacts)
 - [ ] Basic static lighting - needs dynamic lighting and shadows
 - [x] ~~Single texture for all terrain~~ - Texture atlas with 18 block types and per-face tiles
