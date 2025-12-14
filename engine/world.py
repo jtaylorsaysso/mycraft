@@ -2,6 +2,7 @@ from ursina import Entity, load_model, color, Mesh, Vec3, Vec2
 from util.logger import get_logger, time_block, log_metric
 from engine.biomes import BiomeRegistry
 from engine.blocks import BlockRegistry
+from engine.texture_atlas import TextureAtlas
 
 
 class World:
@@ -31,6 +32,13 @@ class World:
         # Queues for deferred chunk operations
         self.chunks_to_load = []  # List of (chunk_x, chunk_z) tuples
         self.chunks_to_unload = []  # List of (chunk_x, chunk_z) tuples
+        
+        # Texture atlas for block rendering
+        self.texture_atlas = TextureAtlas("Spritesheets/terrain.png")
+        if self.texture_atlas.is_loaded():
+            self.logger.info("Texture atlas loaded successfully")
+        else:
+            self.logger.warning("Texture atlas failed to load, using color fallback")
 
     def get_height(self, x, z):
         """Return terrain height at world coordinate (x, z).
@@ -143,12 +151,25 @@ class World:
                     index, index + 1, index + 2,
                     index, index + 2, index + 3,
                 ])
-                uvs.extend([
-                    Vec2(0, 0),
-                    Vec2(1, 0),
-                    Vec2(1, 1),
-                    Vec2(0, 1),
-                ])
+                
+                # Get UVs for top face from texture atlas
+                biome = biomes[x][z]
+                surface_block = BlockRegistry.get_block(biome.surface_block)
+                tile_index = surface_block.get_face_tile('top')
+                
+                if tile_index is not None and self.texture_atlas.is_loaded():
+                    # Use texture atlas UVs
+                    tile_uvs = self.texture_atlas.get_tile_uvs(tile_index)
+                    uvs.extend(tile_uvs)
+                else:
+                    # Fallback to simple UVs
+                    uvs.extend([
+                        Vec2(0, 0),
+                        Vec2(1, 0),
+                        Vec2(1, 1),
+                        Vec2(0, 1),
+                    ])
+                
                 index += 4
 
         # --- Side faces (non-greedy), using height map ---
@@ -193,12 +214,23 @@ class World:
                             index, index + 1, index + 2,
                             index, index + 2, index + 3,
                         ])
-                        uvs.extend([
-                            Vec2(0, 0),
-                            Vec2(1, 0),
-                            Vec2(1, 1),
-                            Vec2(0, 1),
-                        ])
+                        
+                        # Get UVs for side face
+                        biome = biomes[x][z]
+                        surface_block = BlockRegistry.get_block(biome.surface_block)
+                        tile_index = surface_block.get_face_tile('side')
+                        
+                        if tile_index is not None and self.texture_atlas.is_loaded():
+                            tile_uvs = self.texture_atlas.get_tile_uvs(tile_index)
+                            uvs.extend(tile_uvs)
+                        else:
+                            uvs.extend([
+                                Vec2(0, 0),
+                                Vec2(1, 0),
+                                Vec2(1, 1),
+                                Vec2(0, 1),
+                            ])
+                        
                         index += 4
 
                 # --- West side (-X) ---
@@ -215,12 +247,23 @@ class World:
                             index, index + 1, index + 2,
                             index, index + 2, index + 3,
                         ])
-                        uvs.extend([
-                            Vec2(0, 0),
-                            Vec2(1, 0),
-                            Vec2(1, 1),
-                            Vec2(0, 1),
-                        ])
+                        
+                        # Get UVs for side face
+                        biome = biomes[x][z]
+                        surface_block = BlockRegistry.get_block(biome.surface_block)
+                        tile_index = surface_block.get_face_tile('side')
+                        
+                        if tile_index is not None and self.texture_atlas.is_loaded():
+                            tile_uvs = self.texture_atlas.get_tile_uvs(tile_index)
+                            uvs.extend(tile_uvs)
+                        else:
+                            uvs.extend([
+                                Vec2(0, 0),
+                                Vec2(1, 0),
+                                Vec2(1, 1),
+                                Vec2(0, 1),
+                            ])
+                        
                         index += 4
 
                 # --- South side (+Z) ---
@@ -237,12 +280,23 @@ class World:
                             index, index + 1, index + 2,
                             index, index + 2, index + 3,
                         ])
-                        uvs.extend([
-                            Vec2(0, 0),
-                            Vec2(1, 0),
-                            Vec2(1, 1),
-                            Vec2(0, 1),
-                        ])
+                        
+                        # Get UVs for side face
+                        biome = biomes[x][z]
+                        surface_block = BlockRegistry.get_block(biome.surface_block)
+                        tile_index = surface_block.get_face_tile('side')
+                        
+                        if tile_index is not None and self.texture_atlas.is_loaded():
+                            tile_uvs = self.texture_atlas.get_tile_uvs(tile_index)
+                            uvs.extend(tile_uvs)
+                        else:
+                            uvs.extend([
+                                Vec2(0, 0),
+                                Vec2(1, 0),
+                                Vec2(1, 1),
+                                Vec2(0, 1),
+                            ])
+                        
                         index += 4
 
                 # --- North side (-Z) ---
@@ -259,12 +313,23 @@ class World:
                             index, index + 1, index + 2,
                             index, index + 2, index + 3,
                         ])
-                        uvs.extend([
-                            Vec2(0, 0),
-                            Vec2(1, 0),
-                            Vec2(1, 1),
-                            Vec2(0, 1),
-                        ])
+                        
+                        # Get UVs for side face
+                        biome = biomes[x][z]
+                        surface_block = BlockRegistry.get_block(biome.surface_block)
+                        tile_index = surface_block.get_face_tile('side')
+                        
+                        if tile_index is not None and self.texture_atlas.is_loaded():
+                            tile_uvs = self.texture_atlas.get_tile_uvs(tile_index)
+                            uvs.extend(tile_uvs)
+                        else:
+                            uvs.extend([
+                                Vec2(0, 0),
+                                Vec2(1, 0),
+                                Vec2(1, 1),
+                                Vec2(0, 1),
+                            ])
+                        
                         index += 4
 
         # Create mesh for this chunk
@@ -275,16 +340,24 @@ class World:
         center_z = self.CHUNK_SIZE // 2
         dominant_biome = biomes[center_x][center_z]
         
-        # Get block color from biome's surface block
+        # Get block from biome's surface block
         surface_block = BlockRegistry.get_block(dominant_biome.surface_block)
         
         # Parent entity for this chunk (single renderable + collider)
-        # Use colored blocks instead of texture for rapid prototyping
-        chunk_entity = Entity(
-            model=mesh,
-            color=color.rgb(*surface_block.color),  # Colored blocks
-            collider='mesh'
-        )
+        # Use texture atlas if loaded, otherwise fall back to colors
+        if self.texture_atlas.is_loaded():
+            chunk_entity = Entity(
+                model=mesh,
+                texture=self.texture_atlas.get_texture(),
+                collider='mesh'
+            )
+        else:
+            # Fallback to colored rendering
+            chunk_entity = Entity(
+                model=mesh,
+                color=color.rgb(*surface_block.color),
+                collider='mesh'
+            )
         self.chunks[(chunk_x, chunk_z)] = chunk_entity
 
         # Log simple mesh stats for baseline metrics
