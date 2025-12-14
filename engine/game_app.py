@@ -161,7 +161,7 @@ def run(
         spawn_pos = (10, 2, 10)
     
     # Create the world (now with dynamic chunk loading)
-    _world = World()
+    _world = World(config=hot_config)
     
     # Pre-load chunks around spawn to prevent falling through empty world
     spawn_chunk = _world.get_player_chunk_coords(spawn_pos)

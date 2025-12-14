@@ -10,6 +10,7 @@ from pathlib import Path
 if TYPE_CHECKING:
     from engine.player import Player
     from engine.input_handler import InputHandler
+    from util.hot_config import HotConfig
 
 
 class ClientCommandProcessor:
@@ -19,11 +20,13 @@ class ClientCommandProcessor:
         self,
         player: 'Player',
         input_handler: 'InputHandler',
-        spawn_pos: tuple = (10, 2, 10)
+        spawn_pos: tuple = (10, 2, 10),
+        config: Optional['HotConfig'] = None
     ):
         self.player = player
         self.input_handler = input_handler
         self.spawn_pos = spawn_pos
+        self.config = config
         self._recorder = None
         self._player_session = None  # SessionPlayer for replay
         self._info_callback: Optional[Callable[[], Dict[str, Any]]] = None
@@ -67,7 +70,14 @@ class ClientCommandProcessor:
             lines.append("  /sensitivity <val> Set mouse sensitivity")
             lines.append("  /record <name>     Start recording session")
             lines.append("  /stoprec           Stop recording and save")
+            lines.append("  /record <name>     Start recording session")
+            lines.append("  /stoprec           Stop recording and save")
             lines.append("  /replay <file>     Play back a recording")
+            lines.append("  /set <param> <val> Set config parameter")
+            lines.append("  /get <param>       Get config parameter")
+            lines.append("  /config            List all config values")
+            lines.append("  /reload            Reload from file")
+            lines.append("  /save              Save changes to file")
         
         elif cmd == "/tp":
             if len(args) != 3:
@@ -174,6 +184,96 @@ class ClientCommandProcessor:
                 else:
                     lines.append(f"Failed to load: {path}")
         
+        elif cmd == "/set":
+            if not self.config:
+                lines.append("Config system not available.")
+            elif len(args) != 2:
+                lines.append("Usage: /set <param> <value>")
+            else:
+                key = args[0]
+                val_str = args[1]
+                
+                # Handle aliases
+                if key == "speed": key = "movement_speed"
+                elif key == "sens": key = "mouse_sensitivity"
+                elif key == "chunks": key = "chunk_load_radius"
+                
+                if key not in self.config.DEFAULTS and key not in self.config._values:
+                    lines.append(f"Unknown parameter: {key}")
+                else:
+                    # Generic type inference from default value
+                    default_val = self.config.DEFAULTS.get(key, 0.0)
+                    try:
+                        if isinstance(default_val, bool):
+                             val = val_str.lower() == "true"
+                        elif isinstance(default_val, int):
+                             val = int(val_str)
+                             # Clamps
+                             if key == "chunk_load_radius": val = max(1, min(10, val))
+                        elif isinstance(default_val, float):
+                             val = float(val_str)
+                             # Clamps
+                             if key == "movement_speed": val = max(1.0, min(30.0, val))
+                             elif key == "jump_height": val = max(0.5, min(15.0, val))
+                        else:
+                             val = val_str
+                             
+                        self.config.set(key, val)
+                        lines.append(f"Set {key} to {val}")
+                        
+                        # Also update local input handler immediately if needed
+                        # (InputHandler subscribes, but some might be direct)
+                        if key == "movement_speed": self.input_handler.movement_speed = val
+                        elif key == "mouse_sensitivity": self.input_handler.mouse_sensitivity = val
+                        
+                    except ValueError:
+                        lines.append(f"Invalid value type for {key}")
+
+        elif cmd == "/get":
+            if not self.config:
+                lines.append("Config system not available.")
+            elif len(args) != 1:
+                lines.append("Usage: /get <param>")
+            else:
+                key = args[0]
+                val = self.config.get(key)
+                if val is not None:
+                     lines.append(f"{key}: {val}")
+                else:
+                     lines.append(f"Unknown parameter: {key}")
+
+        elif cmd == "/config":
+            if not self.config:
+                 lines.append("Config system not available.")
+            else:
+                lines.append("=== Client Configuration ===")
+                # Group by simple categories (heuristic)
+                cats = {
+                    "Physics": ["speed", "jump", "gravity", "god"],
+                    "Camera": ["fov", "cam", "view"],
+                    "Anim": ["walk", "idle"],
+                    "World": ["chunk"]
+                }
+                
+                sorted_keys = sorted(self.config.get_all().keys())
+                for k in sorted_keys:
+                    val = self.config.get(k)
+                    lines.append(f"{k}: {val}")
+                    
+        elif cmd == "/reload":
+            if self.config:
+                self.config.load_config()
+                lines.append("Config reloaded from file.")
+            else:
+                lines.append("Config system not available.")
+
+        elif cmd == "/save":
+            if self.config:
+                self.config.save()
+                lines.append("Config saved to file.")
+            else:
+                lines.append("Config system not available.")
+
         else:
             lines.append(f"Unknown command: {cmd}. Try /help")
         

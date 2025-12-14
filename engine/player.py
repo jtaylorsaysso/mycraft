@@ -16,7 +16,8 @@ class Player(Entity):
         super().__init__(
             position=start_pos
         )
-
+        self.config = config
+        
         # Networking setup
         self.networking = networking
         self.network_client = get_client() if networking else None
@@ -48,7 +49,7 @@ class Player(Entity):
 
         # Animated mannequin with procedural animations
         self.mannequin = AnimatedMannequin(parent=self)
-        self.animation_controller = AnimationController(self.mannequin)
+        self.animation_controller = AnimationController(self.mannequin, config=config)
 
         # Setup third-person camera
         self.setup_third_person_camera()
@@ -59,18 +60,45 @@ class Player(Entity):
         # Initialize HUD
         self.hud = HUD(self, networking=networking)
         
+        # Register for config changes specific to player/camera
+        if self.config:
+            self.config.on_change(self._on_config_change)
+
+    def _on_config_change(self, key: str, value):
+        """Handle config changes for camera parameters."""
+        if key == "camera_distance":
+            self.camera_offset.z = -float(value)
+        elif key == "camera_height":
+            self.camera_offset.y = float(value)
+        elif key == "camera_side_offset":
+            self.camera_offset.x = float(value)
+        elif key == "fov":
+            camera.fov = float(value)
+        
     def setup_third_person_camera(self):
         """Create an over-the-shoulder third-person camera setup"""
         # Create a camera pivot at torso height (center of player)
         self.camera_pivot = Entity(parent=self, y=1.0)
         
         # Camera offset: right, up, back (so player appears on left side)
-        self.camera_offset = Vec3(1, 2, -4)
+        # Use config defaults if available
+        dist = 4.0
+        height = 2.0
+        side = 1.0
+        fov = 60
+        
+        if self.config:
+            dist = self.config.get("camera_distance", dist)
+            height = self.config.get("camera_height", height)
+            side = self.config.get("camera_side_offset", side)
+            fov = self.config.get("fov", 90) # Default to 90 if using config
+            
+        self.camera_offset = Vec3(side, height, -dist)
         
         # Camera settings
         camera.parent = self.camera_pivot
         camera.position = self.camera_offset
-        camera.fov = 60  # Field of view
+        camera.fov = fov  # Field of view
         
         # Look ahead in facing direction
         target = self.camera_pivot.world_position + self.forward * 3

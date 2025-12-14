@@ -10,6 +10,7 @@ from util.logger import get_logger, time_block, log_metric
 from network.player_manager import PlayerManager
 from network.commands import CommandProcessor
 from network.discovery import DiscoveryBroadcaster
+from util.server_hot_config import ServerHotConfig
 
 
 import argparse
@@ -17,12 +18,18 @@ import argparse
 class GameServer:
     """Simple TCP server for LAN multiplayer on port 5420."""
     
-    def __init__(self, host: str = "0.0.0.0", port: int = 5420, broadcast_rate: int = 20, max_players: int = 16, debug: bool = False):
-        self.host = host
-        self.port = port
-        self.broadcast_rate = broadcast_rate
-        self.max_players = max_players
-        self.debug_mode = debug
+    def __init__(self, config: ServerHotConfig, max_players_override: int = None, debug_override: bool = None):
+        self.config = config
+        
+        # Initial values from config (CLI overrides handled in main, but we store them here too)
+        self.host = "0.0.0.0"
+        self.port = self.config.get("port", 5420)
+        self.broadcast_rate = self.config.get("broadcast_rate", 20)
+        self.max_players = max_players_override if max_players_override is not None else self.config.get("max_players", 16)
+        self.debug_mode = debug_override if debug_override is not None else self.config.get("debug", False)
+        
+        # Register callbacks for hot-reload
+        self.config.on_change(self._on_config_change)
         
         self.server = None
         self.clients: Dict[str, asyncio.StreamWriter] = {}
@@ -40,6 +47,26 @@ class GameServer:
         
         if self.debug_mode:
             self.logger.setLevel(logging.DEBUG)
+
+    def _on_config_change(self, key: str, value: Any) -> None:
+        """Handle configuration changes dynamically."""
+        if key == "broadcast_rate":
+            self.broadcast_rate = int(value)
+            self.tick_interval = 1.0 / self.broadcast_rate
+            self.tick_rate = self.broadcast_rate
+            self.logger.info(f"Updated broadcast rate to {self.broadcast_rate}Hz")
+            
+        elif key == "max_players":
+            self.max_players = int(value)
+            self.discovery.max_players = self.max_players
+            self.logger.info(f"Updated max players to {self.max_players}")
+            
+        elif key == "debug":
+            self.debug_mode = bool(value)
+            level = logging.DEBUG if self.debug_mode else logging.INFO
+            self.logger.setLevel(level)
+            self.logger.info(f"Updated debug mode to {self.debug_mode}")
+
         
         # Identify host player ID for reference
         self.host_player_id = self.player_manager.host_player_id
@@ -60,6 +87,9 @@ class GameServer:
         
         # Start the broadcast task
         asyncio.create_task(self.broadcast_state_loop())
+        
+        # Start the config update task
+        asyncio.create_task(self.config.update_loop())
         
         # Start discovery broadcasting
         self.discovery.start(lambda: len(self.clients))
@@ -262,11 +292,27 @@ async def main():
     
     args = parser.parse_args()
     
+    # Load configuration
+    config_path = Path("config/server_config.json")
+    if not config_path.exists():
+        # Create default config if missing
+        config_path.parent.mkdir(exist_ok=True)
+        ServerHotConfig(config_path).save()
+        
+    config = ServerHotConfig(config_path)
+    
+    # CLI args override config defaults (but config file updates will still trigger callbacks later)
+    # We pass overrides to constructor to ensure initial state is correct
     server = GameServer(
-        broadcast_rate=args.broadcast_rate,
-        max_players=args.max_players,
-        debug=args.debug
+        config=config,
+        max_players_override=args.max_players if args.max_players != 16 else None,
+        debug_override=args.debug if args.debug else None
     )
+    
+    # If users specifically provided broadcast rate arg, we might want to override config initially
+    if args.broadcast_rate != 20:
+        server.broadcast_rate = args.broadcast_rate
+        server.tick_interval = 1.0 / server.broadcast_rate
     lan_ip = get_lan_ip()
     
     print(f"MyCraft LAN Server")

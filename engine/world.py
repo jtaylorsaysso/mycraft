@@ -3,12 +3,16 @@ from util.logger import get_logger, time_block, log_metric
 from engine.biomes import BiomeRegistry
 from engine.blocks import BlockRegistry
 from engine.texture_atlas import TextureAtlas
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from util.hot_config import HotConfig
 
 
 class World:
     CHUNK_SIZE = 16
 
-    def __init__(self, chunk_load_radius=3, chunk_unload_radius=5, max_chunks_per_frame=1, view_distance=4):
+    def __init__(self, chunk_load_radius=3, chunk_unload_radius=5, max_chunks_per_frame=1, view_distance=4, config: Optional['HotConfig'] = None):
         """Initialize the world with dynamic chunk loading parameters.
         
         Args:
@@ -21,10 +25,22 @@ class World:
         self.logger = get_logger("world")
         
         # Dynamic loading parameters
-        self.chunk_load_radius = chunk_load_radius
-        self.chunk_unload_radius = chunk_unload_radius
-        self.max_chunks_per_frame = max_chunks_per_frame
-        self.view_distance = view_distance
+        self.config = config
+        
+        # Use config if available, otherwise use args
+        if self.config:
+            self.chunk_load_radius = self.config.get("chunk_load_radius", chunk_load_radius)
+            self.chunk_unload_radius = self.config.get("chunk_unload_radius", chunk_unload_radius)
+            self.max_chunks_per_frame = int(self.config.get("max_chunks_per_frame", max_chunks_per_frame))
+            self.view_distance = self.config.get("view_distance", view_distance)
+            
+            # Register for updates
+            self.config.on_change(self._on_config_change)
+        else:
+            self.chunk_load_radius = chunk_load_radius
+            self.chunk_unload_radius = chunk_unload_radius
+            self.max_chunks_per_frame = max_chunks_per_frame
+            self.view_distance = view_distance
         
         # Track player position for chunk management
         self.last_player_chunk = None
@@ -39,6 +55,22 @@ class World:
             self.logger.info("Texture atlas loaded successfully")
         else:
             self.logger.warning("Texture atlas failed to load, using color fallback")
+
+    def _on_config_change(self, key: str, value):
+        """Handle config changes for world parameters."""
+        if key == "chunk_load_radius":
+            self.chunk_load_radius = int(value)
+            # Force update of queues next frame
+            self.last_player_chunk = None 
+        elif key == "chunk_unload_radius":
+            self.chunk_unload_radius = int(value)
+        elif key == "max_chunks_per_frame":
+            self.max_chunks_per_frame = int(value)
+        elif key == "view_distance":
+            self.view_distance = int(value)
+            # Re-evaluate visibility immediately for all chunks
+            # We can't easily access camera here, but next frame update will handle it
+
 
     def get_height(self, x, z):
         """Return terrain height at world coordinate (x, z).

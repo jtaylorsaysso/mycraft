@@ -7,5 +7,16 @@
     "god_mode": false,
     "debug_overlay": false,
     "view_distance": 5,
-    "fov": 90
+    "fov": 90,
+    "camera_distance": 4.0,
+    "camera_height": 2.0,
+    "camera_side_offset": 1.0,
+    "walk_frequency": 10.0,
+    "walk_amplitude_arms": 35.0,
+    "walk_amplitude_legs": 30.0,
+    "idle_bob_speed": 2.0,
+    "idle_bob_amount": 0.01,
+    "chunk_load_radius": 3,
+    "chunk_unload_radius": 5,
+    "max_chunks_per_frame": 1
 }

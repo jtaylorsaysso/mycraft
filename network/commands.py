@@ -10,6 +10,9 @@ class CommandProcessor:
     def __init__(self, server: 'GameServer', player_manager):
         self.server = server
         self.player_manager = player_manager
+        
+        # Access config from server
+        self.config = getattr(server, 'config', None)
 
     async def process_command(self, player_id: str, command: str) -> List[str]:
         """Execute an admin command string issued by a client player."""
@@ -29,6 +32,10 @@ class CommandProcessor:
             lines.append("  /kick <player_id>     Disconnect a player")
             lines.append("  /hostpos x y z        Move host player to position")
             lines.append("  /hostrot yaw          Set host Y rotation in degrees")
+            lines.append("  /set <param> <val>    Set server config parameter")
+            lines.append("  /get <param>          Get server config parameter")
+            lines.append("  /config               List all config values")
+            lines.append("  /reload               Reload config from file")
             lines.append("  /quit                 Shut down the server")
 
         elif cmd == "/list":
@@ -80,7 +87,86 @@ class CommandProcessor:
                 except ValueError:
                     lines.append("Yaw must be a number.")
 
-        elif cmd in {"/quit", "/exit", "/shutdown"}:
+                except ValueError:
+                    lines.append("Yaw must be a number.")
+
+        elif cmd == "/set":
+            if not self.config:
+                lines.append("Configuration system not authenticated.")
+            elif len(args) != 2:
+                lines.append("Usage: /set <parameter> <value>")
+            else:
+                key = args[0]
+                val_str = args[1]
+                
+                # Check if parameter exists in defaults
+                if key not in self.config.DEFAULTS:
+                     lines.append(f"Unknown parameter: {key}")
+                elif key == "port":
+                     lines.append("Cannot change port while server is running.")
+                else:
+                    # Parse value based on default type
+                    default_val = self.config.DEFAULTS[key]
+                    try:
+                        if isinstance(default_val, bool):
+                            if val_str.lower() == 'true': val = True
+                            elif val_str.lower() == 'false': val = False
+                            else: raise ValueError("Must be true or false")
+                        elif isinstance(default_val, int):
+                            val = int(val_str)
+                            # Clamping logic
+                            if key == "broadcast_rate": val = max(5, min(120, val))
+                            elif key == "max_players": val = max(1, min(64, val))
+                        elif isinstance(default_val, float):
+                            val = float(val_str)
+                        else:
+                            val = val_str
+                            
+                        self.config.set(key, val)
+                        lines.append(f"Set {key} to {val}")
+                        
+                        # Broadcast change to all admins (host)
+                        # In the future we might want to announce "Server config changed" to all
+                        
+                    except ValueError:
+                         lines.append(f"Invalid value for {key} (expected {type(default_val).__name__})")
+
+        elif cmd == "/get":
+            if not self.config:
+                lines.append("Configuration system not available.")
+            elif len(args) != 1:
+                lines.append("Usage: /get <parameter>")
+            else:
+                key = args[0]
+                val = self.config.get(key)
+                if val is None and key not in self.config.DEFAULTS:
+                    lines.append(f"Unknown parameter: {key}")
+                else:
+                    lines.append(f"{key}: {val}")
+
+        elif cmd == "/config":
+            if not self.config:
+                lines.append("Configuration system not available.")
+            else:
+                lines.append("=== Server Configuration ===")
+                all_vals = self.config.get_all()
+                for k, v in all_vals.items():
+                    tag = " (read-only)" if k == "port" else ""
+                    lines.append(f"{k}: {v}{tag}")
+
+        elif cmd == "/reload":
+            if not self.config:
+                lines.append("Configuration system not available.")
+            else:
+                try:
+                    # Run synchronous load in executor to avoid blocking
+                    import asyncio
+                    loop = asyncio.get_running_loop()
+                    await loop.run_in_executor(None, self.config.load_config)
+                    lines.append("Server config reloaded from file.")
+                except Exception as e:
+                    lines.append(f"Failed to reload config: {e}")
+
             lines.append("Shutting down server...")
             self.server.running = False
             if self.server.server is not None:

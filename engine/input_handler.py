@@ -50,10 +50,19 @@ class InputHandler:
             self._apply_config()
             self._config.on_change(self._on_config_change)
         
-        # Lock mouse for first-person control
-        mouse.locked = True
-    
-    def set_recorder(self, recorder: 'SessionRecorder') -> None:
+        # Command processor
+        try:
+            from engine.client_commands import ClientCommandProcessor
+            self.command_processor = ClientCommandProcessor(
+                player=self.player,
+                input_handler=self,
+                spawn_pos=self.player.position,
+                config=self._config
+            )
+        except ImportError:
+            # Handle potential circular import if client_commands imports InputHandler for type checking
+            self.command_processor = None
+
         """Set the session recorder for input capture."""
         self._recorder = recorder
     
@@ -225,6 +234,7 @@ class InputHandler:
             def _wall_check(entity, movement):
                  # Check if moving in this direction would hit something
                  return raycast_wall_check(entity, movement, distance_buffer=0.5)
+
 
             integrate_movement(
                 self.player,

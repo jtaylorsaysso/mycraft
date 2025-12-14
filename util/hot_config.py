@@ -25,15 +25,33 @@ class HotConfig:
     
     # Default configuration values
     DEFAULTS = {
+        # Player Physics
         "mouse_sensitivity": 40.0,
         "movement_speed": 6.0,
         "fly_speed": 12.0,
         "jump_height": 3.5,
         "gravity": -12.0,
         "god_mode": False,
+        
+        # Camera
         "debug_overlay": False,
         "view_distance": 5,
         "fov": 90,
+        "camera_distance": 4.0,
+        "camera_height": 2.0,
+        "camera_side_offset": 1.0,
+        
+        # Animations
+        "walk_frequency": 10.0,
+        "walk_amplitude_arms": 35.0,
+        "walk_amplitude_legs": 30.0,
+        "idle_bob_speed": 2.0,
+        "idle_bob_amount": 0.01,
+        
+        # World Generation/Loading
+        "chunk_load_radius": 3,
+        "chunk_unload_radius": 5,
+        "max_chunks_per_frame": 1,
     }
     
     def __init__(self, config_path: Optional[Path] = None, check_interval: float = 1.0):
@@ -68,6 +86,17 @@ class HotConfig:
         
         if old_value != value:
             self._notify_change(key, value)
+    
+    def save(self) -> None:
+        """Save current configuration to file."""
+        if not self._config_path:
+            return
+            
+        try:
+            with open(self._config_path, 'w', encoding="utf-8") as f:
+                json.dump(self._values, f, indent=4)
+        except OSError as e:
+            print(f"[HotConfig] Failed to save config: {e}")
     
     def on_change(self, callback: Callable[[str, Any], None]) -> None:
         """Register a callback for when any config value changes."""

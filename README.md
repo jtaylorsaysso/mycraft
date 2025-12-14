@@ -1,6 +1,7 @@
 # MyCraft – Playtest Build
 
 A voxel engine experiment focused on performance and multiplayer.
+Build Status: Pre-alpha playtest
 
 ---
 

@@ -4,6 +4,17 @@ Welcome to the MyCraft playtest!
 
 > [!TIP]
 > **New for Playtesters:** Use the **GUI Launcher**!
+
+## Configuration & Tuning
+
+The game is highly configurable for playtesting. You can tune movement, camera, animations, and performance settings in real-time.
+
+* **Quick Tuning**: Press `T` and use slash commands (e.g., `/set movement_speed 10`).
+* **Advanced Config**: Edit `config/playtest.json` (changes apply instantly).
+
+👉 **[Read the Full Configuration Guide](docs/PLAYTEST_CONFIG_GUIDE.md)** for details on all available parameters and tuning tips.
+
+## Launcher & Controls
 > Run: `./launcher.py` (or double-click it) to join easily without terminal commands.
 > See [PLAYER_GUIDE.md](PLAYER_GUIDE.md) for details.
 

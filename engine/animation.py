@@ -8,7 +8,9 @@ for state-based animation management. Uses Ursina's animate() for smooth transit
 from enum import Enum, auto
 from ursina import Entity, color, Vec3, time
 import math
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+if TYPE_CHECKING:
+    from util.hot_config import HotConfig
 
 
 class AnimationState(Enum):
@@ -150,18 +152,45 @@ class AnimationController:
     procedural animation based on current state.
     """
     
-    def __init__(self, mannequin: AnimatedMannequin):
+    def __init__(self, mannequin: AnimatedMannequin, config: Optional['HotConfig'] = None):
         self.mannequin = mannequin
+        self.config = config
         self._current_state = AnimationState.IDLE
         self._state_time = 0.0  # Time in current state
         self._landing_duration = 0.15  # Duration of landing animation
         
         # Animation parameters (tunable)
-        self.walk_frequency = 10.0  # Limb swings per second at full speed
-        self.walk_amplitude_arms = 35.0  # Degrees of arm swing
-        self.walk_amplitude_legs = 30.0  # Degrees of leg swing
-        self.idle_bob_speed = 2.0  # Bob frequency
-        self.idle_bob_amount = 0.01  # Subtle idle motion
+        self.walk_frequency = 10.0
+        self.walk_amplitude_arms = 35.0
+        self.walk_amplitude_legs = 30.0
+        self.idle_bob_speed = 2.0
+        self.idle_bob_amount = 0.01
+
+        # Load from config if available
+        if self.config:
+            self._apply_config()
+            self.config.on_change(self._on_config_change)
+
+    def _apply_config(self):
+        """Apply all animation config values."""
+        self.walk_frequency = self.config.get("walk_frequency", 10.0)
+        self.walk_amplitude_arms = self.config.get("walk_amplitude_arms", 35.0)
+        self.walk_amplitude_legs = self.config.get("walk_amplitude_legs", 30.0)
+        self.idle_bob_speed = self.config.get("idle_bob_speed", 2.0)
+        self.idle_bob_amount = self.config.get("idle_bob_amount", 0.01)
+
+    def _on_config_change(self, key: str, value):
+        """Handle hot-config value change."""
+        if key == "walk_frequency":
+            self.walk_frequency = float(value)
+        elif key == "walk_amplitude_arms":
+            self.walk_amplitude_arms = float(value)
+        elif key == "walk_amplitude_legs":
+            self.walk_amplitude_legs = float(value)
+        elif key == "idle_bob_speed":
+            self.idle_bob_speed = float(value)
+        elif key == "idle_bob_amount":
+            self.idle_bob_amount = float(value)
     
     @property
     def current_state(self) -> AnimationState:

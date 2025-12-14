@@ -1,0 +1,7 @@
+{
+    "broadcast_rate": 20,
+    "max_players": 16,
+    "debug": false,
+    "port": 5420,
+    "discovery_enabled": true
+}
