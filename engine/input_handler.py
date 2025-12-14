@@ -17,10 +17,9 @@ from engine.physics import (
 
 
 class InputHandler:
-    def __init__(self, player_entity):
+    def __init__(self, player_entity, sensitivity: float = 40.0):
         self.player = player_entity
-        self.player = player_entity
-        self.mouse_sensitivity = 40
+        self.mouse_sensitivity = sensitivity
         self.movement_speed = 6
         self.acceleration = 40   # Units per second^2
         self.friction = 10       # Units per second^2 (on ground)

@@ -2,9 +2,10 @@ from ursina import Entity, camera, color, Vec3, raycast, destroy, scene, Text, I
 from engine.input_handler import InputHandler
 from engine.hud import HUD
 from network.client import get_client
+from engine.remote_player import RemotePlayer
 
 class Player(Entity):
-    def __init__(self, start_pos=(0,2,0), networking: bool = False):
+    def __init__(self, start_pos=(0,2,0), networking: bool = False, sensitivity: float = 40.0):
         # Player parent entity
         super().__init__(
             position=start_pos
@@ -44,7 +45,7 @@ class Player(Entity):
         self.setup_third_person_camera()
         
         # Initialize input handler
-        self.input_handler = InputHandler(self)
+        self.input_handler = InputHandler(self, sensitivity=sensitivity)
         
         # Initialize HUD
         self.hud = HUD(self, networking=networking)
@@ -150,17 +151,34 @@ class Player(Entity):
             y=1.6
         )
 
-        #Torso
+        # Torso
         Entity(
             parent=self,
             model='cube',
             color=color.rgb(150, 125, 100),
             scale=(0.3, 1.2, 0.4),
             y=0.9
-
         )
 
-        #Legs
+        # Right Arm
+        Entity(
+            parent=self,
+            model='cube',
+            color=color.rgb(150, 125, 100),
+            scale=(0.15, 1.0, 0.15),
+            position=(0.25, 0.9, 0)
+        )
+
+        # Left Arm
+        Entity(
+            parent=self,
+            model='cube',
+            color=color.rgb(150, 125, 100),
+            scale=(0.15, 1.0, 0.15),
+            position=(-0.25, 0.9, 0)
+        )
+
+        # Legs
         Entity(
             parent=self,
             model='cube',
@@ -207,16 +225,9 @@ class Player(Entity):
             pos = state.get('pos', [0, 0, 0])
             rot_y = state.get('rot_y', 0)
             
-            remote_entity.position = pos
-            remote_entity.rotation_y = rot_y
+            # Use interpolation
+            remote_entity.set_target(pos, rot_y)
     
     def create_remote_player(self):
         """Create a simple entity to represent a remote player."""
-        # Simple colored cube to represent other players
-        remote = Entity(
-            model='cube',
-            color=color.azure,
-            scale=(0.3, 1.8, 0.3),
-            position=(0, 2, 0)
-        )
-        return remote
+        return RemotePlayer(position=(0, 2, 0))

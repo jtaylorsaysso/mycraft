@@ -19,7 +19,7 @@ def update():
         # Update chunk visibility based on camera frustum
         _world.set_chunk_visibility(camera, _player.position)
 
-def run(networking: bool = False):
+def run(networking: bool = False, sensitivity: float = 40.0):
     global _world, _player
     
     app = Ursina()
@@ -35,6 +35,6 @@ def run(networking: bool = False):
     else:
         spawn_pos = (10, 2, 10)
     
-    _player = Player(start_pos=spawn_pos, networking=networking)
+    _player = Player(start_pos=spawn_pos, networking=networking, sensitivity=sensitivity)
 
     app.run()
