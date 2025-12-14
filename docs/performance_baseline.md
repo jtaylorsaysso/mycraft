@@ -27,9 +27,9 @@ from util.logger import get_logger, time_block, log_metric
 
 logger = get_logger("world")
 
-# Timing a section
-with time_block("world_generate", logger, {"chunks": 9}):
-    world.generate_chunks()
+# Timing a section (now per-chunk instead of all at once)
+with time_block("chunk_create", logger, {"chunk_x": 0, "chunk_z": 0}):
+    world.create_chunk(0, 0)
 
 # Direct metric
 log_metric("server_players", 4, {"source": "server_tick"})
@@ -66,10 +66,23 @@ To establish a baseline, run these scenarios and save the resulting `logs/` fold
    - If possible, start multiple clients on the same LAN.
    - Focus on networking tick time and payload sizes.
 
+## New Metrics (Chunk Loading System)
+
+With dynamic chunk loading, the following metrics are now tracked:
+
+- `chunk_create` - Time to generate a single chunk (ms)
+- `chunks_loaded` - Counter for chunks loaded (with total_chunks label)
+- `chunks_unloaded` - Counter for chunks unloaded (with total_chunks label)
+- `chunk_mesh_triangles` - Triangle count per chunk
+
+These metrics enable monitoring:
+- Chunk generation performance over time
+- Memory usage (via total_chunks)
+- Mesh complexity trends
+
 ## Next Steps
 
-- Integrate `time_block` and `log_metric` into:
-  - `engine/world.py` for chunk/world generation timings.
-  - `network/server.py` for server tick and broadcast metrics.
-  - `network/client.py` for connection and snapshot metrics.
-- Use these baselines to compare against future optimizations and features.
+- Monitor `chunk_create` timing to detect performance regressions
+- Track `total_chunks` to understand memory scaling
+- Use metrics to optimize chunk generation and meshing
+- Compare performance before/after algorithm changes

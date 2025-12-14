@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from typing import Optional, Dict
 
 
+from engine.texture_atlas import TileRegistry
+
 @dataclass
 class Block:
     """Represents a single block type.
@@ -127,72 +129,166 @@ class BlockRegistry:
 BlockRegistry.register(Block(
     name="grass",
     color=(0.4, 0.7, 0.3),  # Vibrant green (fallback)
-    tile_top=0,      # Grass top
-    tile_side=3,     # Grass side
-    tile_bottom=2,   # Dirt
+    tile_top=TileRegistry.GRASS_TOP,
+    tile_side=TileRegistry.GRASS_SIDE,
+    tile_bottom=TileRegistry.DIRT,
     display_name="Grass"
 ))
 
 BlockRegistry.register(Block(
     name="dirt",
     color=(0.5, 0.35, 0.2),  # Rich brown (fallback)
-    tile_top=2,      # Dirt
-    tile_side=2,     # Dirt
-    tile_bottom=2,   # Dirt
+    tile_top=TileRegistry.DIRT,
+    tile_side=TileRegistry.DIRT,
+    tile_bottom=TileRegistry.DIRT,
     display_name="Dirt"
 ))
 
 BlockRegistry.register(Block(
     name="stone",
     color=(0.5, 0.5, 0.5),  # Medium grey (fallback)
-    tile_top=1,      # Stone
-    tile_side=1,     # Stone
-    tile_bottom=1,   # Stone
+    tile_top=TileRegistry.STONE,
+    tile_side=TileRegistry.STONE,
+    tile_bottom=TileRegistry.STONE,
     display_name="Stone"
 ))
 
 BlockRegistry.register(Block(
     name="sand",
     color=(0.9, 0.8, 0.5),  # Warm yellow (fallback)
-    tile_top=18,     # Sand
-    tile_side=18,    # Sand
-    tile_bottom=18,  # Sand
+    tile_top=TileRegistry.SAND,
+    tile_side=TileRegistry.SAND,
+    tile_bottom=TileRegistry.SAND,
     display_name="Sand"
 ))
 
 BlockRegistry.register(Block(
     name="gravel",
     color=(0.4, 0.4, 0.4),  # Dark grey (fallback)
-    tile_top=19,     # Gravel
-    tile_side=19,    # Gravel
-    tile_bottom=19,  # Gravel
+    tile_top=TileRegistry.GRAVEL,
+    tile_side=TileRegistry.GRAVEL,
+    tile_bottom=TileRegistry.GRAVEL,
     display_name="Gravel"
 ))
 
 BlockRegistry.register(Block(
     name="snow",
     color=(0.95, 0.95, 0.98),  # Pure white with slight blue tint (fallback)
-    tile_top=66,     # Snow
-    tile_side=68,    # Snow side
-    tile_bottom=2,   # Dirt
+    tile_top=TileRegistry.SNOW,
+    tile_side=TileRegistry.SNOW_SIDE,
+    tile_bottom=TileRegistry.DIRT,
     display_name="Snow"
 ))
 
 BlockRegistry.register(Block(
     name="clay",
     color=(0.7, 0.6, 0.5),  # Tan/beige (fallback)
-    tile_top=2,      # Dirt (clay uses dirt texture)
-    tile_side=2,     # Dirt
-    tile_bottom=2,   # Dirt
+    tile_top=TileRegistry.CLAY,
+    tile_side=TileRegistry.CLAY,
+    tile_bottom=TileRegistry.CLAY,
     display_name="Clay"
 ))
 
 BlockRegistry.register(Block(
     name="wood",
     color=(0.35, 0.25, 0.15),  # Dark brown (fallback)
-    tile_top=21,     # Log top
-    tile_side=20,    # Log side
-    tile_bottom=21,  # Log top
+    tile_top=TileRegistry.LOG_TOP,
+    tile_side=TileRegistry.LOG_SIDE,
+    tile_bottom=TileRegistry.LOG_TOP,
     display_name="Wood"
+))
+
+# Natural terrain variations for diverse biomes
+BlockRegistry.register(Block(
+    name="cobblestone_mossy",
+    color=(0.45, 0.55, 0.4),  # Greenish grey (fallback)
+    tile_top=TileRegistry.COBBLESTONE_MOSSY,
+    tile_side=TileRegistry.COBBLESTONE_MOSSY,
+    tile_bottom=TileRegistry.COBBLESTONE_MOSSY,
+    display_name="Mossy Cobblestone"
+))
+
+BlockRegistry.register(Block(
+    name="podzol",
+    color=(0.4, 0.3, 0.2),  # Dark brown (fallback)
+    tile_top=TileRegistry.DIRT_PODZOL,
+    tile_side=TileRegistry.DIRT_PODZOL,
+    tile_bottom=TileRegistry.DIRT,
+    display_name="Podzol"
+))
+
+BlockRegistry.register(Block(
+    name="sandstone",
+    color=(0.85, 0.75, 0.5),  # Sandy beige (fallback)
+    tile_top=TileRegistry.SANDSTONE,
+    tile_side=TileRegistry.SANDSTONE,
+    tile_bottom=TileRegistry.SANDSTONE,
+    display_name="Sandstone"
+))
+
+# Mountain/snow terrain
+BlockRegistry.register(Block(
+    name="ice",
+    color=(0.7, 0.85, 0.95),  # Light blue (fallback)
+    tile_top=TileRegistry.ICE_PACKED,
+    tile_side=TileRegistry.ICE_PACKED,
+    tile_bottom=TileRegistry.ICE_PACKED,
+    display_name="Ice"
+))
+
+BlockRegistry.register(Block(
+    name="stone_mossy",
+    color=(0.5, 0.6, 0.5),  # Mossy grey (fallback)
+    tile_top=TileRegistry.STONE_MOSSY,
+    tile_side=TileRegistry.STONE_MOSSY,
+    tile_bottom=TileRegistry.STONE_MOSSY,
+    display_name="Mossy Stone"
+))
+
+# Canyon/mesa terrain
+BlockRegistry.register(Block(
+    name="red_sand",
+    color=(0.75, 0.4, 0.25),  # Reddish orange (fallback)
+    tile_top=TileRegistry.RED_SAND,
+    tile_side=TileRegistry.RED_SAND,
+    tile_bottom=TileRegistry.RED_SAND,
+    display_name="Red Sand"
+))
+
+BlockRegistry.register(Block(
+    name="terracotta",
+    color=(0.65, 0.45, 0.35),  # Clay red (fallback)
+    tile_top=TileRegistry.CLAY_TERRACOTTA,
+    tile_side=TileRegistry.CLAY_TERRACOTTA,
+    tile_bottom=TileRegistry.CLAY_TERRACOTTA,
+    display_name="Terracotta"
+))
+
+BlockRegistry.register(Block(
+    name="red_sandstone",
+    color=(0.7, 0.4, 0.3),  # Red-tan (fallback)
+    tile_top=TileRegistry.RED_SANDSTONE,
+    tile_side=TileRegistry.RED_SANDSTONE,
+    tile_bottom=TileRegistry.RED_SANDSTONE,
+    display_name="Red Sandstone"
+))
+
+# Rock variations for visual interest
+BlockRegistry.register(Block(
+    name="andesite",
+    color=(0.55, 0.55, 0.55),  # Light grey (fallback)
+    tile_top=TileRegistry.STONE_ANDESITE,
+    tile_side=TileRegistry.STONE_ANDESITE,
+    tile_bottom=TileRegistry.STONE_ANDESITE,
+    display_name="Andesite"
+))
+
+BlockRegistry.register(Block(
+    name="granite",
+    color=(0.6, 0.5, 0.45),  # Pinkish grey (fallback)
+    tile_top=TileRegistry.STONE_GRANITE,
+    tile_side=TileRegistry.STONE_GRANITE,
+    tile_bottom=TileRegistry.STONE_GRANITE,
+    display_name="Granite"
 ))
 

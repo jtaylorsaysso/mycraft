@@ -35,19 +35,21 @@ This document defines the standardized sizing conventions for entities in MyCraf
 - **Player Spawn**: `(0, 2, 0)` - 1 block above ground
 - **Camera**: Third-person over-the-shoulder at `(0, 5, -10)` relative to player
 
-## Chunk Standards (Planned)
+## Chunk Standards
 
 ### Chunk Dimensions
 
-- **Size**: `16×16×16` blocks
+- **Size**: `16×16` blocks (horizontal), variable height based on terrain
 - **Rationale**: Industry standard balancing render performance and rebuild times
-- **World Units**: Each chunk occupies `16×16×16` world units
+- **World Units**: Each chunk occupies `16×16` world units in x/z plane
+- **Loading**: Dynamic loading/unloading with configurable radius
 
-### Performance Considerations
+### Performance Characteristics
 
 - **Render Calls**: 1 call per chunk vs 1 call per block
-- **Trade-off**: Larger chunks = fewer renders but slower rebuilds on modification
-- **Boundary Updates**: Chunks sharing modified boundaries require rebuilds
+- **Streaming**: Chunks load on-demand as player explores
+- **Culling**: Frustum culling disables off-screen chunks
+- **Throttling**: Limited chunks generated per frame to maintain smooth FPS
 
 ## Implementation Guidelines
 
@@ -110,5 +112,5 @@ This document defines the standardized sizing conventions for entities in MyCraf
 - `engine/game_app.py` - Main game application setup
 
 ---
-*Last Updated: 2025-11-22*
-*Version: 1.0*
+*Last Updated: 2025-12-12*
+*Version: 1.1*

@@ -79,6 +79,28 @@ pytest --cov=util --cov=engine --cov=network
   - Host player updates.
   - Client removal on `/kick`.
 
+### Phase 3 – World and Chunk Loading
+
+#### `tests/test_world_chunk_loading.py`
+
+- **Purpose**: Test dynamic chunk loading, unloading, and world generation determinism.
+- **No Ursina**: Tests use the World class but avoid rendering.
+- **Test cases**:
+  1. `test_get_player_chunk_coords` - Coordinate conversion
+  2. `test_chunk_loading_on_update` - Chunks load on player movement
+  3. `test_chunk_unloading_on_distance` - Distant chunks unload
+  4. `test_chunk_generation_determinism` - Same coords = same terrain
+  5. `test_chunk_loading_respects_max_per_frame` - Throttling works
+  6. `test_chunk_load_radius` - Only loads within radius
+  7. `test_height_function_consistency` - Terrain generation is stable
+  8. `test_empty_world_after_init` - No premature generation
+  9. `test_chunk_queues_clear_after_processing` - Queue management
+- **What's covered**:
+  - Dynamic chunk loading/unloading.
+  - Deterministic terrain generation.
+  - Performance throttling.
+  - Memory management.
+
 ---
 
 ## How Tests Are Structured
@@ -216,7 +238,6 @@ repos:
 |-------|--------|---------------|
 | 3 | Client protocol | `test_state_snapshot_updates_remote_players`, `test_admin_response_log` |
 | 3 | Headless integration | `test_server_client_handshake`, `test_admin_command_from_client` |
-| 4 | World/chunk generation | `test_chunk_determinism`, `test_world_generate_performance` |
 | 4 | Player/entity representation | `test_player_networking_rate_limit`, `test_remote_entity_lifecycle` |
 | 5 | Performance regression | `test_server_tick_baseline`, `test_client_receive_rate` |
 
@@ -224,4 +245,4 @@ repos:
 
 ## Last Updated
 
-2025-11-22
+2025-12-12

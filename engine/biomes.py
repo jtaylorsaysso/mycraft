@@ -96,7 +96,7 @@ class BiomeRegistry:
         """Determine which biome should be used at world coordinates (x, z).
         
         Uses simple noise-based biome selection for smooth transitions
-        and variety across the world.
+        and variety across the world. Now includes mountain and canyon biomes.
         
         Args:
             x: World X coordinate
@@ -111,16 +111,27 @@ class BiomeRegistry:
         biome_noise_z = math.cos(x * 0.015) * math.sin(z * 0.015)
         biome_value = biome_noise_x + biome_noise_z
         
+        # Secondary noise for more variety
+        secondary_noise = math.sin(x * 0.008) * math.cos(z * 0.012)
+        
         # Map noise value to biomes
-        # Value range is roughly -2 to +2
-        if biome_value < -1.0:
+        # Extended value range for new biomes
+        if biome_value < -1.5:
+            return cls.get_biome("canyon")  # Deep valleys
+        elif biome_value < -0.8:
             return cls.get_biome("desert")
         elif biome_value < 0.0:
             return cls.get_biome("rocky")
-        elif biome_value < 1.0:
+        elif biome_value < 0.8:
             return cls.get_biome("plains")
-        else:
+        elif biome_value < 1.5:
             return cls.get_biome("forest")
+        else:
+            # High values = mountains (use secondary noise for variety)
+            if secondary_noise > 0:
+                return cls.get_biome("mountain")
+            else:
+                return cls.get_biome("rocky")  # Rocky highlands near mountains
 
 
 # Height generation functions for each biome
@@ -130,17 +141,20 @@ def plains_height(x: float, z: float) -> int:
     
     Action-RPG oriented:
     - Ground level at y=0
-    - Gentle slopes (±2 blocks)
+    - Gentle slopes (±3 blocks) - enhanced for movement variety
     - Clear paths and readable combat spaces
     """
     base_height = 0
     
     # Gentle sine waves for broad, readable terrain
-    wave_x = math.sin(x * 0.05) * 2
-    wave_z = math.cos(z * 0.05) * 2
+    wave_x = math.sin(x * 0.05) * 2.5
+    wave_z = math.cos(z * 0.05) * 2.5
     
-    height = base_height + wave_x + wave_z
-    height = max(-2, min(2, height))
+    # Add subtle detail
+    detail = math.sin(x * 0.1) * math.cos(z * 0.1) * 0.5
+    
+    height = base_height + wave_x + wave_z + detail
+    height = max(-3, min(3, height))
     
     return int(round(height))
 
@@ -158,21 +172,24 @@ def rocky_height(x: float, z: float) -> int:
     """Rocky terrain: more dramatic height variation.
     
     Features:
-    - Larger amplitude (±4 blocks)
-    - Plateaus and small cliffs
-    - Still readable for combat
+    - Larger amplitude (±6 blocks) - enhanced for climbing
+    - Sharper plateaus and cliffs
+    - Good for vertical movement practice
     """
     base_height = 0
     
     # Larger amplitude waves
-    wave_x = math.sin(x * 0.04) * 3
-    wave_z = math.cos(z * 0.03) * 3
+    wave_x = math.sin(x * 0.04) * 3.5
+    wave_z = math.cos(z * 0.03) * 3.5
     
-    # Add some plateau effect
-    plateau = math.floor(math.sin(x * 0.02) * 2) * 1.5
+    # Sharper plateau effect for cliff-like features
+    plateau = math.floor(math.sin(x * 0.02) * 2.5) * 2
     
-    height = base_height + wave_x + wave_z + plateau
-    height = max(-4, min(4, height))
+    # Add some roughness
+    roughness = math.sin(x * 0.08) * math.cos(z * 0.08) * 0.8
+    
+    height = base_height + wave_x + wave_z + plateau + roughness
+    height = max(-6, min(6, height))
     
     return int(round(height))
 
@@ -193,6 +210,64 @@ def desert_height(x: float, z: float) -> int:
     
     height = base_height + wave_x + wave_z
     height = max(-1, min(1, height))
+    
+    return int(round(height))
+
+
+def mountain_height(x: float, z: float) -> int:
+    """Mountain terrain: dramatic height variation for climbing challenges.
+    
+    Features:
+    - Very large amplitude (±8 to ±12 blocks)
+    - Sharp peaks and deep valleys
+    - Plateau generation for "rest points"
+    - Designed for vertical movement mechanics
+    """
+    base_height = 0
+    
+    # Large amplitude waves for dramatic terrain
+    wave_x = math.sin(x * 0.03) * 6
+    wave_z = math.cos(z * 0.025) * 6
+    
+    # Sharp peaks using squared sine
+    peaks = (math.sin(x * 0.015) ** 2) * 3
+    peaks += (math.cos(z * 0.015) ** 2) * 3
+    
+    # Plateau effect for flat "rest areas"
+    plateau = math.floor(math.sin(x * 0.01) * 1.5) * 2
+    
+    height = base_height + wave_x + wave_z + peaks + plateau
+    height = max(-8, min(12, height))
+    
+    return int(round(height))
+
+
+def canyon_height(x: float, z: float) -> int:
+    """Canyon/Mesa terrain: deep valleys with flat tops.
+    
+    Features:
+    - Height range: -6 to +2 (deep canyons, low mesas)
+    - Sharp drop-offs and flat mesa tops
+    - Stepped terrain (parkour-friendly)
+    - Good for horizontal jumping challenges
+    """
+    base_height = -2  # Biased toward valleys
+    
+    # Create mesa shapes with flat tops
+    mesa_x = math.sin(x * 0.04) * 4
+    mesa_z = math.cos(z * 0.04) * 4
+    
+    # Flatten the tops using floor function (creates sharp edges)
+    mesa_top = math.floor((mesa_x + mesa_z) / 2)
+    
+    # Add stepped terrain for parkour
+    steps = math.floor(math.sin(x * 0.08) * 1.5)
+    
+    # Sharp valley cuts
+    valley = math.sin(x * 0.02) * math.cos(z * 0.02) * 3
+    
+    height = base_height + mesa_top + steps + valley
+    height = max(-6, min(2, height))
     
     return int(round(height))
 
@@ -220,7 +295,7 @@ BiomeRegistry.register(Biome(
     display_name="Rocky Highlands",
     height_function=rocky_height,
     surface_block="stone",
-    subsurface_block="gravel"
+    subsurface_block="cobblestone_mossy"  # Enhanced with mossy variation
 ))
 
 BiomeRegistry.register(Biome(
@@ -228,5 +303,21 @@ BiomeRegistry.register(Biome(
     display_name="Desert",
     height_function=desert_height,
     surface_block="sand",
-    subsurface_block="sand"
+    subsurface_block="sandstone"  # Enhanced with sandstone layer
+))
+
+BiomeRegistry.register(Biome(
+    name="mountain",
+    display_name="Mountain Peaks",
+    height_function=mountain_height,
+    surface_block="stone",  # Can be snow at high elevations (future enhancement)
+    subsurface_block="stone"
+))
+
+BiomeRegistry.register(Biome(
+    name="canyon",
+    display_name="Canyon Mesa",
+    height_function=canyon_height,
+    surface_block="red_sand",
+    subsurface_block="terracotta"  # Mesa-like layering
 ))

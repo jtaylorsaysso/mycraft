@@ -1,6 +1,6 @@
 """Tests for biome registry system."""
 import pytest
-from engine.biomes import Biome, BiomeRegistry, plains_height, forest_height, rocky_height, desert_height
+from engine.biomes import Biome, BiomeRegistry, plains_height, forest_height, rocky_height, desert_height, mountain_height, canyon_height
 
 
 def test_biome_creation():
@@ -38,6 +38,8 @@ def test_biome_registry_exists():
     assert BiomeRegistry.exists("forest")
     assert BiomeRegistry.exists("rocky")
     assert BiomeRegistry.exists("desert")
+    assert BiomeRegistry.exists("mountain")
+    assert BiomeRegistry.exists("canyon")
     assert not BiomeRegistry.exists("nonexistent_biome")
 
 
@@ -50,6 +52,8 @@ def test_biome_registry_get_all():
     assert "forest" in all_biomes
     assert "rocky" in all_biomes
     assert "desert" in all_biomes
+    assert "mountain" in all_biomes
+    assert "canyon" in all_biomes
 
 
 def test_biome_height_functions_are_deterministic():
@@ -78,7 +82,7 @@ def test_different_biomes_different_heights():
 def test_biome_height_functions_return_integers():
     """Test that all biome height functions return integers."""
     test_coords = [(0, 0), (10, 10), (100, 100), (-10, -10)]
-    biomes = ["plains", "forest", "rocky", "desert"]
+    biomes = ["plains", "forest", "rocky", "desert", "mountain", "canyon"]
     
     for biome_name in biomes:
         biome = BiomeRegistry.get_biome(biome_name)
@@ -95,7 +99,7 @@ def test_get_biome_at_returns_valid_biome():
         biome = BiomeRegistry.get_biome_at(x, z)
         
         assert biome is not None
-        assert biome.name in ["plains", "forest", "rocky", "desert"]
+        assert biome.name in ["plains", "forest", "rocky", "desert", "mountain", "canyon"]
 
 
 def test_biome_transitions_are_relatively_smooth():
@@ -121,7 +125,7 @@ def test_plains_height_range():
     for x in range(-100, 100, 10):
         for z in range(-100, 100, 10):
             h = plains_height(x, z)
-            assert -2 <= h <= 2
+            assert -3 <= h <= 3  # Enhanced range
 
 
 def test_rocky_height_range():
@@ -131,10 +135,10 @@ def test_rocky_height_range():
         for z in range(-100, 100, 10):
             h = rocky_height(x, z)
             heights.append(h)
-            assert -4 <= h <= 4
+            assert -6 <= h <= 6  # Enhanced range
     
     # Rocky should use most of its range
-    assert max(heights) - min(heights) >= 4
+    assert max(heights) - min(heights) >= 6
 
 
 def test_desert_height_range():
@@ -156,3 +160,29 @@ def test_forest_height_matches_plains():
     
     for x, z in test_coords:
         assert forest_height(x, z) == plains_height(x, z)
+
+
+def test_mountain_height_range():
+    """Test that mountain terrain has dramatic variation."""
+    heights = []
+    for x in range(-100, 100, 10):
+        for z in range(-100, 100, 10):
+            h = mountain_height(x, z)
+            heights.append(h)
+            assert -8 <= h <= 12
+    
+    # Mountain should have significant variation
+    assert max(heights) - min(heights) >= 10
+
+
+def test_canyon_height_range():
+    """Test that canyon terrain has deep valleys and low mesas."""
+    heights = []
+    for x in range(-100, 100, 10):
+        for z in range(-100, 100, 10):
+            h = canyon_height(x, z)
+            heights.append(h)
+            assert -6 <= h <= 2
+    
+    # Canyon should have variety including deep areas
+    assert min(heights) <= -2  # Should have some deep valleys

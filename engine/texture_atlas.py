@@ -109,3 +109,71 @@ class TextureAtlas:
         row = tile_index // self.GRID_SIZE
         col = tile_index % self.GRID_SIZE
         return (row, col)
+
+
+class TileRegistry:
+    """Registry of standard tile indices from the texture atlas.
+    
+    Indices correspond to the 16x16 grid in terrain.png (0-255).
+    """
+    
+    # Grass/Dirt
+    GRASS_TOP = 0
+    GRASS_SIDE = 3
+    DIRT = 2
+    
+    # Stone/Ores
+    STONE = 1
+    COBBLESTONE = 16
+    BEDROCK = 17
+    
+    # Nature
+    WOOD_PLANKS = 4
+    LOG_SIDE = 20
+    LOG_TOP = 21
+    LEAVES = 52  # Standard oak leaves usually around here
+    
+    # Environment
+    SAND = 18
+    GRAVEL = 19
+    SNOW = 66
+    SNOW_SIDE = 68
+    ICE = 67
+    
+    # Resources
+    CLAY = 72    # Smooth texture
+    WATER = 205  # Approximate, might need animation handling later
+    LAVA = 237   # Approximate
+    
+    # Crafted
+    BRICK = 7
+    TNT_SIDE = 8
+    TNT_TOP = 9
+    TNT_BOTTOM = 10
+    BOOKSHELF = 35
+    
+    # Natural Terrain Variations (for diverse biomes)
+    COBBLESTONE_MOSSY = 36  # Rocky biome variation
+    DIRT_PODZOL = 14        # Forest floor variation
+    SANDSTONE = 192         # Desert subsurface layer
+    
+    # Mountain/Snow Terrain
+    STONE_MOSSY = 48        # Mountain variation
+    ICE_PACKED = 165        # High altitude terrain
+    
+    # Canyon/Mesa Terrain
+    RED_SAND = 209          # Mesa surface
+    CLAY_TERRACOTTA = 159   # Mesa layers
+    RED_SANDSTONE = 179     # Mesa subsurface
+    
+    # Rock Variations (visual interest)
+    STONE_ANDESITE = 6      # Rock variation
+    STONE_GRANITE = 213     # Rock variation
+    
+    @classmethod
+    def get(cls, name: str) -> int:
+        """Get a tile index by name (case-insensitive)."""
+        name = name.upper()
+        if hasattr(cls, name):
+            return getattr(cls, name)
+        raise ValueError(f"Unknown tile name: {name}")

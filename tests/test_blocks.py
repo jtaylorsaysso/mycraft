@@ -90,7 +90,11 @@ def test_block_registry_get_all():
 
 def test_predefined_blocks_have_colors():
     """Test that all predefined blocks have valid colors."""
-    predefined = ["grass", "dirt", "stone", "sand", "gravel", "snow", "clay", "wood"]
+    predefined = [
+        "grass", "dirt", "stone", "sand", "gravel", "snow", "clay", "wood",
+        "cobblestone_mossy", "podzol", "sandstone", "ice", "stone_mossy",
+        "red_sand", "terracotta", "red_sandstone", "andesite", "granite"
+    ]
     
     for block_name in predefined:
         block = BlockRegistry.get_block(block_name)
@@ -105,7 +109,11 @@ def test_predefined_blocks_have_colors():
 
 def test_predefined_blocks_have_tiles():
     """Test that all predefined blocks have valid tile indices."""
-    predefined = ["grass", "dirt", "stone", "sand", "gravel", "snow", "clay", "wood"]
+    predefined = [
+        "grass", "dirt", "stone", "sand", "gravel", "snow", "clay", "wood",
+        "cobblestone_mossy", "podzol", "sandstone", "ice", "stone_mossy",
+        "red_sand", "terracotta", "red_sandstone", "andesite", "granite"
+    ]
     
     for block_name in predefined:
         block = BlockRegistry.get_block(block_name)
