@@ -1,5 +1,7 @@
 from ursina import Entity, load_model, color, Mesh, Vec3, Vec2
 from util.logger import get_logger, time_block, log_metric
+from engine.biomes import BiomeRegistry
+from engine.blocks import BlockRegistry
 
 
 class World:
@@ -33,31 +35,18 @@ class World:
     def get_height(self, x, z):
         """Return terrain height at world coordinate (x, z).
         
-        Action-RPG oriented height function:
+        Uses biome-specific height functions for terrain variety.
+        Action-RPG oriented:
         - Ground level at y=0
         - Gentle slopes and broad shapes
         - No deep pits or extreme heights
         - Returns integer for block alignment
         """
-        import math
+        # Determine biome at this location
+        biome = BiomeRegistry.get_biome_at(x, z)
         
-        # Base ground level
-        base_height = 0
-        
-        # Gentle sine waves for broad, readable terrain
-        # Low frequency to avoid noisy terrain
-        wave_x = math.sin(x * 0.05) * 2  # ±2 blocks variation
-        wave_z = math.cos(z * 0.05) * 2  # ±2 blocks variation
-        
-        # Combine waves for gentle rolling terrain
-        height = base_height + wave_x + wave_z
-        
-        # Clamp to reasonable range for action-RPG terrain
-        # Keep terrain mostly between -2 and +2 relative to ground
-        height = max(-2, min(2, height))
-        
-        # Round to integer for block alignment
-        return int(round(height))
+        # Use biome's height function
+        return biome.height_function(x, z)
 
     def get_player_chunk_coords(self, player_pos):
         """Convert world position to chunk coordinates.
@@ -82,18 +71,21 @@ class World:
         """Create a single chunk at chunk coordinates (chunk_x, chunk_z) as a single mesh.
 
         Uses greedy meshing for top faces and non-greedy side faces where neighbor
-        columns are lower.
+        columns are lower. Biome determines height and block types.
         """
         base_x = chunk_x * self.CHUNK_SIZE
         base_z = chunk_z * self.CHUNK_SIZE
 
-        # Precompute height map for this chunk (local indices)
+        # Precompute height map and biome map for this chunk (local indices)
         heights = [[0 for _ in range(self.CHUNK_SIZE)] for _ in range(self.CHUNK_SIZE)]
+        biomes = [[None for _ in range(self.CHUNK_SIZE)] for _ in range(self.CHUNK_SIZE)]
+        
         for x in range(self.CHUNK_SIZE):
             for z in range(self.CHUNK_SIZE):
                 world_x = base_x + x
                 world_z = base_z + z
                 heights[x][z] = self.get_height(world_x, world_z)
+                biomes[x][z] = BiomeRegistry.get_biome_at(world_x, world_z)
 
         vertices = []
         triangles = []
@@ -278,8 +270,21 @@ class World:
         # Create mesh for this chunk
         mesh = Mesh(vertices=vertices, triangles=triangles, uvs=uvs, mode='triangle')
 
+        # Determine dominant biome for this chunk (use center)
+        center_x = self.CHUNK_SIZE // 2
+        center_z = self.CHUNK_SIZE // 2
+        dominant_biome = biomes[center_x][center_z]
+        
+        # Get block color from biome's surface block
+        surface_block = BlockRegistry.get_block(dominant_biome.surface_block)
+        
         # Parent entity for this chunk (single renderable + collider)
-        chunk_entity = Entity(model=mesh, texture='grass', collider='mesh')
+        # Use colored blocks instead of texture for rapid prototyping
+        chunk_entity = Entity(
+            model=mesh,
+            color=color.rgb(*surface_block.color),  # Colored blocks
+            collider='mesh'
+        )
         self.chunks[(chunk_x, chunk_z)] = chunk_entity
 
         # Log simple mesh stats for baseline metrics

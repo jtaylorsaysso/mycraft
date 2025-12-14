@@ -10,9 +10,11 @@ This project explores the core systems needed for a voxel-based engine with acti
 
 * **Chunk-Based Terrain**
 
-  * 3×3 chunk grid, 16×16 blocks per chunk
-  * Gentle rolling terrain
-  * Greedy meshing for top faces and side-face culling
+  * Dynamic chunk loading with configurable radius
+  * Infinite world exploration
+  * 16×16 blocks per chunk with greedy meshing
+  * Frustum culling and view distance control
+  * Gentle rolling terrain with y=0 baseline
 
 * **Player**
 
@@ -34,8 +36,10 @@ This project explores the core systems needed for a voxel-based engine with acti
 
 * **Performance Optimizations**
 
-  * Per-chunk mesh aggregation
-  * Reduced draw calls and optimized rendering pipeline
+  * Per-chunk mesh aggregation with greedy meshing
+  * Dynamic chunk loading/unloading for memory efficiency
+  * Frustum culling to skip off-screen chunks
+  * Throttled chunk generation to prevent frame drops
 
 ### Controls
 
@@ -98,11 +102,12 @@ sudo ufw allow 5420
 
 Planned features and improvements:
 
-* Dynamic chunk loading and unloading
-* Multi-layer terrain and varied biomes
+* Enhanced terrain generation (Perlin/Simplex noise, biomes)
+* LOD system for distant chunks
+* Multi-layer terrain and cave systems
 * Action-RPG mechanics and entity interactions
-* Expanded world generation
-* Mesh and network optimizations for larger worlds
+* Texture atlas for varied block types
+* Network optimizations (player interpolation, UDP)
 * Persistence and save/load system for chunks and player state
 
 ## Dependencies
