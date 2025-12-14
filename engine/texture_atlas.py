@@ -91,6 +91,48 @@ class TextureAtlas:
             Vec2(u_min, v_max),  # Top-left
         ]
     
+    def get_tiled_uvs(self, tile_index: int, width: int = 1, height: int = 1) -> list[Vec2]:
+        """Get UV coordinates for a tiled quad (texture repeats across merged blocks).
+        
+        For greedy meshing: when multiple same-height blocks are merged into one quad,
+        the texture should tile/repeat rather than stretch. This method scales the UV
+        coordinates so the texture repeats width×height times.
+        
+        Args:
+            tile_index: Tile index (0-255) in row-major order
+            width: Number of blocks in the X direction (quad width in blocks)
+            height: Number of blocks in the Z direction (quad depth in blocks)
+            
+        Returns:
+            List of 4 Vec2 UV coordinates for quad vertices in order:
+            [bottom-left, bottom-right, top-right, top-left]
+            
+        Raises:
+            ValueError: If tile_index is out of range
+        """
+        if not (0 <= tile_index < 256):
+            raise ValueError(f"Tile index {tile_index} out of range (0-255)")
+        
+        # Calculate row and column from tile index
+        row = tile_index // self.GRID_SIZE
+        col = tile_index % self.GRID_SIZE
+        
+        # Base UV coordinates for this tile in the atlas
+        u_base = col * self.TILE_SIZE
+        v_base = 1.0 - ((row + 1) * self.TILE_SIZE)  # Y-flipped
+        
+        # Scale UVs by width/height so the tile repeats across the merged quad
+        # For a 4x3 quad, we want UVs to span 4 tiles wide and 3 tiles tall
+        u_extent = width * self.TILE_SIZE
+        v_extent = height * self.TILE_SIZE
+        
+        return [
+            Vec2(u_base, v_base),                         # Bottom-left
+            Vec2(u_base + u_extent, v_base),              # Bottom-right
+            Vec2(u_base + u_extent, v_base + v_extent),   # Top-right
+            Vec2(u_base, v_base + v_extent),              # Top-left
+        ]
+    
     def get_tile_coords(self, tile_index: int) -> tuple[int, int]:
         """Get row and column coordinates for a tile index.
         

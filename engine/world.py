@@ -100,45 +100,22 @@ class World:
         uvs = []
         index = 0
 
-        # --- Greedy meshing for top faces ---
-        visited = [[False for _ in range(self.CHUNK_SIZE)] for _ in range(self.CHUNK_SIZE)]
-
+        # --- Top faces (simple 1x1 meshing) ---
+        # Disabling greedy meshing to ensure correct textures (no stretching, no wrong blocks)
         for z in range(self.CHUNK_SIZE):
             for x in range(self.CHUNK_SIZE):
-                if visited[x][z]:
-                    continue
-
                 h = heights[x][z]
+                world_x = base_x + x
+                world_z = base_z + z
 
-                # Skip if this column is below some cutoff? For now, always render top.
-
-                # Determine width in +X direction
+                # World-space rectangle (1x1 block)
                 width = 1
-                while x + width < self.CHUNK_SIZE and not visited[x + width][z] \
-                        and heights[x + width][z] == h:
-                    width += 1
-
-                # Determine height in +Z direction
                 height_z = 1
-                expanding = True
-                while z + height_z < self.CHUNK_SIZE and expanding:
-                    for dx in range(width):
-                        if visited[x + dx][z + height_z] or heights[x + dx][z + height_z] != h:
-                            expanding = False
-                            break
-                    if expanding:
-                        height_z += 1
-
-                # Mark visited
-                for dz in range(height_z):
-                    for dx in range(width):
-                        visited[x + dx][z + dz] = True
-
-                # World-space rectangle
-                wx0 = base_x + x
-                wx1 = base_x + x + width
-                wz0 = base_z + z
-                wz1 = base_z + z + height_z
+                
+                wx0 = world_x
+                wx1 = world_x + 1
+                wz0 = world_z
+                wz1 = world_z + 1
                 y = h
 
                 v0 = Vec3(wx0, y, wz0)
@@ -158,8 +135,8 @@ class World:
                 tile_index = surface_block.get_face_tile('top')
                 
                 if tile_index is not None and self.texture_atlas.is_loaded():
-                    # Use texture atlas UVs
-                    tile_uvs = self.texture_atlas.get_tile_uvs(tile_index)
+                    # Use tiled UVs for merged quads (texture repeats width×height_z times)
+                    tile_uvs = self.texture_atlas.get_tiled_uvs(tile_index, width, height_z)
                     uvs.extend(tile_uvs)
                 else:
                     # Fallback to simple UVs
