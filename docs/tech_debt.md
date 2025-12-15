@@ -12,14 +12,17 @@
 
 ## Physics System
 
-- [x] ~~Basic raycast ground detection~~ - Implemented with configurable parameters
+- [x] ~~Basic raycast ground detection~~ - Implemented with configurable parameters (hot-config enabled)
 - [x] ~~Coyote time and jump buffering~~ - Implemented (0.2s windows)
 - [x] ~~Variable jump height~~ - Implemented (early release = 55% velocity)
+- [x] ~~Player floating above terrain after jumping~~ - Fixed by tuning raycast parameters (max_distance: 5.0, ray_origin_offset: 2.0)
 - [ ] Add horizontal acceleration and deceleration for smoother movement
 - [x] ~~Implement air control (limited horizontal movement while airborne)~~ - Implemented with 0.5 multiplier and 0.2 air friction
 - [ ] Add slope handling and surface normal projection for angled terrain
 - [x] ~~Wall collision detection~~ - Basic raycast wall check implemented in `physics.py`
 - [x] ~~Improve wall sliding to allow smooth movement along walls~~ - Enhanced with momentum preservation (0.5x sliding)
+- [x] ~~Collision parameters hardcoded~~ - Now tunable via hot-config (raycast_max_distance, raycast_origin_offset, foot_offset, hitbox dimensions)
+- [x] ~~No collision debug visualization~~ - Implemented in `collision_debug.py` with F3 toggle and `/debug collision` command
 - [ ] Consider different ground checks for liquids, ladders, etc.
 - [ ] Add sliding on steep slopes
 
@@ -73,7 +76,7 @@
 - [x] ~~Space to jump~~ - Implemented with buffering
 - [ ] No key rebinding / customization
 - [ ] No gamepad/controller support
-- [ ] Mouse sensitivity not configurable
+- [x] ~~Mouse sensitivity not configurable~~ - Hot-config enabled via playtest.json
 - [ ] No mouse smoothing options
 
 ## Testing & Quality

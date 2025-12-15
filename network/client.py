@@ -9,12 +9,16 @@ from util.logger import get_logger, log_metric
 class GameClient:
     """TCP client for connecting to MyCraft LAN server."""
     
-    def __init__(self, host: str, port: int = 5420):
+    def __init__(self, host: str, port: int = 5420, max_reconnect_attempts: int = 3, connection_timeout: float = 10.0):
         self.host = host
         self.port = port
+        self.max_reconnect_attempts = max_reconnect_attempts
+        self.connection_timeout = connection_timeout
+        
         self.reader: Optional[asyncio.StreamReader] = None
         self.writer: Optional[asyncio.StreamWriter] = None
         self.connected = False
+        self.connecting = False
         self.player_id: Optional[str] = None
         
         # Thread-safe queues for async/sync communication
@@ -28,11 +32,19 @@ class GameClient:
         # Callbacks for different message types
         self.callbacks: Dict[str, Callable] = {
             "welcome": self._handle_welcome,
+            "chat": self._handle_chat_message,
             "state_snapshot": self._handle_state_snapshot,
             "player_join": self._handle_player_join,
             "player_leave": self._handle_player_leave,
             "admin_response": self._handle_admin_response,
+            "block_update": self._handle_block_update,
         }
+        
+        # Connection callbacks
+        self.on_connected: Optional[Callable[[], None]] = None
+        self.on_disconnected: Optional[Callable[[Optional[Exception]], None]] = None
+        self.on_connection_failed: Optional[Callable[[Exception], None]] = None
+        self.on_block_update: Optional[Callable[[Dict], None]] = None
         
         # Current state of remote players
         self.remote_players: Dict[str, Dict] = {}
@@ -55,9 +67,15 @@ class GameClient:
         self.thread.start()
         
         # Wait for connection
-        for _ in range(50):  # 5 second timeout
+        # We wait a bit longer than the timeout to allow for retries
+        max_wait = self.connection_timeout * self.max_reconnect_attempts * 2 
+        start_time = time.time()
+        
+        while self.connecting or (self.thread.is_alive() and not self.connected):
             if self.connected:
                 return
+            if time.time() - start_time > max_wait:
+                break
             time.sleep(0.1)
         
         raise ConnectionError(f"Failed to connect to {self.host}:{self.port}")
@@ -83,14 +101,11 @@ class GameClient:
             self.loop.close()
     
     async def _async_start(self):
-        """Async connection and message handling."""
+        """Async connection and message handling with retry logic."""
+        if not await self._connect_with_retry():
+            return
+
         try:
-            self.reader, self.writer = await asyncio.open_connection(
-                self.host, self.port
-            )
-            self.connected = True
-            self.logger.info(f"Connected to server at {self.host}:{self.port}")
-            
             # Start send and receive tasks
             send_task = asyncio.create_task(self._send_loop())
             receive_task = asyncio.create_task(self._receive_loop())
@@ -99,8 +114,51 @@ class GameClient:
             await asyncio.gather(send_task, receive_task)
             
         except Exception as e:
-            self.logger.error(f"Connection failed: {e}")
+            self.logger.error(f"Client loop error: {e}")
             self.connected = False
+    
+    async def _connect_with_retry(self) -> bool:
+        """Attempt to connect with exponential backoff."""
+        attempt = 0
+        self.connecting = True
+        
+        while attempt < self.max_reconnect_attempts:
+            try:
+                attempt += 1
+                self.logger.info(f"Connecting to {self.host}:{self.port} (Attempt {attempt}/{self.max_reconnect_attempts})...")
+                
+                # Connection with timeout
+                self.reader, self.writer = await asyncio.wait_for(
+                    asyncio.open_connection(self.host, self.port),
+                    timeout=self.connection_timeout
+                )
+                
+                self.connected = True
+                self.connecting = False
+                self.logger.info(f"Connected to server at {self.host}:{self.port}")
+                
+                if self.on_connected:
+                   # Execute callback in thread-safe way if needed, 
+                   # but here we are in the async loop
+                   self.on_connected()
+                
+                return True
+                
+            except (ConnectionRefusedError, OSError, asyncio.TimeoutError) as e:
+                self.logger.warning(f"Connection attempt {attempt} failed: {e}")
+                
+                if attempt < self.max_reconnect_attempts:
+                    # Exponential backoff: 1s, 2s, 4s...
+                    wait_time = 1.0 * (2 ** (attempt - 1))
+                    self.logger.info(f"Retrying in {wait_time:.1f}s...")
+                    await asyncio.sleep(wait_time)
+                else:
+                    self.logger.error("Max connection attempts reached. Giving up.")
+                    if self.on_connection_failed:
+                        self.on_connection_failed(e)
+        
+        self.connecting = False
+        return False
     
     async def _send_loop(self):
         """Send messages from the queue to the server."""
@@ -148,9 +206,21 @@ class GameClient:
                     
             except Exception as e:
                 self.logger.error(f"Receive error: {e}")
+                if self.on_disconnected:
+                    self.on_disconnected(e)
                 break
         
         self.connected = False
+        if self.on_disconnected and self.reader: # Only trigger if we were seemingly connected
+             # We check self.reader to avoid double triggering if exception block handled it
+             # But simplistic check: if we break loop naturally
+             pass
+        
+        # Ensure we mark as disconnected
+        if self.connected: 
+             self.connected = False
+             if self.on_disconnected:
+                 self.on_disconnected(None)
     
     def _handle_welcome(self, message: Dict):
         """Handle welcome message from server."""
@@ -158,6 +228,31 @@ class GameClient:
         self.spawn_pos = message.get("spawn_pos", [10, 2, 10])
         self.logger.info(f"Welcome as {self.player_id}, spawn_pos={self.spawn_pos}")
     
+        self.logger.info(f"Welcome as {self.player_id}, spawn_pos={self.spawn_pos}")
+    
+    def _handle_chat_message(self, message: Dict):
+        """Handle chat message."""
+        username = message.get("username", "Unknown")
+        text = message.get("message", "")
+        player_id = message.get("player_id")
+        
+        if self.on_chat_message:
+            self.on_chat_message(username, text)
+            
+    def _handle_block_update(self, message: Dict):
+        """Handle block update message."""
+        pos = message.get("pos")
+        block_type = message.get("block_type")
+        
+        # Telemetry
+        # self.logger.debug(f"Block update: {pos} -> {block_type}")
+        
+        if self.on_block_update:
+            self.on_block_update({
+                "position": pos,
+                "block_type": block_type
+            })
+            
     def _handle_state_snapshot(self, message: Dict):
         """Handle state snapshot from server."""
         players = message.get("players", {})

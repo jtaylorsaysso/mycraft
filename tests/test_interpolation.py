@@ -57,7 +57,7 @@ class FakeEntity:
         if self.parent:
             self.parent.children.append(self)
 
-# Mock ursina module structure
+# Mock ursina module structure - but don't pollute sys.modules at module level
 mock_ursina = MagicMock()
 mock_ursina.Entity = FakeEntity
 mock_ursina.Vec3 = FakeVec3
@@ -78,7 +78,11 @@ def fake_lerp(a, b, t):
     return a + (b - a) * t
 mock_ursina.lerp = fake_lerp
 
+# Only mock ursina for this module's imports
+# Store original state
+_original_ursina = sys.modules.get('ursina')
 sys.modules['ursina'] = mock_ursina
+
 
 # ----------------- TEST -----------------
 
@@ -135,6 +139,13 @@ class TestInterpolation(unittest.TestCase):
         self.player.update()
         # 0 + (90-0)*0.16 = 14.4
         self.assertAlmostEqual(self.player.rotation_y, 14.4, places=1)
+
+def teardown_module():
+    """Restore original ursina module state after all tests."""
+    if _original_ursina is None:
+        sys.modules.pop('ursina', None)
+    else:
+        sys.modules['ursina'] = _original_ursina
 
 if __name__ == '__main__':
     unittest.main()

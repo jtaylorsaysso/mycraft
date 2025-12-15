@@ -78,6 +78,8 @@ mock_time = MagicMock()
 mock_time.dt = 0.016
 mock_ursina.time = mock_time
 
+# Mock ursina module - store original state first
+_original_ursina = sys.modules.get('ursina')
 sys.modules['ursina'] = mock_ursina
 
 # ----------------- IMPORT AFTER MOCKING -----------------
@@ -287,6 +289,13 @@ class TestAnimationStateTransitions(unittest.TestCase):
         )
         self.assertTrue(arm_rotated, "Arms should swing during walk animation")
 
+
+def teardown_module():
+    """Restore original ursina module state after all tests."""
+    if _original_ursina is None:
+        sys.modules.pop('ursina', None)
+    else:
+        sys.modules['ursina'] = _original_ursina
 
 if __name__ == '__main__':
     unittest.main()

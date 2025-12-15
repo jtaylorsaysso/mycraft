@@ -44,7 +44,13 @@ class GameServer:
 
         self.tick_rate = self.broadcast_rate  # Broadcast state X times per second
         self.tick_interval = 1.0 / self.tick_rate
+
         self.running = True
+        
+        # Timeout handling
+        self.client_timeout = 30.0  # Seconds without activity before kick
+        self.client_last_activity: Dict[str, float] = {}
+        
         self.logger = get_logger("net.server")
         
         if self.debug_mode:
@@ -93,13 +99,33 @@ class GameServer:
         # Start the config update task
         asyncio.create_task(self.config.update_loop())
         
+
         # Start discovery broadcasting
         self.discovery.start(lambda: len(self.clients))
         self.logger.info("LAN Discovery broadcasting started")
         
+        # Start client timeout monitor
+        asyncio.create_task(self._monitor_client_timeouts())
+        
         async with self.server:
 
             await self.server.serve_forever()
+            
+    async def _monitor_client_timeouts(self):
+        """Periodically check for inactive clients."""
+        while self.running:
+            await asyncio.sleep(5.0)  # Check every 5 seconds
+            
+            now = time.time()
+            to_disconnect = []
+            
+            for player_id, last_active in self.client_last_activity.items():
+                if now - last_active > self.client_timeout:
+                    to_disconnect.append(player_id)
+            
+            for player_id in to_disconnect:
+                self.logger.warning(f"Client {player_id} timed out (no activity for {self.client_timeout}s)")
+                await self.handle_disconnect(player_id)
     
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         """Handle a new client connection."""
@@ -111,6 +137,7 @@ class GameServer:
         
         # Initialize player state
         self.player_manager.add_player(player_id)
+        self.client_last_activity[player_id] = time.time()
         
         # Send welcome message with player ID
         welcome_msg = json.dumps({
@@ -149,6 +176,7 @@ class GameServer:
     
     async def handle_message(self, player_id: str, message: Dict):
         """Process incoming message from a client."""
+        self.client_last_activity[player_id] = time.time()
         msg_type = message.get("type")
         
         if msg_type == "state_update":
@@ -178,6 +206,8 @@ class GameServer:
             return
         if player_id in self.clients:
             del self.clients[player_id]
+        if player_id in self.client_last_activity:
+            del self.client_last_activity[player_id]
         
         self.player_manager.remove_player(player_id)
         
@@ -203,6 +233,16 @@ class GameServer:
         }) + "\n"
         
         await self.broadcast_to_all(message, exclude=None)
+    
+    async def broadcast_block_update(self, pos: tuple, block_type: str):
+        """Broadcast a block update to all clients."""
+        message = json.dumps({
+            "type": "block_update",
+            "pos": pos,
+            "block_type": block_type
+        }) + "\n"
+        
+        await self.broadcast_to_all(message)
     
     async def broadcast_state_loop(self):
         """Periodically broadcast all player states to clients."""

@@ -2,6 +2,7 @@ import asyncio
 import json
 
 from network.server import GameServer
+from util.server_hot_config import ServerHotConfig
 
 
 class FakeWriter:
@@ -30,7 +31,8 @@ def _decode_single_message(writer: FakeWriter):
 
 
 def test_admin_list_includes_host_and_player():
-    server = GameServer()
+    config = ServerHotConfig()
+    server = GameServer(config)
     writer = FakeWriter()
     player_id = "player_1"
 
@@ -61,7 +63,8 @@ def test_admin_list_includes_host_and_player():
 
 
 def test_admin_hostpos_and_hostrot_update_host_state():
-    server = GameServer()
+    config = ServerHotConfig()
+    server = GameServer(config)
     writer = FakeWriter()
     player_id = "player_1"
 
@@ -80,7 +83,8 @@ def test_admin_hostpos_and_hostrot_update_host_state():
 
 
 def test_admin_kick_removes_client_and_state():
-    server = GameServer()
+    config = ServerHotConfig()
+    server = GameServer(config)
     writer = FakeWriter()
     player_id = "player_1"
 

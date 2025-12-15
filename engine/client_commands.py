@@ -78,6 +78,7 @@ class ClientCommandProcessor:
             lines.append("  /config            List all config values")
             lines.append("  /reload            Reload from file")
             lines.append("  /save              Save changes to file")
+            lines.append("  /debug collision   Toggle collision debug viz (also F3)")
         
         elif cmd == "/tp":
             if len(args) != 3:
@@ -273,6 +274,15 @@ class ClientCommandProcessor:
                 lines.append("Config saved to file.")
             else:
                 lines.append("Config system not available.")
+        
+        elif cmd == "/debug":
+            if len(args) != 1:
+                lines.append("Usage: /debug <feature> (e.g., collision)")
+            elif args[0].lower() == "collision":
+                enabled = self.input_handler.debug_renderer.toggle()
+                lines.append(f"Collision debug: {'ON' if enabled else 'OFF'}")
+            else:
+                lines.append(f"Unknown debug feature: {args[0]}")
 
         else:
             lines.append(f"Unknown command: {cmd}. Try /help")

@@ -15,6 +15,8 @@ from engine.physics import (
     raycast_ground_height,
     raycast_wall_check,
 )
+from engine.collision_debug import CollisionDebugRenderer
+from engine.player_collision import get_hitbox
 
 # Standardized Control Scheme
 class KeyBindings:
@@ -93,6 +95,10 @@ class InputHandler:
         except ImportError:
             # Handle potential circular import if client_commands imports InputHandler for type checking
             self.command_processor = None
+        
+        # Collision debug visualization
+        self.debug_renderer = CollisionDebugRenderer()
+        self.player_hitbox = get_hitbox(self._config)
 
     def set_recorder(self, recorder: 'SessionRecorder') -> None:
         """Set the session recorder for input capture."""
@@ -114,6 +120,11 @@ class InputHandler:
         self.god_mode = self._config.get("god_mode", False)
         self.air_control = self._config.get("air_control", 0.5)
         self.air_friction = self._config.get("air_friction", 0.2)
+        
+        # Collision parameters
+        self.raycast_max_distance = self._config.get("raycast_max_distance", 5.0)
+        self.raycast_origin_offset = self._config.get("raycast_origin_offset", 2.0)
+        self.foot_offset = self._config.get("foot_offset", 0.2)
     
     def _on_config_change(self, key: str, value) -> None:
         """Handle hot-config value change."""
@@ -133,6 +144,12 @@ class InputHandler:
             self.air_control = value
         elif key == "air_friction":
             self.air_friction = value
+        elif key == "raycast_max_distance":
+            self.raycast_max_distance = value
+        elif key == "raycast_origin_offset":
+            self.raycast_origin_offset = value
+        elif key == "foot_offset":
+            self.foot_offset = value
         
     def input(self, key):
         """Handle key press events"""
@@ -150,6 +167,11 @@ class InputHandler:
         # Toggle mouse lock with escape key
         if key == KeyBindings.TOGGLE_MOUSE:
             mouse.locked = not mouse.locked
+        
+        # Toggle collision debug with F3
+        if key == 'f3':
+            enabled = self.debug_renderer.toggle()
+            print(f"Collision debug: {'ON' if enabled else 'OFF'}")
             
         # Toggle god mode with G (debug feature)
         # if key == 'g':
@@ -271,7 +293,28 @@ class InputHandler:
 
             def _ground_check(entity):
                 # Use raycast to find the terrain height beneath the player.
-                return raycast_ground_height(entity)
+                ground_y = raycast_ground_height(
+                    entity,
+                    max_distance=self.raycast_max_distance,
+                    foot_offset=self.foot_offset,
+                    ray_origin_offset=self.raycast_origin_offset
+                )
+                
+                # Update debug visualization if enabled
+                if self.debug_renderer.enabled:
+                    from ursina import Vec3
+                    ray_origin = entity.world_position + Vec3(0, self.raycast_origin_offset, 0)
+                    hit_point = Vec3(entity.world_position.x, ground_y, entity.world_position.z) if ground_y is not None else None
+                    
+                    self.debug_renderer.update(
+                        player=entity,
+                        ground_hit=hit_point,
+                        ground_ray_origin=ray_origin,
+                        ground_ray_distance=self.raycast_max_distance,
+                        hitbox_size=(self.player_hitbox.width, self.player_hitbox.height, self.player_hitbox.depth)
+                    )
+                
+                return ground_y
 
             def _wall_check(entity, movement):
                  # Check if moving in this direction would hit something

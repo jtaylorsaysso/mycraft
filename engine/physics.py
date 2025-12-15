@@ -147,7 +147,7 @@ def perform_jump(state: KinematicState, jump_height: float) -> None:
 
 def raycast_ground_height(
     entity: Any,
-    max_distance: float = 20.0,
+    max_distance: float = 5.0,
     foot_offset: float = 0.2,
     ray_origin_offset: Optional[float] = None,
     ignore: Optional[list] = None,
@@ -168,8 +168,9 @@ def raycast_ground_height(
 
     # Start the ray some distance above the entity to reduce the
     # chance of starting below the terrain when falling fast.
+    # For a ~2-unit tall player, 2.0 units above is sufficient.
     if ray_origin_offset is None:
-        ray_origin_offset = max_distance * 0.5
+        ray_origin_offset = 2.0
 
     origin = entity.world_position + Vec3(0, ray_origin_offset, 0)
     direction = Vec3(0, -1, 0)
