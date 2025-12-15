@@ -343,6 +343,8 @@ class World:
 
         # Create mesh for this chunk
         mesh = Mesh(vertices=vertices, triangles=triangles, uvs=uvs, mode='triangle')
+        mesh.generate_normals()
+        mesh.generate()  # Finalize mesh data before assigning to entity
 
         # Determine dominant biome for this chunk (use center)
         center_x = self.CHUNK_SIZE // 2
@@ -357,21 +359,24 @@ class World:
         if self.texture_atlas.is_loaded():
             chunk_entity = Entity(
                 model=mesh,
-                texture=self.texture_atlas.get_texture(),
-                collider='mesh'
+                texture=self.texture_atlas.get_texture()
             )
         else:
             # Fallback to colored rendering
             chunk_entity = Entity(
                 model=mesh,
-                color=color.rgb(*surface_block.color),
-                collider='mesh'
+                color=color.rgb(*surface_block.color)
             )
+        
+        # Set collider AFTER entity is created with model assigned
+        chunk_entity.collider = 'mesh'
+        
         self.chunks[(chunk_x, chunk_z)] = chunk_entity
 
         # Log simple mesh stats for baseline metrics
         vertex_count = len(vertices)
         triangle_count = len(triangles) // 3
+        
         log_metric(
             "chunk_mesh_triangles",
             float(triangle_count),

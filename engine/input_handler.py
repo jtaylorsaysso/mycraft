@@ -68,7 +68,8 @@ class InputHandler:
         self.fly_speed = 12
         self.acceleration = 40   # Units per second^2
         self.friction = 10       # Units per second^2 (on ground)
-        self.air_control = 0.3   # Multiplier for air movement control
+        self.air_control = 0.5   # Multiplier for air movement control (increased from 0.3 for better feel)
+        self.air_friction = 0.2  # Reduced air friction for momentum preservation
         
         # Mario-like baseline: higher jump, lighter gravity
         self.jump_height = 3.5
@@ -111,6 +112,8 @@ class InputHandler:
         self.jump_height = self._config.get("jump_height", 3.5)
         self.gravity = self._config.get("gravity", -12.0)
         self.god_mode = self._config.get("god_mode", False)
+        self.air_control = self._config.get("air_control", 0.5)
+        self.air_friction = self._config.get("air_friction", 0.2)
     
     def _on_config_change(self, key: str, value) -> None:
         """Handle hot-config value change."""
@@ -126,6 +129,10 @@ class InputHandler:
             self.gravity = value
         elif key == "god_mode":
             self.god_mode = value
+        elif key == "air_control":
+            self.air_control = value
+        elif key == "air_friction":
+            self.air_friction = value
         
     def input(self, key):
         """Handle key press events"""
@@ -232,7 +239,9 @@ class InputHandler:
                     self._physics_state.velocity_x += math.copysign(change, diff_x)
             else:
                 # Decelerating (Friction)
-                fric = self.friction * dt * control_factor * 5 # Stronger stopping friction
+                # Use reduced friction in air for momentum preservation
+                fric_multiplier = 1.0 if self._physics_state.grounded else self.air_friction
+                fric = self.friction * dt * control_factor * 5 * fric_multiplier
                 if abs(self._physics_state.velocity_x) < fric:
                     self._physics_state.velocity_x = 0
                 else:
@@ -249,7 +258,9 @@ class InputHandler:
                     self._physics_state.velocity_z += math.copysign(change, diff_z)
             else:
                 # Decelerating (Friction)
-                fric = self.friction * dt * control_factor * 5
+                # Use reduced friction in air for momentum preservation
+                fric_multiplier = 1.0 if self._physics_state.grounded else self.air_friction
+                fric = self.friction * dt * control_factor * 5 * fric_multiplier
                 if abs(self._physics_state.velocity_z) < fric:
                     self._physics_state.velocity_z = 0
                 else:

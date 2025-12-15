@@ -1,4 +1,4 @@
-from ursina import Entity, color, Vec3, lerp, time
+from ursina import Entity, color, Vec3, lerp, time, Text
 from engine.animation import AnimatedMannequin, AnimationController
 
 
@@ -14,6 +14,19 @@ class RemotePlayer(Entity):
         self.mannequin = AnimatedMannequin(parent=self, body_color=color.azure)
         self.animation_controller = AnimationController(self.mannequin)
         
+        # Name tag (floating text above head)
+        self.name_tag = Text(
+            parent=self,
+            text='Unknown',
+            y=2.2,
+            scale=5,
+            color=color.white,
+            billboard=True,
+            origin=(0, 0),
+            background=True
+        )
+        self.name_tag.background.color = color.rgba(0, 0, 0, 100)
+        
         # Interpolation state
         self.target_position = self.position
         self.target_rotation = self.rotation_y
@@ -22,6 +35,11 @@ class RemotePlayer(Entity):
         # Velocity estimation for animations
         self._last_position = Vec3(self.position.x, self.position.y, self.position.z)
         self._estimated_velocity = Vec3(0, 0, 0)
+
+    def set_name(self, name: str):
+        """Update the player's name tag."""
+        if self.name_tag.text != name:
+            self.name_tag.text = name
 
     def set_target(self, pos, rot_y):
         """Update the target position and rotation."""

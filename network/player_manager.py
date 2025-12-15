@@ -15,6 +15,7 @@ class PlayerManager:
             "rot_y": 0,
             "last_update": time.time(),
             "is_host": True,
+            "name": "Host"
         }
 
     def generate_player_id(self) -> str:
@@ -28,8 +29,14 @@ class PlayerManager:
         self.player_states[player_id] = {
             "pos": [10, 2, 10],  # Default spawn
             "rot_y": 0,
-            "last_update": time.time()
+            "last_update": time.time(),
+            "name": "Unknown"
         }
+
+    def set_player_name(self, player_id: str, name: str) -> None:
+        """Update a player's display name."""
+        if player_id in self.player_states:
+            self.player_states[player_id]["name"] = name
 
     def remove_player(self, player_id: str) -> None:
         """Remove a player's state."""

@@ -226,6 +226,19 @@ class GameClient:
         }
         self.send_queue.put(message)
         self._sent_updates += 1
+        self.send_queue.put(message)
+        self._sent_updates += 1
+
+    def send_name(self, name: str):
+        """Send player name to server."""
+        if not self.connected:
+            return
+        
+        message = {
+            "type": "set_name",
+            "name": name
+        }
+        self.send_queue.put(message)
 
     def send_admin_command(self, command: str) -> None:
         """Send an admin command string to the server."""

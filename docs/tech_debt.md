@@ -16,10 +16,10 @@
 - [x] ~~Coyote time and jump buffering~~ - Implemented (0.2s windows)
 - [x] ~~Variable jump height~~ - Implemented (early release = 55% velocity)
 - [ ] Add horizontal acceleration and deceleration for smoother movement
-- [ ] Implement air control (limited horizontal movement while airborne)
+- [x] ~~Implement air control (limited horizontal movement while airborne)~~ - Implemented with 0.5 multiplier and 0.2 air friction
 - [ ] Add slope handling and surface normal projection for angled terrain
 - [x] ~~Wall collision detection~~ - Basic raycast wall check implemented in `physics.py`
-- [ ] Improve wall sliding to allow smooth movement along walls
+- [x] ~~Improve wall sliding to allow smooth movement along walls~~ - Enhanced with momentum preservation (0.5x sliding)
 - [ ] Consider different ground checks for liquids, ladders, etc.
 - [ ] Add sliding on steep slopes
 
@@ -51,7 +51,7 @@
 
 - [x] ~~Third-person over-the-shoulder camera~~ - Implemented with offset and look-ahead
 - [x] ~~Camera collision detection~~ - Raycasts to prevent clipping through terrain
-- [ ] Camera smoothing/damping for less jerky movement
+- [x] ~~Camera smoothing/damping for less jerky movement~~ - Lerp-based smoothing with 0.15 factor (hot-config)
 - [ ] Camera bob/sway for more organic feel when walking/running
 - [ ] Adjustable camera distance (zoom in/out)
 - [ ] Camera occlusion handling when blocked by objects (fade out or move closer)

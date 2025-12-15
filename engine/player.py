@@ -11,16 +11,21 @@ if TYPE_CHECKING:
 
 class Player(Entity):
     def __init__(self, start_pos=(0,2,0), networking: bool = False, sensitivity: float = 40.0, 
-                 god_mode: bool = False, config: Optional['HotConfig'] = None):
+                 god_mode: bool = False, config: Optional['HotConfig'] = None, name: str = "Player"):
         # Player parent entity
         super().__init__(
             position=start_pos
         )
         self.config = config
+        self.name = name
         
         # Networking setup
         self.networking = networking
         self.network_client = get_client() if networking else None
+        
+        if self.networking and self.network_client:
+            self.network_client.send_name(self.name)
+            
         self.send_rate = 10  # Send updates 10 times per second
         self.last_send_time = 0
         
@@ -74,6 +79,8 @@ class Player(Entity):
             self.camera_offset.x = float(value)
         elif key == "fov":
             camera.fov = float(value)
+        elif key == "camera_smoothing":
+            self.camera_smoothing = float(value)
         
     def setup_third_person_camera(self):
         """Create an over-the-shoulder third-person camera setup"""
@@ -108,6 +115,10 @@ class Player(Entity):
         self.min_camera_distance = 1.0
         self.camera_safety_margin = 0.1
         
+        # Camera smoothing settings (load from config if available)
+        self.camera_smoothing = self.config.get("camera_smoothing", 0.15) if self.config else 0.15
+        self.last_camera_position = None  # Track for lerp
+        
     def input(self, key):
         if key == '/':
             if self.networking and self.network_client:
@@ -125,6 +136,11 @@ class Player(Entity):
                     self.network_client.send_admin_command(command)
                 return
             return
+        
+        # F3 to toggle debug info
+        if key == 'f3':
+            self.hud.toggle_debug()
+            return
 
         self.input_handler.input(key)
         
@@ -134,6 +150,26 @@ class Player(Entity):
         dt = time.dt
         self.input_handler.update(dt)
         self.update_camera()
+        
+        # Update god mode visual feedback
+        if hasattr(self.input_handler, 'god_mode'):
+            if self.input_handler.god_mode:
+                # Golden tint when in god mode
+                self.mannequin.head.color = color.gold
+                self.mannequin.torso.color = color.gold
+                self.mannequin.right_arm.color = color.gold
+                self.mannequin.left_arm.color = color.gold
+                self.mannequin.right_leg.color = color.gold
+                self.mannequin.left_leg.color = color.gold
+            else:
+                # Reset to normal color
+                body_color = color.rgb(150, 125, 100)
+                self.mannequin.head.color = body_color
+                self.mannequin.torso.color = body_color
+                self.mannequin.right_arm.color = body_color
+                self.mannequin.left_arm.color = body_color
+                self.mannequin.right_leg.color = body_color
+                self.mannequin.left_leg.color = body_color
         
         # Update animations based on physics state
         self._update_animations(dt)
@@ -166,7 +202,7 @@ class Player(Entity):
         self.animation_controller.update(dt, velocity, grounded)
     
     def update_camera(self):
-        """Update camera position with collision prevention"""
+        """Update camera position with collision prevention and smoothing"""
         # Calculate desired world position
         desired_world_pos = (
             self.camera_pivot.world_position +
@@ -183,13 +219,30 @@ class Player(Entity):
         # Check for collisions (ignore player and its parts)
         hit_info = raycast(origin, direction, distance=distance, ignore=[self])
         
+        # Calculate target position (with collision adjustment if needed)
         if hit_info.hit:
             # Clamp camera to safe distance before obstacle
             clamped_dist = max(self.min_camera_distance, hit_info.distance - self.camera_safety_margin)
-            camera.world_position = origin + direction * clamped_dist
+            target_position = origin + direction * clamped_dist
         else:
             # Use desired position
-            camera.world_position = desired_world_pos
+            target_position = desired_world_pos
+        
+        # Apply smoothing to camera movement
+        if self.last_camera_position is None:
+            # First frame, no smoothing
+            camera.world_position = target_position
+        else:
+            # Lerp towards target position for smooth camera movement
+            from ursina import lerp
+            camera.world_position = lerp(
+                self.last_camera_position,
+                target_position,
+                self.camera_smoothing
+            )
+        
+        # Store current position for next frame
+        self.last_camera_position = Vec3(camera.world_position)
         
         # Always look ahead in facing direction
         target = self.camera_pivot.world_position + self.forward * 3
@@ -234,9 +287,11 @@ class Player(Entity):
             remote_entity = self.remote_players[player_id]
             pos = state.get('pos', [0, 0, 0])
             rot_y = state.get('rot_y', 0)
+            name = state.get('name', 'Unknown')
             
             # Use interpolation
             remote_entity.set_target(pos, rot_y)
+            remote_entity.set_name(name)
     
     def create_remote_player(self):
         """Create a simple entity to represent a remote player."""

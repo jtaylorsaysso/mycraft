@@ -26,6 +26,7 @@ def main():
     parser = argparse.ArgumentParser(description="MyCraft LAN Client")
     parser.add_argument("--host", help="Server IP address or hostname (optional, defaults to Single Player)")
     parser.add_argument("--port", type=int, default=5420, help="Server port (default: 5420)")
+    parser.add_argument("--name", type=str, default="Player", help="Your player name (default: Player)")
     parser.add_argument("--sensitivity", type=float, default=40.0, help="Mouse sensitivity (default: 40.0)")
     
     # Playtest Presets
@@ -101,15 +102,32 @@ def main():
             print(f"Connecting to {args.host}:{args.port}...")
             client = connect(args.host, args.port)
             
+            # Wait for welcome message (handshake)
+            import time
+            print("Waiting for server handshake...")
+            for _ in range(50):
+                if client.player_id:
+                    break
+                time.sleep(0.1)
+            
             if client.is_connected():
                 print(f"Connected! Starting game...")
                 config['networking'] = True
+                
+                # Get player name from config (if loaded from launcher settings file via args) or just use arg directly
+                # Note: config dictionary currently only has what we put in it. 
+                # If we want to support name via hot-config JSON, we would check that, 
+                # but for now we rely on the CLI arg which launcher populates.
+                player_name = args.name
+                config['name'] = player_name
+                
                 run(**config)
             else:
                 print("Failed to connect to server")
                 sys.exit(1)
         else:
             print("Starting Single Player Mode...")
+            config['name'] = args.name
             run(**config)
             
     except ConnectionError as e:

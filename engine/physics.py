@@ -70,17 +70,36 @@ def integrate_movement(
     # to allow sliding along walls.
     
     if wall_check:
-        # Try X movement
-        if dx != 0 and not wall_check(entity, (dx, 0, 0)):
+        # Try full diagonal movement first
+        if (dx != 0 or dz != 0) and not wall_check(entity, (dx, 0, dz)):
+            # No collision on diagonal movement
             entity.x += dx
-        else:
-            state.velocity_x = 0 # Hit wall on X, stop X momentum
-            
-        # Try Z movement
-        if dz != 0 and not wall_check(entity, (0, 0, dz)):
             entity.z += dz
         else:
-            state.velocity_z = 0 # Hit wall on Z, stop Z momentum
+            # Hit a wall on diagonal, try sliding along each axis
+            x_blocked = False
+            z_blocked = False
+            
+            # Try X movement
+            if dx != 0 and not wall_check(entity, (dx, 0, 0)):
+                entity.x += dx
+            else:
+                x_blocked = True
+                # Don't fully stop X velocity - allow some sliding momentum
+                state.velocity_x *= 0.5  # Preserve some momentum for sliding
+            
+            # Try Z movement
+            if dz != 0 and not wall_check(entity, (0, 0, dz)):
+                entity.z += dz
+            else:
+                z_blocked = True
+                # Don't fully stop Z velocity - allow some sliding momentum
+                state.velocity_z *= 0.5  # Preserve some momentum for sliding
+            
+            # If both axes blocked, fully stop (corner case)
+            if x_blocked and z_blocked:
+                state.velocity_x = 0
+                state.velocity_z = 0
     else:
         # No collision checks, just move
         entity.x += dx

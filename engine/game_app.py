@@ -23,6 +23,24 @@ def _game_update():
         
         # Update chunk visibility based on camera frustum
         _world.set_chunk_visibility(camera, _player.position)
+        
+        # Debug: Log player position and chunk state every 60 frames
+        if not hasattr(_game_update, '_frame_count'):
+            _game_update._frame_count = 0
+            from util.logger import get_logger
+            _game_update._logger = get_logger("game_app")
+        _game_update._frame_count += 1
+        
+        if _game_update._frame_count % 60 == 1:
+            enabled_chunks = sum(1 for c in _world.chunks.values() if c.enabled)
+            total_chunks = len(_world.chunks)
+            pos = _player.position
+            _game_update._logger.info(
+                f"Frame {_game_update._frame_count}: "
+                f"Player=({pos.x:.1f}, {pos.y:.1f}, {pos.z:.1f}), "
+                f"Chunks={enabled_chunks}/{total_chunks} enabled, "
+                f"Camera=({camera.world_position.x:.1f}, {camera.world_position.y:.1f}, {camera.world_position.z:.1f})"
+            )
 
 
 def _setup_console(player, input_handler, spawn_pos):
@@ -113,7 +131,8 @@ def run(
     spawn_point: tuple = None,
     config_path: str = None,
     record_session: str = None,
-    replay_session: str = None
+    replay_session: str = None,
+    name: str = "Player"
 ):
     global _world, _player
     
@@ -192,7 +211,8 @@ def run(
         networking=networking,
         sensitivity=sensitivity,
         god_mode=god_mode,
-        config=hot_config
+        config=hot_config,
+        name=name
     )
     
     # Set up session recording/replay on input handler
@@ -205,6 +225,18 @@ def run(
             _player.input_handler.set_session_player(session_player)
             session_player.start()
             print(f"▶️ Replaying session: {replay_session}")
+    
+    # Display welcome message with key controls
+    if hasattr(_player, 'hud'):
+        welcome_text = (
+            "Welcome to MyCraft!\n\n"
+            "WASD - Move  |  Mouse - Look  |  Space - Jump\n"
+            "ESC - Unlock Mouse  |  [1-6] - Quick Commands\n"
+            "F3 - Toggle Debug Info"
+        )
+        if god_mode:
+            welcome_text += "\n\n✨ GOD MODE ENABLED ✨"
+        _player.hud.show_welcome_message(welcome_text)
     
     # Set up playtest console
     if hasattr(_player, 'input_handler'):

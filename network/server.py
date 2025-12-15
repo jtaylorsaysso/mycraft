@@ -1,7 +1,7 @@
 import asyncio
 import json
 import socket
-from typing import Dict, Set, List
+from typing import Dict, Set, List, Any
 import time
 import logging
 
@@ -14,6 +14,7 @@ from util.server_hot_config import ServerHotConfig
 
 
 import argparse
+from pathlib import Path
 
 class GameServer:
     """Simple TCP server for LAN multiplayer on port 5420."""
@@ -35,12 +36,13 @@ class GameServer:
         self.clients: Dict[str, asyncio.StreamWriter] = {}
         
         self.player_manager = PlayerManager()
+        self.host_player_id = self.player_manager.host_player_id
         self.command_processor = CommandProcessor(self, self.player_manager)
         
         # Initialize discovery
-        self.discovery = DiscoveryBroadcaster(port, max_players)
+        self.discovery = DiscoveryBroadcaster(self.port, self.max_players)
 
-        self.tick_rate = broadcast_rate  # Broadcast state X times per second
+        self.tick_rate = self.broadcast_rate  # Broadcast state X times per second
         self.tick_interval = 1.0 / self.tick_rate
         self.running = True
         self.logger = get_logger("net.server")
@@ -156,6 +158,12 @@ class GameServer:
                 message.get("pos", [0, 0, 0]),
                 message.get("rot_y", 0)
             )
+        elif msg_type == "set_name":
+            # Update player name
+            name = message.get("name", "Unknown")
+            self.player_manager.set_player_name(player_id, name)
+            self.logger.info(f"Player {player_id} set name to '{name}'")
+            
         elif msg_type == "admin_command":
             command = message.get("command", "")
             lines = await self.command_processor.process_command(player_id, command)
