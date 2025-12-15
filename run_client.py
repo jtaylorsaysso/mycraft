@@ -135,6 +135,11 @@ def main():
         sys.exit(1)
     except KeyboardInterrupt:
         print("\nShutting down...")
+    except Exception as e:
+        import traceback
+        print(f"❌ CRASH: {e}")
+        traceback.print_exc()
+        sys.exit(1)
     finally:
         disconnect()
 

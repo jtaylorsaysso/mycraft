@@ -68,6 +68,10 @@ class Player(Entity):
         # Register for config changes specific to player/camera
         if self.config:
             self.config.on_change(self._on_config_change)
+        
+        # CRITICAL: Force player onto ground after all initialization
+        # This ensures Entity is fully created before positioning
+        self._force_initial_ground_snap()
 
     def _on_config_change(self, key: str, value):
         """Handle config changes for camera parameters."""
@@ -81,6 +85,33 @@ class Player(Entity):
             camera.fov = float(value)
         elif key == "camera_smoothing":
             self.camera_smoothing = float(value)
+    
+    def _force_initial_ground_snap(self):
+        """Aggressively force player onto ground during initialization.
+        
+        This uses the world's procedural height function directly as a
+        failsafe, bypassing raycasting entirely for initial spawn.
+        """
+        # Import here to avoid circular dependency
+        from engine.game_app import _world
+        
+        if _world is None:
+            print("⚠️  Cannot snap to ground: world not initialized")
+            return
+        
+        # Get guaranteed ground height from procedural generation
+        terrain_height = _world.get_height(int(self.x), int(self.z))
+        target_y = terrain_height + 2.0  # 2 units above terrain
+        
+        # Force position
+        self.y = target_y
+        
+        print(f"🔧 FORCED player ground snap: y={target_y:.1f} (terrain={terrain_height})")
+        
+        # Also reset physics state to be grounded
+        if hasattr(self, 'input_handler') and hasattr(self.input_handler, '_physics_state'):
+            self.input_handler._physics_state.velocity_y = 0.0
+            self.input_handler._physics_state.grounded = True
         
     def setup_third_person_camera(self):
         """Create an over-the-shoulder third-person camera setup"""

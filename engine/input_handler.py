@@ -73,6 +73,11 @@ class InputHandler:
         self.air_control = 0.5   # Multiplier for air movement control (increased from 0.3 for better feel)
         self.air_friction = 0.2  # Reduced air friction for momentum preservation
         
+        # Spawn protection
+        self.spawn_time = 0
+        self.spawn_grace_period = 1.0  # Seconds of no gravity after spawn
+        self.has_landed = False
+        
         # Mario-like baseline: higher jump, lighter gravity
         self.jump_height = 3.5
         self.gravity = -12.0 # Increased gravity for snappier fall
@@ -228,15 +233,13 @@ class InputHandler:
             target_velocity = move_dir * speed
 
         if self.god_mode:
-            # GOD MODE / FLIGHT LOGIC
-            # Vertical movement with Space (Up) and Shift (Down)
-            vertical_input = held_keys[KeyBindings.FLY_UP] - held_keys[KeyBindings.FLY_DOWN]
-            target_velocity.y = vertical_input * self.fly_speed
+            # God mode movement logic
+            self.player.y += (held_keys[KeyBindings.JUMP] - held_keys[KeyBindings.CROUCH]) * self.fly_speed * dt
             
-            # Simple direct movement for god mode (no inertia for precision)
+            # Simple position update for god mode
             self.player.position += target_velocity * dt
             
-            # Reset physics state so we don't carry momentum when toggling off
+            # Reset physics state
             self._physics_state.velocity_x = 0
             self._physics_state.velocity_y = 0
             self._physics_state.velocity_z = 0
@@ -244,6 +247,19 @@ class InputHandler:
             
         else:
             # NORMAL PHYSICS LOGIC
+            
+            # Safety: Clamp dt to prevent massive movements during lag spikes
+            safe_dt = min(dt, 0.1)
+            
+            # Spawn protection: Disable gravity until landed or grace period expires
+            self.spawn_time += dt
+            if not self.has_landed:
+                if self.spawn_time < self.spawn_grace_period:
+                    # During grace period, no gravity
+                     self.gravity = 0
+                else:
+                    # Grace period over, restore gravity
+                    self.gravity = self._config.get("gravity", -12.0) if self._config else -12.0
             
             # Apply acceleration/friction to approach target velocity
             # Different control in air vs ground
@@ -254,7 +270,7 @@ class InputHandler:
             if target_velocity.x != 0:
                 # Accelerating
                 diff_x = target_velocity.x - self._physics_state.velocity_x
-                change = accel * dt
+                change = accel * safe_dt
                 if abs(diff_x) < change:
                     self._physics_state.velocity_x = target_velocity.x
                 else:
@@ -263,7 +279,7 @@ class InputHandler:
                 # Decelerating (Friction)
                 # Use reduced friction in air for momentum preservation
                 fric_multiplier = 1.0 if self._physics_state.grounded else self.air_friction
-                fric = self.friction * dt * control_factor * 5 * fric_multiplier
+                fric = self.friction * safe_dt * control_factor * 5 * fric_multiplier
                 if abs(self._physics_state.velocity_x) < fric:
                     self._physics_state.velocity_x = 0
                 else:
@@ -273,7 +289,7 @@ class InputHandler:
             if target_velocity.z != 0:
                 # Accelerating
                 diff_z = target_velocity.z - self._physics_state.velocity_z
-                change = accel * dt
+                change = accel * safe_dt
                 if abs(diff_z) < change:
                     self._physics_state.velocity_z = target_velocity.z
                 else:
@@ -282,14 +298,14 @@ class InputHandler:
                 # Decelerating (Friction)
                 # Use reduced friction in air for momentum preservation
                 fric_multiplier = 1.0 if self._physics_state.grounded else self.air_friction
-                fric = self.friction * dt * control_factor * 5 * fric_multiplier
+                fric = self.friction * safe_dt * control_factor * 5 * fric_multiplier
                 if abs(self._physics_state.velocity_z) < fric:
                     self._physics_state.velocity_z = 0
                 else:
                     self._physics_state.velocity_z -= math.copysign(fric, self._physics_state.velocity_z)
 
             # Vertical physics: gravity and terrain-based ground using raycast
-            apply_gravity(self._physics_state, dt, gravity=self.gravity, max_fall_speed=-30)
+            apply_gravity(self._physics_state, safe_dt, gravity=self.gravity, max_fall_speed=-30)
 
             def _ground_check(entity):
                 # Use raycast to find the terrain height beneath the player.

@@ -123,6 +123,62 @@ def _setup_console(player, input_handler, spawn_pos):
     return _command_processor
 
 
+def validate_spawn_position(world, spawn_pos, timeout=1.0):
+    """Wait for spawn chunk to be fully loaded with mesh collider.
+    
+    Args:
+        world: World instance
+        spawn_pos: Spawn position tuple/Vec3
+        timeout: Maximum time to wait in seconds
+    
+    Returns:
+        bool: True if chunk is ready, False if timeout
+    """
+    import time as time_module
+    start = time_module.time()
+    chunk_coords = world.get_player_chunk_coords(spawn_pos)
+    
+    while time_module.time() - start < timeout:
+        if chunk_coords in world.chunks:
+            chunk = world.chunks[chunk_coords]
+            if chunk.collider:  # Mesh and collider ready
+                return True
+        time_module.sleep(0.01)  # Small delay
+    return False
+
+
+def ensure_player_on_ground(player, world, max_attempts=5):
+    """Force player onto ground after spawn using multiple raycast attempts.
+    
+    This is a safety measure for when the player initializes below terrain.
+    
+    Args:
+        player: Player entity
+        world: World instance
+        max_attempts: Number of raycast attempts
+    
+    Returns:
+        bool: True if ground was found and player positioned
+    """
+    from engine.physics import raycast_ground_height
+    import time as time_module
+    
+    for attempt in range(max_attempts):
+        ground_y = raycast_ground_height(
+            player,
+            max_distance=30.0,  # Larger search distance for initial spawn
+            ray_origin_offset=5.0,  # Start from above player
+        )
+        if ground_y is not None:
+            player.y = ground_y
+            print(f"✅ Player positioned on ground at y={ground_y:.1f} (attempt {attempt + 1})")
+            return True
+        time_module.sleep(0.02)  # Wait for mesh to settle
+    
+    print(f"⚠️  Could not find ground after {max_attempts} attempts")
+    return False
+
+
 def run(
     networking: bool = False,
     sensitivity: float = 40.0,
@@ -202,8 +258,14 @@ def run(
     safe_y = max(current_y, terrain_height + 2.5)  # Add 2.5m buffer
     
     if safe_y != current_y:
-        print(f"⚠️  Adjusting spawn height: {current_y:.1f} -> {safe_y:.1f} (Terrain is {terrain_height})")
+        print(f"⚠️  Adjusting spawn height: {current_y:.1f} → {safe_y:.1f} (Terrain is {terrain_height})")
         spawn_pos = (sx, safe_y, sz)
+    
+    # Validate that spawn chunk is fully loaded before creating player
+    print("🔄 Validating spawn position...")
+    chunk_ready = validate_spawn_position(_world, spawn_pos, timeout=2.0)
+    if not chunk_ready:
+        print("⚠️  Spawn chunk not fully loaded, using procedural height")
 
     
     _player = Player(
@@ -214,6 +276,11 @@ def run(
         config=hot_config,
         name=name
     )
+    
+    # Force player onto ground as final safety check
+    # This catches cases where player entity initialized before position fully applied
+    print("🔄 Ensuring player is on ground...")
+    ensure_player_on_ground(_player, _world)
     
     # Set up session recording/replay on input handler
     if hasattr(_player, 'input_handler'):

@@ -78,6 +78,9 @@ class GameClient:
                 break
             time.sleep(0.1)
         
+        if self.connected:
+            return
+
         raise ConnectionError(f"Failed to connect to {self.host}:{self.port}")
     
     def stop(self):
