@@ -8,8 +8,8 @@ from typing import List, Optional, Callable, Dict, Any, TYPE_CHECKING
 from pathlib import Path
 
 if TYPE_CHECKING:
-    from engine.player import Player
-    from engine.input_handler import InputHandler
+    from games.voxel_world.entities.player import Player
+    from games.voxel_world.systems.input import InputHandler
     from engine.core.hot_config import HotConfig
 
 

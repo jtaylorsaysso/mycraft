@@ -65,7 +65,7 @@ class MockVec3:
 mock_ursina.Vec3 = MockVec3
 
 # We need to reload remote_player if it was already imported, or just import now
-from engine.remote_player import RemotePlayer
+from games.voxel_world.entities.remote_player import RemotePlayer
 from tests.test_utils.network_simulator import NetworkSimulator
 
 class TestNetworkQuality(unittest.TestCase):

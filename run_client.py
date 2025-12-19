@@ -18,7 +18,7 @@ Phase 2 Features:
 import argparse
 import sys
 from pathlib import Path
-from engine.game_app import run
+from games.voxel_world.main import run
 from engine.networking.client import connect, disconnect
 
 

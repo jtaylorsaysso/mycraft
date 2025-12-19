@@ -86,7 +86,7 @@ sys.modules['ursina'] = mock_ursina
 
 # ----------------- TEST -----------------
 
-from engine.remote_player import RemotePlayer
+from games.voxel_world.entities.remote_player import RemotePlayer
 
 class TestInterpolation(unittest.TestCase):
     def setUp(self):

@@ -10,7 +10,7 @@ Displays useful information to the player:
 """
 
 from ursina import Entity, Text, color, time, camera
-from engine.input_handler import KeyBindings
+from games.voxel_world.systems.input import KeyBindings
 
 
 class HUD:

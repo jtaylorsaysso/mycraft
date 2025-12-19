@@ -1,7 +1,7 @@
 from ursina import Entity, load_model, color, Mesh, Vec3, Vec2
 from engine.core.logger import get_logger, time_block, log_metric
-from engine.biomes import BiomeRegistry
-from engine.blocks import BlockRegistry
+from games.voxel_world.biomes.biomes import BiomeRegistry
+from games.voxel_world.blocks.blocks import BlockRegistry
 from engine.rendering import TextureAtlas, MeshBuilder
 from typing import Optional, TYPE_CHECKING
 import random

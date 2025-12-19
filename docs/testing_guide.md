@@ -161,7 +161,7 @@ Add a `tests/test_performance.py`:
 
 ```python
 def test_world_generate_baseline():
-    from engine.world import World
+    from games.voxel_world.systems.world_gen import World
     world = World()
     with time_block("world_generate", logger, {"chunks": 9}):
         world.create_chunk(0, 0)

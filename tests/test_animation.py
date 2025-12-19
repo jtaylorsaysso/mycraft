@@ -84,7 +84,7 @@ sys.modules['ursina'] = mock_ursina
 
 # ----------------- IMPORT AFTER MOCKING -----------------
 
-from engine.animation import AnimationState, AnimatedMannequin, AnimationController
+from games.voxel_world.components.animation import AnimationState, AnimatedMannequin, AnimationController
 
 
 # ----------------- TESTS -----------------

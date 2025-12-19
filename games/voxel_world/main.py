@@ -1,6 +1,6 @@
 from ursina import Ursina, camera, Text, Entity, time, window, InputField, color
-from engine.world import World
-from engine.player import Player
+from games.voxel_world.systems.world_gen import World
+from games.voxel_world.entities.player import Player
 from engine.networking.client import get_client
 from pathlib import Path
 from typing import Optional
@@ -28,7 +28,7 @@ def _game_update():
         if not hasattr(_game_update, '_frame_count'):
             _game_update._frame_count = 0
             from engine.core.logger import get_logger
-            _game_update._logger = get_logger("game_app")
+            _game_update._logger = get_logger("voxel_world")
         _game_update._frame_count += 1
         
         if _game_update._frame_count % 60 == 1:
@@ -46,7 +46,7 @@ def _game_update():
 def _setup_console(player, input_handler, spawn_pos):
     """Set up the playtest command console."""
     global _console_output, _console_input, _command_processor
-    from engine.client_commands import ClientCommandProcessor
+    from games.voxel_world.systems.commands import ClientCommandProcessor
     from ursina import mouse
     
     _command_processor = ClientCommandProcessor(player, input_handler, spawn_pos)
@@ -124,16 +124,7 @@ def _setup_console(player, input_handler, spawn_pos):
 
 
 def validate_spawn_position(world, spawn_pos, timeout=1.0):
-    """Wait for spawn chunk to be fully loaded with mesh collider.
-    
-    Args:
-        world: World instance
-        spawn_pos: Spawn position tuple/Vec3
-        timeout: Maximum time to wait in seconds
-    
-    Returns:
-        bool: True if chunk is ready, False if timeout
-    """
+    """Wait for spawn chunk to be fully loaded with mesh collider."""
     import time as time_module
     start = time_module.time()
     chunk_coords = world.get_player_chunk_coords(spawn_pos)
@@ -148,19 +139,8 @@ def validate_spawn_position(world, spawn_pos, timeout=1.0):
 
 
 def ensure_player_on_ground(player, world, max_attempts=5):
-    """Force player onto ground after spawn using multiple raycast attempts.
-    
-    This is a safety measure for when the player initializes below terrain.
-    
-    Args:
-        player: Player entity
-        world: World instance
-        max_attempts: Number of raycast attempts
-    
-    Returns:
-        bool: True if ground was found and player positioned
-    """
-    from engine.physics import raycast_ground_height
+    """Force player onto ground after spawn using multiple raycast attempts."""
+    from engine.physics.kinematic import raycast_ground_height
     import time as time_module
     
     for attempt in range(max_attempts):

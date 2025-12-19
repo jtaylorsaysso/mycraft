@@ -91,7 +91,7 @@ class InputHandler:
         
         # Command processor
         try:
-            from engine.client_commands import ClientCommandProcessor
+            from games.voxel_world.systems.commands import ClientCommandProcessor
             self.command_processor = ClientCommandProcessor(
                 player=self.player,
                 input_handler=self,

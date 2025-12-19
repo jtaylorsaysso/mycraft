@@ -1,6 +1,6 @@
 """Tests for dynamic chunk loading and world generation."""
 import pytest
-from engine.world import World
+from games.voxel_world.systems.world_gen import World
 
 
 def test_get_player_chunk_coords():
@@ -164,7 +164,7 @@ def test_chunk_queues_clear_after_processing():
 
 def test_biome_integration_chunks_use_biomes():
     """Test that chunks use biome system for height generation."""
-    from engine.biomes import BiomeRegistry
+    from games.voxel_world.biomes.biomes import BiomeRegistry
     
     world = World()
     

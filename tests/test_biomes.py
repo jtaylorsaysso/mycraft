@@ -1,6 +1,6 @@
 """Tests for biome registry system."""
 import pytest
-from engine.biomes import Biome, BiomeRegistry, plains_height, forest_height, rocky_height, desert_height, mountain_height, canyon_height
+from games.voxel_world.biomes.biomes import Biome, BiomeRegistry, plains_height, forest_height, rocky_height, desert_height, mountain_height, canyon_height
 
 
 def test_biome_creation():

@@ -1,6 +1,6 @@
 """Tests for block registry system."""
 import pytest
-from engine.blocks import Block, BlockRegistry
+from games.voxel_world.blocks.blocks import Block, BlockRegistry
 
 
 def test_block_creation():

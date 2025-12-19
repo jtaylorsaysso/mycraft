@@ -1,5 +1,5 @@
 from ursina import Entity, color, Vec3, lerp, time, Text
-from engine.animation import AnimatedMannequin, AnimationController
+from games.voxel_world.components.animation import AnimatedMannequin, AnimationController
 
 
 class RemotePlayer(Entity):

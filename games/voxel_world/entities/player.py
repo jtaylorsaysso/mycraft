@@ -1,9 +1,9 @@
 from ursina import Entity, camera, color, Vec3, raycast, destroy, scene, Text, InputField, mouse
-from engine.input_handler import InputHandler
-from engine.hud import HUD
-from engine.animation import AnimatedMannequin, AnimationController
+from games.voxel_world.systems.input import InputHandler
+from games.voxel_world.ui.hud import HUD
+from games.voxel_world.components.animation import AnimatedMannequin, AnimationController
 from engine.networking.client import get_client
-from engine.remote_player import RemotePlayer
+from games.voxel_world.entities.remote_player import RemotePlayer
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -93,7 +93,7 @@ class Player(Entity):
         failsafe, bypassing raycasting entirely for initial spawn.
         """
         # Import here to avoid circular dependency
-        from engine.game_app import _world
+        from games.voxel_world.main import _world
         
         if _world is None:
             print("⚠️  Cannot snap to ground: world not initialized")
