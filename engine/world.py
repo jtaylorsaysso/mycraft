@@ -1,12 +1,171 @@
 from ursina import Entity, load_model, color, Mesh, Vec3, Vec2
-from util.logger import get_logger, time_block, log_metric
+from engine.core.logger import get_logger, time_block, log_metric
 from engine.biomes import BiomeRegistry
 from engine.blocks import BlockRegistry
-from engine.texture_atlas import TextureAtlas
+from engine.rendering import TextureAtlas, MeshBuilder
+from typing import Optional, TYPE_CHECKING
+import random
+
+if TYPE_CHECKING:
+    from engine.core.hot_config import HotConfig
+
+
+class World:
+    CHUNK_SIZE = 16
+
+    def __init__(self, chunk_load_radius=3, chunk_unload_radius=5, max_chunks_per_frame=1, view_distance=4, config: Optional['HotConfig'] = None):
+        """Initialize the world with dynamic chunk loading parameters.
+        
+        Args:
+            chunk_load_radius: Load chunks within this radius of player (in chunks)
+            chunk_unload_radius: Unload chunks beyond this radius of player (in chunks)
+            max_chunks_per_frame: Maximum chunks to generate per frame (prevents stuttering)
+            view_distance: Maximum render distance in chunks
+        """
+        self.chunks = {}
+        self.logger = get_logger("world")
+        
+        # Dynamic loading parameters
+        self.config = config
+        
+        # Use config if available, otherwise use args
+        if self.config:
+            self.chunk_load_radius = self.config.get("chunk_load_radius", chunk_load_radius)
+            self.chunk_unload_radius = self.config.get("chunk_unload_radius", chunk_unload_radius)
+            self.max_chunks_per_frame = int(self.config.get("max_chunks_per_frame", max_chunks_per_frame))
+            self.view_distance = self.config.get("view_distance", view_distance)
+            
+            # Register for updates
+            self.config.on_change(self._on_config_change)
+        else:
+            self.chunk_load_radius = chunk_load_radius
+            self.chunk_unload_radius = chunk_unload_radius
+            self.max_chunks_per_frame = max_chunks_per_frame
+            self.view_distance = view_distance
+        
+        # Track player position for chunk management
+        self.last_player_chunk = None
+        
+        # Queues for deferred chunk operations
+        self.chunks_to_load = []  # List of (chunk_x, chunk_z) tuples
+        self.chunks_to_unload = []  # List of (chunk_x, chunk_z) tuples
+        
+        # Texture atlas for block rendering
+        self.texture_atlas = TextureAtlas("Spritesheets/terrain.png")
+        if self.texture_atlas.is_loaded():
+            self.logger.info("Texture atlas loaded successfully")
+        else:
+            self.logger.warning("Texture atlas failed to load, using color fallback")
+
+    def _on_config_change(self, key: str, value):
+        """Handle config changes for world parameters."""
+        if key == "chunk_load_radius":
+            self.chunk_load_radius = int(value)
+            # Force update of queues next frame
+            self.last_player_chunk = None 
+        elif key == "chunk_unload_radius":
+            self.chunk_unload_radius = int(value)
+        elif key == "max_chunks_per_frame":
+            self.max_chunks_per_frame = int(value)
+        elif key == "view_distance":
+            self.view_distance = int(value)
+
+    def get_height(self, x, z):
+        """Return terrain height at world coordinate (x, z)."""
+        # Determine biome at this location
+        biome = BiomeRegistry.get_biome_at(x, z)
+        
+        # Use biome's height function
+        return biome.height_function(x, z)
+
+    def get_player_chunk_coords(self, player_pos):
+        """Convert world position to chunk coordinates."""
+        # Handle both tuple and Vec3 inputs
+        if hasattr(player_pos, 'x'):
+            px, pz = player_pos.x, player_pos.z
+        else:
+            px, pz = player_pos[0], player_pos[2]
+            
+        chunk_x = int(px // self.CHUNK_SIZE)
+        chunk_z = int(pz // self.CHUNK_SIZE)
+        return (chunk_x, chunk_z)
+
+    def create_chunk(self, chunk_x, chunk_z):
+        """Create a single chunk at chunk coordinates (chunk_x, chunk_z) using MeshBuilder."""
+        
+        # Precompute height map and biome map for this chunk (and neighbors for meshing)
+        # However, MeshBuilder decoupled callback approach allows us to just pass logic.
+        
+        # We need to pass heights and biomes to MeshBuilder.
+        chunk_size = self.CHUNK_SIZE
+        base_x = chunk_x * chunk_size
+        base_z = chunk_z * chunk_size
+        
+        heights = [[0 for _ in range(chunk_size)] for _ in range(chunk_size)]
+        biomes = [[None for _ in range(chunk_size)] for _ in range(chunk_size)]
+        
+        for x in range(chunk_size):
+            for z in range(chunk_size):
+                world_x = base_x + x
+                world_z = base_z + z
+                heights[x][z] = self.get_height(world_x, world_z)
+                biomes[x][z] = BiomeRegistry.get_biome_at(world_x, world_z)
+                
+        # Callback for neighbors
+        def get_neighbor_height(wx, wz):
+            return self.get_height(wx, wz)
+            
+        # Use MeshBuilder to generate mesh
+        mesh = MeshBuilder.build_chunk_mesh_with_callback(
+            heights=heights,
+            biomes=biomes,
+            chunk_x=chunk_x,
+            chunk_z=chunk_z,
+            chunk_size=chunk_size,
+            texture_atlas=self.texture_atlas,
+            block_registry=BlockRegistry,
+            get_height_callback=get_neighbor_height
+        )
+
+        # Determine dominant biome for this chunk (use center)
+        center_x = self.CHUNK_SIZE // 2
+        center_z = self.CHUNK_SIZE // 2
+        dominant_biome = biomes[center_x][center_z]
+        
+        # Get block from biome's surface block
+        surface_block = BlockRegistry.get_block(dominant_biome.surface_block)
+        
+        # Parent entity for this chunk
+        if self.texture_atlas.is_loaded():
+            chunk_entity = Entity(
+                model=mesh,
+                texture=self.texture_atlas.get_texture()
+            )
+        else:
+            # Fallback to colored rendering
+            chunk_entity = Entity(
+                model=mesh,
+                color=color.rgb(*surface_block.color)
+            )
+        
+        # Set collider
+        chunk_entity.collider = 'mesh'
+        
+        self.chunks[(chunk_x, chunk_z)] = chunk_entity
+
+        # Log simple mesh stats
+        # We can't easily get vertex count from Mesh object without accessing internals
+        # But we can approximate or skip details for now
+        log_metric(
+            "chunk_mesh_generated",
+            1.0,
+            labels={"chunk_x": chunk_x, "chunk_z": chunk_z},
+        )
+
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from util.hot_config import HotConfig
+    from engine.core.hot_config import HotConfig
 
 
 class World:

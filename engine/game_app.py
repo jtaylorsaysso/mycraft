@@ -1,7 +1,7 @@
 from ursina import Ursina, camera, Text, Entity, time, window, InputField, color
 from engine.world import World
 from engine.player import Player
-from network.client import get_client
+from engine.networking.client import get_client
 from pathlib import Path
 from typing import Optional
 
@@ -27,7 +27,7 @@ def _game_update():
         # Debug: Log player position and chunk state every 60 frames
         if not hasattr(_game_update, '_frame_count'):
             _game_update._frame_count = 0
-            from util.logger import get_logger
+            from engine.core.logger import get_logger
             _game_update._logger = get_logger("game_app")
         _game_update._frame_count += 1
         
@@ -195,7 +195,7 @@ def run(
     # Initialize hot-config if path provided
     hot_config = None
     if config_path:
-        from util.hot_config import init_config
+        from engine.core.hot_config import init_config
         hot_config = init_config(Path(config_path))
         # Override settings from config
         if hot_config:
@@ -206,13 +206,13 @@ def run(
     # Initialize session recorder if recording
     recorder = None
     if record_session:
-        from util.session_recorder import SessionRecorder
+        from engine.core.session_recorder import SessionRecorder
         recorder = SessionRecorder()
     
     # Initialize session player if replaying
     session_player = None
     if replay_session:
-        from util.session_recorder import SessionPlayer
+        from engine.core.session_recorder import SessionPlayer
         session_player = SessionPlayer()
         if not session_player.load(Path(replay_session)):
             print(f"Failed to load replay: {replay_session}")

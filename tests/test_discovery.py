@@ -1,7 +1,7 @@
 import pytest
 import time
 import socket
-from network.discovery import DiscoveryBroadcaster, find_servers, BROADCAST_PORT
+from engine.networking.discovery import DiscoveryBroadcaster, find_servers, BROADCAST_PORT
 
 def test_discovery_flow():
     # Setup: Start a broadcaster

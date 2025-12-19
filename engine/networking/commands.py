@@ -2,7 +2,7 @@ from typing import List, Dict, TYPE_CHECKING
 import contextlib
 
 if TYPE_CHECKING:
-    from network.server import GameServer
+    from engine.networking.server import GameServer
 
 class CommandProcessor:
     """Handles parsing and execution of admin commands."""

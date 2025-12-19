@@ -10,7 +10,7 @@ from pathlib import Path
 if TYPE_CHECKING:
     from engine.player import Player
     from engine.input_handler import InputHandler
-    from util.hot_config import HotConfig
+    from engine.core.hot_config import HotConfig
 
 
 class ClientCommandProcessor:

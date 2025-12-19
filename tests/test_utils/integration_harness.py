@@ -1,9 +1,9 @@
 
 import asyncio
 from unittest.mock import MagicMock, patch
-from network.server import GameServer
-from network.client import GameClient
-from util.server_hot_config import ServerHotConfig
+from engine.networking.server import GameServer
+from engine.networking.client import GameClient
+from engine.core.server_hot_config import ServerHotConfig
 
 class TestServerWrapper:
     """Helper to manage a GameServer instance for testing."""

@@ -10,7 +10,7 @@ from ursina import Entity, color, Vec3, time
 import math
 from typing import Optional, TYPE_CHECKING
 if TYPE_CHECKING:
-    from util.hot_config import HotConfig
+    from engine.core.hot_config import HotConfig
 
 
 class AnimationState(Enum):

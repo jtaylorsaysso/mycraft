@@ -1,11 +1,11 @@
 
 import pytest
-from engine.texture_atlas import TextureAtlas
+from engine.rendering import TextureAtlas
 from unittest.mock import MagicMock, patch
 
 @pytest.fixture
 def atlas():
-    with patch('engine.texture_atlas.load_texture') as mock_load:
+    with patch('engine.rendering.texture_atlas.load_texture') as mock_load:
         mock_load.return_value = MagicMock()
         return TextureAtlas("mock_path.png")
 

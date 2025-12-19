@@ -6,7 +6,7 @@ texture atlas (classic Minecraft 16x16 tile format).
 
 from typing import Optional
 from ursina import Vec2, Texture, load_texture
-from util.logger import get_logger
+from engine.core.logger import get_logger
 
 
 class TextureAtlas:

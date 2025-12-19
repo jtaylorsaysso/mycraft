@@ -10,7 +10,7 @@ Usage:
 """
 
 import asyncio
-from network.server import main
+from engine.networking.server import main
 
 
 if __name__ == "__main__":

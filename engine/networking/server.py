@@ -6,11 +6,11 @@ import time
 import logging
 
 
-from util.logger import get_logger, time_block, log_metric
-from network.player_manager import PlayerManager
-from network.commands import CommandProcessor
-from network.discovery import DiscoveryBroadcaster
-from util.server_hot_config import ServerHotConfig
+from engine.core.logger import get_logger, time_block, log_metric
+from engine.networking.player_manager import PlayerManager
+from engine.networking.commands import CommandProcessor
+from engine.networking.discovery import DiscoveryBroadcaster
+from engine.core.server_hot_config import ServerHotConfig
 
 
 import argparse

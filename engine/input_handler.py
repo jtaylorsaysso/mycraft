@@ -15,8 +15,9 @@ from engine.physics import (
     raycast_ground_height,
     raycast_wall_check,
 )
-from engine.collision_debug import CollisionDebugRenderer
-from engine.player_collision import get_hitbox
+from engine.physics import CollisionDebugRenderer
+from engine.physics import get_hitbox
+from engine.rendering import FPSCamera
 
 # Standardized Control Scheme
 class KeyBindings:
@@ -49,8 +50,8 @@ class KeyBindings:
 
 
 if TYPE_CHECKING:
-    from util.session_recorder import SessionRecorder, SessionPlayer
-    from util.hot_config import HotConfig
+    from engine.core.session_recorder import SessionRecorder, SessionPlayer
+    from engine.core.hot_config import HotConfig
 
 
 class InputHandler:
@@ -104,6 +105,9 @@ class InputHandler:
         # Collision debug visualization
         self.debug_renderer = CollisionDebugRenderer()
         self.player_hitbox = get_hitbox(self._config)
+        
+        # Camera controller
+        self.camera_controller = FPSCamera(self.player, sensitivity=self.mouse_sensitivity)
 
     def set_recorder(self, recorder: 'SessionRecorder') -> None:
         """Set the session recorder for input capture."""
@@ -193,16 +197,9 @@ class InputHandler:
             if mouse.velocity[0] != 0 or mouse.velocity[1] != 0:
                 self._recorder.record_mouse_move(mouse.velocity[0], mouse.velocity[1])
         
-        # Camera rotation with mouse
-        if mouse.locked:
-            # Horizontal rotation (yaw) - rotate player entity
-            self.player.rotation_y += mouse.velocity[0] * self.mouse_sensitivity
-            
-            # Vertical rotation (pitch) - rotate camera pivot up/down
-            if hasattr(self.player, 'camera_pivot'):
-                self.player.camera_pivot.rotation_x -= mouse.velocity[1] * self.mouse_sensitivity
-                # Clamp vertical rotation to prevent over-rotation
-                self.player.camera_pivot.rotation_x = max(-89, min(89, self.player.camera_pivot.rotation_x))
+        # Camera rotation
+        self.camera_controller.set_sensitivity(self.mouse_sensitivity)
+        self.camera_controller.update(dt)
         
         # Movement input
         forward_input = held_keys[KeyBindings.FORWARD] - held_keys[KeyBindings.BACK]

@@ -19,7 +19,7 @@ import argparse
 import sys
 from pathlib import Path
 from engine.game_app import run
-from network.client import connect, disconnect
+from engine.networking.client import connect, disconnect
 
 
 def main():

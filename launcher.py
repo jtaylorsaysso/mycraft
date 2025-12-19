@@ -6,7 +6,7 @@ import sys
 import threading
 import json
 from pathlib import Path
-from network.discovery import find_servers
+from engine.networking.discovery import find_servers
 
 class MyCraftLauncher:
     def __init__(self, root):

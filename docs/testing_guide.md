@@ -136,8 +136,8 @@ Spin up a real server on a random port and connect a client:
 
 ```python
 import asyncio
-from network.server import GameServer
-from network.client import GameClient
+from engine.networking.server import GameServer
+from engine.networking.client import GameClient
 
 async def test_client_connects_and_receives_welcome():
     server = GameServer(host="127.0.0.1", port=0)  # port=0 picks a free port

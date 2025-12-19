@@ -4,7 +4,7 @@ import json
 import tempfile
 import time
 from pathlib import Path
-from util.hot_config import HotConfig
+from engine.core.hot_config import HotConfig
 
 class TestHotConfig(unittest.TestCase):
     def setUp(self):

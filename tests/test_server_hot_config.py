@@ -5,7 +5,7 @@ import tempfile
 import asyncio
 import os
 from pathlib import Path
-from util.server_hot_config import ServerHotConfig
+from engine.core.server_hot_config import ServerHotConfig
 
 class TestServerHotConfig(unittest.IsolatedAsyncioTestCase):
     def setUp(self):

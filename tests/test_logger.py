@@ -1,6 +1,6 @@
 import logging
 
-from util import logger as logger_mod
+from engine.core import logger as logger_mod
 
 
 def test_time_block_writes_metrics_csv(tmp_path, monkeypatch):

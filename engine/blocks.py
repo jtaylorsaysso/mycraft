@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Optional, Dict
 
 
-from engine.texture_atlas import TileRegistry
+from engine.rendering import TileRegistry
 
 @dataclass
 class Block:

@@ -30,7 +30,7 @@ class TestIntegrationWorldSync(unittest.IsolatedAsyncioTestCase):
         client.client = None # Reset so we can set it up before connect
         
         # Manual connect to inject world
-        from network.client import GameClient
+        from engine.networking.client import GameClient
         
         # We'll use the wrapper's connect for simplicity, but we need to inject mocks *before* receive loop processes messages if possible
         # Wrapper connects then starts loop immediately.

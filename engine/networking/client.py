@@ -5,7 +5,7 @@ import time
 from typing import Dict, Callable, Optional, Any, List
 from queue import Queue, Empty
 
-from util.logger import get_logger, log_metric
+from engine.core.logger import get_logger, log_metric
 class GameClient:
     """TCP client for connecting to MyCraft LAN server."""
     

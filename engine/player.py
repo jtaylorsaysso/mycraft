@@ -2,12 +2,12 @@ from ursina import Entity, camera, color, Vec3, raycast, destroy, scene, Text, I
 from engine.input_handler import InputHandler
 from engine.hud import HUD
 from engine.animation import AnimatedMannequin, AnimationController
-from network.client import get_client
+from engine.networking.client import get_client
 from engine.remote_player import RemotePlayer
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from util.hot_config import HotConfig
+    from engine.core.hot_config import HotConfig
 
 class Player(Entity):
     def __init__(self, start_pos=(0,2,0), networking: bool = False, sensitivity: float = 40.0, 

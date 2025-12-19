@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from util.hot_config import HotConfig
+    from engine.core.hot_config import HotConfig
 
 
 @dataclass
