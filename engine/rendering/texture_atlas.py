@@ -1,11 +1,7 @@
-"""Texture atlas system for efficient block rendering.
-
-This module handles loading and UV coordinate calculation for the terrain.png
-texture atlas (classic Minecraft 16x16 tile format).
-"""
+"""Texture atlas system for efficient block rendering using Panda3D."""
 
 from typing import Optional
-from ursina import Vec2, Texture, load_texture
+from panda3d.core import Texture, LVector2f, Filename
 from engine.core.logger import get_logger
 
 
@@ -19,23 +15,35 @@ class TextureAtlas:
     GRID_SIZE = 16  # 16x16 tiles
     TILE_SIZE = 1.0 / GRID_SIZE  # Normalized tile size (1/16)
     
-    def __init__(self, image_path: str):
+    def __init__(self, image_path: str, loader=None):
         """Initialize the texture atlas.
         
         Args:
             image_path: Path to the texture atlas image (e.g., "Spritesheets/terrain.png")
+            loader: Panda3D loader instance (from ShowBase)
         """
         self.logger = get_logger("texture_atlas")
         self.image_path = image_path
         self._texture: Optional[Texture] = None
         
-        # Try to load the texture
-        try:
-            self._texture = load_texture(image_path)
-            self.logger.info(f"Loaded texture atlas from {image_path}")
-        except Exception as e:
-            self.logger.error(f"Failed to load texture atlas from {image_path}: {e}")
-            self._texture = None
+        # Try to load the texture using Panda3D
+        if loader:
+            try:
+                self._texture = loader.loadTexture(Filename.fromOsSpecific(image_path))
+                if self._texture:
+                    # Configure texture settings for pixel art
+                    self._texture.setMinfilter(Texture.FTNearest)
+                    self._texture.setMagfilter(Texture.FTNearest)
+                    self._texture.setWrapU(Texture.WMRepeat)
+                    self._texture.setWrapV(Texture.WMRepeat)
+                    self.logger.info(f"Loaded texture atlas from {image_path}")
+                else:
+                    self.logger.error(f"Failed to load texture atlas from {image_path}")
+            except Exception as e:
+                self.logger.error(f"Failed to load texture atlas from {image_path}: {e}")
+                self._texture = None
+        else:
+            self.logger.warning("No loader provided, texture atlas will not be loaded")
     
     def get_texture(self) -> Optional[Texture]:
         """Get the loaded texture object.
@@ -53,14 +61,14 @@ class TextureAtlas:
         """
         return self._texture is not None
     
-    def get_tile_uvs(self, tile_index: int) -> list[Vec2]:
+    def get_tile_uvs(self, tile_index: int) -> list[LVector2f]:
         """Get UV coordinates for a tile as a quad (4 vertices).
         
         Args:
             tile_index: Tile index (0-255) in row-major order
             
         Returns:
-            List of 4 Vec2 UV coordinates for quad vertices in order:
+            List of 4 LVector2f UV coordinates for quad vertices in order:
             [bottom-left, bottom-right, top-right, top-left]
             
         Raises:
@@ -83,15 +91,14 @@ class TextureAtlas:
         v_min = 1.0 - ((row + 1) * self.TILE_SIZE)
         
         # Return UVs for quad vertices in standard order
-        # This matches the vertex order used in World.create_chunk
         return [
-            Vec2(u_min, v_min),  # Bottom-left
-            Vec2(u_max, v_min),  # Bottom-right
-            Vec2(u_max, v_max),  # Top-right
-            Vec2(u_min, v_max),  # Top-left
+            LVector2f(u_min, v_min),  # Bottom-left
+            LVector2f(u_max, v_min),  # Bottom-right
+            LVector2f(u_max, v_max),  # Top-right
+            LVector2f(u_min, v_max),  # Top-left
         ]
     
-    def get_tiled_uvs(self, tile_index: int, width: int = 1, height: int = 1) -> list[Vec2]:
+    def get_tiled_uvs(self, tile_index: int, width: int = 1, height: int = 1) -> list[LVector2f]:
         """Get UV coordinates for a tiled quad (texture repeats across merged blocks).
         
         For greedy meshing: when multiple same-height blocks are merged into one quad,
@@ -104,7 +111,7 @@ class TextureAtlas:
             height: Number of blocks in the Z direction (quad depth in blocks)
             
         Returns:
-            List of 4 Vec2 UV coordinates for quad vertices in order:
+            List of 4 LVector2f UV coordinates for quad vertices in order:
             [bottom-left, bottom-right, top-right, top-left]
             
         Raises:
@@ -122,15 +129,14 @@ class TextureAtlas:
         v_base = 1.0 - ((row + 1) * self.TILE_SIZE)  # Y-flipped
         
         # Scale UVs by width/height so the tile repeats across the merged quad
-        # For a 4x3 quad, we want UVs to span 4 tiles wide and 3 tiles tall
         u_extent = width * self.TILE_SIZE
         v_extent = height * self.TILE_SIZE
         
         return [
-            Vec2(u_base, v_base),                         # Bottom-left
-            Vec2(u_base + u_extent, v_base),              # Bottom-right
-            Vec2(u_base + u_extent, v_base + v_extent),   # Top-right
-            Vec2(u_base, v_base + v_extent),              # Top-left
+            LVector2f(u_base, v_base),                         # Bottom-left
+            LVector2f(u_base + u_extent, v_base),              # Bottom-right
+            LVector2f(u_base + u_extent, v_base + v_extent),   # Top-right
+            LVector2f(u_base, v_base + v_extent),              # Top-left
         ]
     
     def get_tile_coords(self, tile_index: int) -> tuple[int, int]:
@@ -173,7 +179,7 @@ class TileRegistry:
     WOOD_PLANKS = 4
     LOG_SIDE = 20
     LOG_TOP = 21
-    LEAVES = 52  # Standard oak leaves usually around here
+    LEAVES = 52
     
     # Environment
     SAND = 18
@@ -183,9 +189,9 @@ class TileRegistry:
     ICE = 67
     
     # Resources
-    CLAY = 72    # Smooth texture
-    WATER = 205  # Approximate, might need animation handling later
-    LAVA = 237   # Approximate
+    CLAY = 72
+    WATER = 205
+    LAVA = 237
     
     # Crafted
     BRICK = 7
@@ -194,23 +200,23 @@ class TileRegistry:
     TNT_BOTTOM = 10
     BOOKSHELF = 35
     
-    # Natural Terrain Variations (for diverse biomes)
-    COBBLESTONE_MOSSY = 36  # Rocky biome variation
-    DIRT_PODZOL = 14        # Forest floor variation
-    SANDSTONE = 192         # Desert subsurface layer
+    # Natural Terrain Variations
+    COBBLESTONE_MOSSY = 36
+    DIRT_PODZOL = 14
+    SANDSTONE = 192
     
     # Mountain/Snow Terrain
-    STONE_MOSSY = 48        # Mountain variation
-    ICE_PACKED = 165        # High altitude terrain
+    STONE_MOSSY = 48
+    ICE_PACKED = 165
     
     # Canyon/Mesa Terrain
-    RED_SAND = 209          # Mesa surface
-    CLAY_TERRACOTTA = 159   # Mesa layers
-    RED_SANDSTONE = 179     # Mesa subsurface
+    RED_SAND = 209
+    CLAY_TERRACOTTA = 159
+    RED_SANDSTONE = 179
     
-    # Rock Variations (visual interest)
-    STONE_ANDESITE = 6      # Rock variation
-    STONE_GRANITE = 213     # Rock variation
+    # Rock Variations
+    STONE_ANDESITE = 6
+    STONE_GRANITE = 213
     
     @classmethod
     def get(cls, name: str) -> int:

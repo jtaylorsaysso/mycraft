@@ -83,8 +83,16 @@
 
 - [x] ~~Basic physics tests~~ - Present in `tests/` directory
 - [x] ~~Server admin tests~~ - Present in `tests/` directory
-- [ ] No automated integration tests for multiplayer scenarios
+- [x] ~~No automated integration tests for multiplayer scenarios~~ - Implemented in `tests/`
 - [ ] No performance benchmarks or regression tests
 - [ ] No CI/CD pipeline
 - [ ] Limited error handling in network code
 - [ ] No client-side prediction or lag compensation testing
+
+## Post-Refactor Cleanup
+
+- [ ] `engine/systems/network.py`: Implement server replication logic (TODO)
+- [ ] `engine/systems/interaction.py`: Implement stacking logic (TODO)
+- [ ] `engine/systems/interaction.py`: Spawn item entity at position (TODO)
+- [ ] `tests/benchmarks/test_chunk_generation.py`: Refactor for better benchmarking (TODO)
+- [ ] Evaluate need for `shared/` directory (removed as it was empty)

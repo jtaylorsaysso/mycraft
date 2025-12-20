@@ -292,3 +292,13 @@ BlockRegistry.register(Block(
     display_name="Granite"
 ))
 
+
+# Water-adjacent biome blocks
+BlockRegistry.register(Block(
+    name="mud",
+    color=(0.35, 0.25, 0.2),  # Dark muddy brown
+    tile_top=TileRegistry.DIRT,  # Fallback to dirt until we have mud texture
+    tile_side=TileRegistry.DIRT,
+    tile_bottom=TileRegistry.DIRT,
+    display_name="Mud"
+))

@@ -28,6 +28,7 @@ class GameClient:
         # Event loop running in background thread
         self.loop: Optional[asyncio.AbstractEventLoop] = None
         self.thread: Optional[threading.Thread] = None
+        self.main_task: Optional[asyncio.Task] = None
         
         # Callbacks for different message types
         self.callbacks: Dict[str, Callable] = {
@@ -45,6 +46,7 @@ class GameClient:
         self.on_disconnected: Optional[Callable[[Optional[Exception]], None]] = None
         self.on_connection_failed: Optional[Callable[[Exception], None]] = None
         self.on_block_update: Optional[Callable[[Dict], None]] = None
+        self.on_chat_message: Optional[Callable[[str, str], None]] = None
         
         # Current state of remote players
         self.remote_players: Dict[str, Dict] = {}
@@ -85,8 +87,12 @@ class GameClient:
     
     def stop(self):
         """Stop the client."""
-        if self.loop:
-            self.loop.call_soon_threadsafe(self.loop.stop)
+        self.connected = False
+        if self.loop and self.main_task and not self.loop.is_closed():
+            try:
+                self.loop.call_soon_threadsafe(self.main_task.cancel)
+            except RuntimeError:
+                pass
         if self.thread:
             self.thread.join(timeout=1.0)
         self.connected = False
@@ -96,11 +102,23 @@ class GameClient:
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         
+        self.main_task = self.loop.create_task(self._async_start())
+        
         try:
-            self.loop.run_until_complete(self._async_start())
+            self.loop.run_until_complete(self.main_task)
+        except asyncio.CancelledError:
+            pass
         except Exception as e:
             print(f"Client error: {e}")
         finally:
+            # Cancel any remaining tasks
+            pending = asyncio.all_tasks(self.loop)
+            for task in pending:
+                task.cancel()
+            
+            if pending:
+                self.loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            
             self.loop.close()
     
     async def _async_start(self):
@@ -108,6 +126,8 @@ class GameClient:
         if not await self._connect_with_retry():
             return
 
+        send_task = None
+        receive_task = None
         try:
             # Start send and receive tasks
             send_task = asyncio.create_task(self._send_loop())
@@ -116,9 +136,24 @@ class GameClient:
             # Wait for tasks to complete (they run until disconnect)
             await asyncio.gather(send_task, receive_task)
             
+        except asyncio.CancelledError:
+            # This is expected during stop()
+            self.connected = False
         except Exception as e:
             self.logger.error(f"Client loop error: {e}")
             self.connected = False
+        finally:
+            # Cleanup tasks
+            for task in [send_task, receive_task]:
+                if task and not task.done():
+                    task.cancel()
+            
+            if self.writer:
+                self.writer.close()
+                try:
+                    await self.writer.wait_closed()
+                except:
+                    pass
     
     async def _connect_with_retry(self) -> bool:
         """Attempt to connect with exponential backoff."""
@@ -209,28 +244,17 @@ class GameClient:
                     
             except Exception as e:
                 self.logger.error(f"Receive error: {e}")
-                if self.on_disconnected:
-                    self.on_disconnected(e)
                 break
         
+        # Unified disconnect handling
         self.connected = False
-        if self.on_disconnected and self.reader: # Only trigger if we were seemingly connected
-             # We check self.reader to avoid double triggering if exception block handled it
-             # But simplistic check: if we break loop naturally
-             pass
-        
-        # Ensure we mark as disconnected
-        if self.connected: 
-             self.connected = False
-             if self.on_disconnected:
-                 self.on_disconnected(None)
+        if self.on_disconnected:
+            self.on_disconnected(None)
     
     def _handle_welcome(self, message: Dict):
         """Handle welcome message from server."""
         self.player_id = message.get("player_id")
         self.spawn_pos = message.get("spawn_pos", [10, 2, 10])
-        self.logger.info(f"Welcome as {self.player_id}, spawn_pos={self.spawn_pos}")
-    
         self.logger.info(f"Welcome as {self.player_id}, spawn_pos={self.spawn_pos}")
     
     def _handle_chat_message(self, message: Dict):
@@ -322,8 +346,6 @@ class GameClient:
             "pos": pos,
             "rot_y": rot_y
         }
-        self.send_queue.put(message)
-        self._sent_updates += 1
         self.send_queue.put(message)
         self._sent_updates += 1
 

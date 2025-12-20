@@ -5,7 +5,12 @@ to help debug and tune collision behavior during playtesting.
 """
 
 from typing import Optional
-from ursina import Entity, Vec3, color, destroy
+from panda3d.core import LVector3f as Vec3
+# from ursina import Entity, color, destroy 
+# Placeholder for Phase 3
+Entity = object 
+color = object
+destroy = lambda x: None
 
 
 class CollisionDebugRenderer:

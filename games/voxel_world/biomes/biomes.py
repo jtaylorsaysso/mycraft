@@ -116,10 +116,27 @@ class BiomeRegistry:
         
         # Map noise value to biomes
         # Extended value range for new biomes
+        # River noise (ridges: variables width)
+        river_noise = abs(math.sin(x * 0.015 + z * 0.005) + math.cos(z * 0.012 - x * 0.005))
+        if river_noise < 0.15: # Narrow bands
+             return cls.get_biome("river")
+
+        # Main biome selection
         if biome_value < -1.5:
             return cls.get_biome("canyon")  # Deep valleys
         elif biome_value < -0.8:
-            return cls.get_biome("desert")
+            # Check for water proximity for beach/swamp
+            # Water noise (simulating moisture/water level)
+            water_noise = math.sin(x * 0.02) * math.cos(z * 0.02)
+            
+            # If low terrain and high moisture/water proximity
+            if secondary_noise < -0.2: 
+                if water_noise > 0.0:
+                    return cls.get_biome("swamp")
+                else:
+                    return cls.get_biome("beach")
+            else:
+                return cls.get_biome("desert")
         elif biome_value < 0.0:
             return cls.get_biome("rocky")
         elif biome_value < 0.8:
@@ -272,6 +289,61 @@ def canyon_height(x: float, z: float) -> int:
     return int(round(height))
 
 
+def river_height(x: float, z: float) -> int:
+    """Riverbed terrain: carves a channel.
+    
+    Features:
+    - Below water level (y=-2 to -4)
+    - Smooth curved bottom
+    """
+    # Base depth
+    base_depth = -3
+    
+    # Add some variation to river depth
+    variation = math.sin(x * 0.1) * 0.5
+    
+    height = base_depth + variation
+    
+    return int(round(height))
+
+
+def beach_height(x: float, z: float) -> int:
+    """Beach terrain: flat, near water level.
+    
+    Features:
+    - Very flat (y=-1 to 0)
+    - Gentle slope towards water
+    """
+    base_height = -0.5
+    
+    # Very gentle slope
+    wave = math.sin(x * 0.02) * 0.5 + math.cos(z * 0.02) * 0.5
+    
+    height = base_height + wave * 0.5
+    height = max(-1, min(0, height))
+    
+    return int(round(height))
+
+
+def swamp_height(x: float, z: float) -> int:
+    """Swamp terrain: low lying with pools.
+    
+    Features:
+    - Mostly at y=-1 or y=-2
+    - Occasional mounds at y=0
+    - Perfect for shallow water pools
+    """
+    base_height = -1
+    
+    # Mounds and pools
+    mound = math.sin(x * 0.1) * math.cos(z * 0.1)
+    
+    height = base_height + mound
+    height = max(-2, min(0, height))
+    
+    return int(round(height))
+
+
 # Register default biomes
 
 BiomeRegistry.register(Biome(
@@ -320,4 +392,30 @@ BiomeRegistry.register(Biome(
     height_function=canyon_height,
     surface_block="red_sand",
     subsurface_block="terracotta"  # Mesa-like layering
+))
+
+
+BiomeRegistry.register(Biome(
+    name="beach",
+    display_name="Sandy Beach",
+    height_function=beach_height,
+    surface_block="sand",
+    subsurface_block="sandstone"
+))
+
+BiomeRegistry.register(Biome(
+    name="swamp",
+    display_name="Muddy Swamp",
+    height_function=swamp_height,
+    surface_block="mud",  # Needs mud block
+    subsurface_block="dirt",
+    color_tint=(0.4, 0.5, 0.3)  # Murky green tint (if supported)
+))
+
+BiomeRegistry.register(Biome(
+    name="river",
+    display_name="River",
+    height_function=river_height,
+    surface_block="sand",
+    subsurface_block="gravel"
 ))

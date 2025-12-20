@@ -102,14 +102,16 @@ This document defines the standardized sizing conventions for entities in MyCraf
 ## References
 
 ### External Standards
+
 - [Minecraft Wiki - Units of Measure](https://minecraft.fandom.com/wiki/Tutorials/Units_of_measure)
 - [Ursina Engine Documentation](https://www.ursinaengine.org/)
 - [Voxel Engine Best Practices](https://sites.google.com/site/letsmakeavoxelengine/)
 
 ### Internal Files
+
 - `engine/player.py` - Player entity implementation
-- `engine/world.py` - World generation and block placement
-- `engine/game_app.py` - Main game application setup
+- `games/voxel_world/systems/world_gen.py` - World generation and block placement
+- `engine/game.py` - Main game application setup
 
 ---
 *Last Updated: 2025-12-12*

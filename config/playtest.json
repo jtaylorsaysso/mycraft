@@ -1,0 +1,18 @@
+{
+    "movement_speed": 6.0,
+    "fly_speed": 12.0,
+    "jump_height": 3.5,
+    "gravity": -12.0,
+    "fov": 90,
+    "camera_distance": 4.0,
+    "camera_height": 2.0,
+    "camera_side_offset": 1.0,
+    "walk_frequency": 10.0,
+    "walk_amplitude_arms": 35.0,
+    "idle_bob_amount": 0.01,
+    "view_distance": 5,
+    "chunk_load_radius": 3,
+    "mouse_sensitivity": 40.0,
+    "god_mode": false,
+    "debug": false
+}

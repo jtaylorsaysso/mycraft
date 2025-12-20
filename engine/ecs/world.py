@@ -40,6 +40,10 @@ class World:
             
         return entity_id
 
+    def get_entity_by_tag(self, tag: str) -> Optional[str]:
+        """Get entity ID by tag name."""
+        return self._tags.get(tag)
+
     def destroy_entity(self, entity_id: str):
         """Remove an entity and all its components."""
         if entity_id not in self._entities:

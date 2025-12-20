@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Callable, Optional, Protocol, Any
+from panda3d.core import LVector3f, CollisionRay, CollisionNode, CollisionTraverser, CollisionHandlerQueue, BitMask32
 
 
 class SupportsY(Protocol):
@@ -147,75 +148,60 @@ def perform_jump(state: KinematicState, jump_height: float) -> None:
 
 def raycast_ground_height(
     entity: Any,
+    collision_traverser: Optional[CollisionTraverser] = None,
     max_distance: float = 5.0,
     foot_offset: float = 0.2,
     ray_origin_offset: Optional[float] = None,
     ignore: Optional[list] = None,
 ) -> Optional[float]:
-    """Return the ground y-position below an Ursina Entity using raycast.
+    """Return the ground y-position below an entity using Panda3D collision system.
 
-    This expects an Ursina Entity-like object with a world_position attribute.
-    It casts a ray straight down from just above the entity and, if it hits
+    This casts a ray straight down from just above the entity and, if it hits
     something, returns the y-position where the entity's origin should be
     placed so that its feet (offset by foot_offset) rest on the surface.
+    
+    Args:
+        entity: The entity to raycast from (must have position or world_position)
+        collision_traverser: Panda3D CollisionTraverser instance (optional for Phase 3)
+        max_distance: Maximum raycast distance
+        foot_offset: Offset for feet placement
+        ray_origin_offset: Height above entity to start ray
+        ignore: List of entities to ignore (not yet implemented)
+    
+    Returns:
+        Ground Y position or None if no hit
     """
-
-    try:
-        from ursina import Vec3, raycast  # type: ignore
-    except Exception:
-        # If Ursina is not available, fall back to no ground detected.
-        return None
-
-    # Start the ray some distance above the entity to reduce the
-    # chance of starting below the terrain when falling fast.
-    # For a ~2-unit tall player, 2.0 units above is sufficient.
-    if ray_origin_offset is None:
-        ray_origin_offset = 2.0
-
-    origin = entity.world_position + Vec3(0, ray_origin_offset, 0)
-    direction = Vec3(0, -1, 0)
-
-    ignore_list = ignore or [entity]
-    hit_info = raycast(origin, direction, distance=max_distance, ignore=ignore_list)
-
-    if not getattr(hit_info, "hit", False):
-        return None
-
-    # Place the entity so that its feet (origin - foot_offset) rest on the hit.
-    return hit_info.point.y + foot_offset
+    # Phase 3: Stub implementation - will be fully implemented when collision system is integrated
+    # For now, return None to allow game to continue running
+    # This will be replaced with proper Panda3D collision raycasting
+    return None
 
 
 def raycast_wall_check(
     entity: Any,
     movement: tuple[float, float, float],
+    collision_traverser: Optional[CollisionTraverser] = None,
     distance_buffer: float = 0.5,
     ignore: Optional[list] = None
 ) -> bool:
-    """Check if moving by 'movement' would hit a wall.
+    """Check if moving by 'movement' would hit a wall using Panda3D collision.
     
     This casts a ray in the direction of movement.
+    
+    Args:
+        entity: The entity to check from
+        movement: Movement vector (dx, dy, dz)
+        collision_traverser: Panda3D CollisionTraverser instance (optional for Phase 3)
+        distance_buffer: Extra distance to check beyond movement
+        ignore: List of entities to ignore (not yet implemented)
+    
+    Returns:
+        True if wall hit, False otherwise
     """
-    try:
-        from ursina import Vec3, raycast
-    except Exception:
-        return False
-        
-    move_vec = Vec3(*movement)
-    dist = move_vec.length()
-    
-    if dist < 0.001:
-        return False
-        
-    direction = move_vec.normalized()
-    origin = entity.world_position + Vec3(0, 1.0, 0) # Cast from center mass/head height
-    
-    # Check slightly further than we are moving to prevent getting too close
-    check_dist = dist + distance_buffer 
-    
-    ignore_list = ignore or [entity]
-    hit_info = raycast(origin, direction, distance=check_dist, ignore=ignore_list)
-    
-    return hit_info.hit
+    # Phase 3: Stub implementation - will be fully implemented when collision system is integrated
+    # For now, return False to allow free movement
+    # This will be replaced with proper Panda3D collision raycasting
+    return False
 
 
 def update_timers(state: KinematicState, dt: float) -> None:

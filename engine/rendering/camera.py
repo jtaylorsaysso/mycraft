@@ -1,43 +1,51 @@
-from ursina import mouse, Vec3, camera
+"""First-person camera controller for Panda3D."""
+
+from panda3d.core import LVector3f
 from typing import Optional, Any
 
+
 class FPSCamera:
-    """First-person camera controller."""
+    """First-person camera controller using Panda3D."""
     
-    def __init__(self, player_entity: Any, sensitivity: float = 40.0):
+    def __init__(self, camera_node: Any, player_entity: Any, sensitivity: float = 40.0):
         """Initialize FPS Camera.
         
         Args:
-            player_entity: The entity to control (should have .rotation_y)
-                           and optionally .camera_pivot (for rotation_x)
+            camera_node: Panda3D camera NodePath (base.camera)
+            player_entity: The player entity/node to control
             sensitivity: Mouse sensitivity
         """
+        self.camera = camera_node
         self.player = player_entity
         self.sensitivity = sensitivity
         self.clamp_vertical = True
         self.min_pitch = -89.0
         self.max_pitch = 89.0
+        self.pitch = 0.0
+        self.yaw = 0.0
         
-    def update(self, dt: float) -> None:
+    def update(self, mouse_dx: float, mouse_dy: float, dt: float) -> None:
         """Update camera rotation based on mouse movement.
         
-        Should be called every frame.
+        Args:
+            mouse_dx: Mouse delta X (horizontal movement)
+            mouse_dy: Mouse delta Y (vertical movement)
+            dt: Delta time
         """
-        if mouse.locked:
-            # Horizontal rotation (yaw) - rotate player entity
-            self.player.rotation_y += mouse.velocity[0] * self.sensitivity
-            
-            # Vertical rotation (pitch) - rotate camera pivot up/down
-            if hasattr(self.player, 'camera_pivot'):
-                self.player.camera_pivot.rotation_x -= mouse.velocity[1] * self.sensitivity
-                
-                # Clamp vertical rotation to prevent over-rotation
-                if self.clamp_vertical:
-                    self.player.camera_pivot.rotation_x = max(
-                        self.min_pitch, 
-                        min(self.max_pitch, self.player.camera_pivot.rotation_x)
-                    )
-                    
+        # Horizontal rotation (yaw)
+        self.yaw += mouse_dx * self.sensitivity * dt
+        
+        # Vertical rotation (pitch)
+        self.pitch -= mouse_dy * self.sensitivity * dt
+        
+        # Clamp vertical rotation
+        if self.clamp_vertical:
+            self.pitch = max(self.min_pitch, min(self.max_pitch, self.pitch))
+        
+        # Apply rotations to camera
+        # Panda3D uses HPR (Heading, Pitch, Roll)
+        self.camera.setHpr(self.yaw, self.pitch, 0)
+        
     def set_sensitivity(self, value: float) -> None:
         """Update mouse sensitivity."""
         self.sensitivity = value

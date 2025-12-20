@@ -6,7 +6,7 @@ from engine.ecs.system import System
 from engine.ecs.events import Event
 from engine.components.core import Transform
 from engine.components.gameplay import Pathfinder, Timer
-from ursina import Vec3
+from panda3d.core import LVector3f as Vec3
 import math
 
 class PathfindingSystem(System):

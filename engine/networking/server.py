@@ -129,33 +129,33 @@ class GameServer:
     
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         """Handle a new client connection."""
-        # Assign player ID
-        player_id = self.player_manager.generate_player_id()
-        
-        # Store client writer
-        self.clients[player_id] = writer
-        
-        # Initialize player state
-        self.player_manager.add_player(player_id)
-        self.client_last_activity[player_id] = time.time()
-        
-        # Send welcome message with player ID
-        welcome_msg = json.dumps({
-            "type": "welcome",
-            "player_id": player_id,
-            "spawn_pos": self.player_manager.get_player_state(player_id)["pos"]
-        }) + "\n"
-        writer.write(welcome_msg.encode())
-        await writer.drain()
-        
-        # Notify all clients about the new player
-        await self.broadcast_player_join(player_id)
-        
-        self.logger.info(
-            f"Player {player_id} connected from {writer.get_extra_info('peername')} | total_clients={len(self.clients)}"
-        )
-        
         try:
+            # Assign player ID
+            player_id = self.player_manager.generate_player_id()
+            
+            # Store client writer
+            self.clients[player_id] = writer
+            
+            # Initialize player state
+            self.player_manager.add_player(player_id)
+            self.client_last_activity[player_id] = time.time()
+            
+            # Send welcome message with player ID
+            welcome_msg = json.dumps({
+                "type": "welcome",
+                "player_id": player_id,
+                "spawn_pos": self.player_manager.get_player_state(player_id)["pos"]
+            }) + "\n"
+            writer.write(welcome_msg.encode())
+            await writer.drain()
+            
+            # Notify all clients about the new player
+            await self.broadcast_player_join(player_id)
+            
+            self.logger.info(
+                f"Player {player_id} connected from {writer.get_extra_info('peername')} | total_clients={len(self.clients)}"
+            )
+            
             # Process messages from this client
             while True:
                 data = await reader.readline()
@@ -166,13 +166,17 @@ class GameServer:
                     message = json.loads(data.decode().strip())
                     await self.handle_message(player_id, message)
                 except json.JSONDecodeError:
-                    print(f"Invalid JSON from {player_id}")
+                    self.logger.warning(f"Malformed message from {player_id}, ignoring")
+                except Exception as e:
+                    self.logger.error(f"Error handling message from {player_id}: {e}")
                     
-        except (ConnectionResetError, asyncio.CancelledError):
+        except (ConnectionResetError, BrokenPipeError, asyncio.CancelledError):
             pass
+        except Exception as e:
+            self.logger.error(f"Unexpected error handling client {player_id if 'player_id' in locals() else 'unknown'}: {e}")
         finally:
-            # Clean up on disconnect
-            await self.handle_disconnect(player_id)
+            if 'player_id' in locals():
+                await self.handle_disconnect(player_id)
     
     async def handle_message(self, player_id: str, message: Dict):
         """Process incoming message from a client."""

@@ -4,7 +4,7 @@ Advanced gameplay components.
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 from engine.ecs.component import Component, register_component
-from ursina import Vec3
+from panda3d.core import LVector3f as Vec3
 
 @register_component
 @dataclass
