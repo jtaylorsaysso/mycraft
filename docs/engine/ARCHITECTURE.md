@@ -1,5 +1,15 @@
 # MyCraft Engine Architecture
 
+## For Beginners
+
+**Don't worry about this document if you're just getting started!**
+
+MyCraft's engine is designed so you can create games without understanding all these technical details. The complexity described here powers the visual tools and features you'll use, but it stays out of your way.
+
+Think of it like driving a car - you don't need to know how the engine works to drive. But if you're curious or want to build your own custom features, this document explains what's under the hood.
+
+---
+
 ## Overview
 
 The MyCraft engine is designed as a reusable core separating generic game systems from specific game implementations. It relies heavily on an Entity Component System (ECS) architecture and is built on Panda3D.

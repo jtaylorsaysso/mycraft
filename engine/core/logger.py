@@ -3,6 +3,9 @@ import csv
 import time
 from pathlib import Path
 from typing import Optional, Dict, Any
+import sys
+import glob
+import os
 
 
 _LOGGER_INITIALIZED = False
@@ -44,12 +47,49 @@ def _init_logging() -> None:
     logger.addHandler(fh)
 
     # Prepare metrics CSV with header
+    # Prepare metrics CSV with header
     if not _METRICS_FILE.exists():
         with _METRICS_FILE.open("w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=_CSV_FIELDNAMES)
             writer.writeheader()
 
+    # Log unhandled exceptions
+    sys.excepthook = _handle_exception
+    
+    # Cleanup old logs
+    _cleanup_old_logs()
+
     _LOGGER_INITIALIZED = True
+
+def _handle_exception(exc_type, exc_value, exc_traceback):
+    """Global exception hook to log unhandled errors."""
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    logger = logging.getLogger("mycraft")
+    logger.critical("Uncaught Exception", exc_info=(exc_type, exc_value, exc_traceback))
+    
+    # Print to stderr as well (default behavior)
+    sys.__excepthook__(exc_type, exc_value, exc_traceback)
+
+def _cleanup_old_logs(keep: int = 10) -> None:
+    """Keep only the N most recent log files."""
+    try:
+        log_files = sorted(
+            glob.glob(str(_LOG_DIR / "mycraft-*.log")),
+            key=os.path.getmtime
+        )
+        
+        while len(log_files) > keep:
+            oldest = log_files.pop(0)
+            try:
+                os.remove(oldest)
+                print(f"Cleaned up old log: {oldest}")
+            except OSError:
+                pass
+    except Exception as e:
+        print(f"Failed to cleanup logs: {e}")
 
 
 def get_logger(name: Optional[str] = None) -> logging.Logger:

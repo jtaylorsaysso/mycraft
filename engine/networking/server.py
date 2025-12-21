@@ -173,7 +173,8 @@ class GameServer:
         except (ConnectionResetError, BrokenPipeError, asyncio.CancelledError):
             pass
         except Exception as e:
-            self.logger.error(f"Unexpected error handling client {player_id if 'player_id' in locals() else 'unknown'}: {e}")
+            player_id_str = player_id if 'player_id' in locals() else 'unknown'
+            self.logger.error(f"Unexpected error handling client {player_id_str}: {e}", exc_info=True)
         finally:
             if 'player_id' in locals():
                 await self.handle_disconnect(player_id)
@@ -201,7 +202,7 @@ class GameServer:
             lines = await self.command_processor.process_command(player_id, command)
             await self.send_admin_response(player_id, lines)
         else:
-            print(f"Unknown message type from {player_id}: {msg_type}")
+            self.logger.warning(f"Unknown message type '{msg_type}' from {player_id}")
     
     async def handle_disconnect(self, player_id: str):
         """Clean up when a client disconnects."""
@@ -288,19 +289,27 @@ class GameServer:
         """Send a message to all connected clients."""
         disconnected = []
         
-        for player_id, writer in self.clients.items():
+        # Iterate over a copy to avoid "dictionary changed size during iteration" 
+        # because await writer.drain() allows other tasks to add/remove clients.
+        for player_id, writer in list(self.clients.items()):
             if exclude and player_id == exclude:
                 continue
                 
             try:
                 writer.write(message.encode())
                 await writer.drain()
-            except (ConnectionResetError, BrokenPipeError):
+            except (ConnectionResetError, BrokenPipeError) as e:
+                self.logger.debug(f"Client {player_id} connection broken during broadcast: {e}")
+                disconnected.append(player_id)
+            except Exception as e:
+                self.logger.error(f"Error broadcasting to {player_id}: {e}", exc_info=True)
                 disconnected.append(player_id)
         
         # Clean up disconnected clients
         for player_id in disconnected:
-            await self.handle_disconnect(player_id)
+            # Check if still in clients before trying to disconnect again
+            if player_id in self.clients:
+                await self.handle_disconnect(player_id)
 
     async def send_admin_response(self, player_id: str, lines: List[str]) -> None:
         """Send admin command output back to a specific player."""

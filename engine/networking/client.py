@@ -109,7 +109,9 @@ class GameClient:
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            print(f"Client error: {e}")
+            self.logger.error(f"Client event loop error: {e}", exc_info=True)
+            if self.on_connection_failed:
+                self.on_connection_failed(e)
         finally:
             # Cancel any remaining tasks
             pending = asyncio.all_tasks(self.loop)
@@ -214,8 +216,11 @@ class GameClient:
                     
             except Empty:
                 continue
+            except (ConnectionResetError, BrokenPipeError) as e:
+                self.logger.warning(f"Connection lost during send: {e}")
+                break
             except Exception as e:
-                print(f"Send error: {e}")
+                self.logger.error(f"Send error: {e}", exc_info=True)
                 break
     
     async def _receive_loop(self):
@@ -242,8 +247,14 @@ class GameClient:
                 except json.JSONDecodeError:
                     self.logger.warning("Invalid JSON from server")
                     
+            except (ConnectionResetError, BrokenPipeError) as e:
+                self.logger.info(f"Server disconnected: {e}")
+                break
+            except asyncio.IncompleteReadError as e:
+                self.logger.warning(f"Incomplete message from server: {e}")
+                break
             except Exception as e:
-                self.logger.error(f"Receive error: {e}")
+                self.logger.error(f"Receive error: {e}", exc_info=True)
                 break
         
         # Unified disconnect handling

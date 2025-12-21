@@ -84,6 +84,14 @@ class VoxelGame(ShowBase):
         
         from engine.systems.input import PlayerControlSystem
         self.world.add_system(PlayerControlSystem(self.world, self.world.event_bus, self))
+        
+        # Remote player rendering (multiplayer)
+        from engine.systems.remote_players import RemotePlayerManager
+        self.world.add_system(RemotePlayerManager(self.world, self.world.event_bus, self))
+        
+        # Tools & Feedback (Added Phase 6)
+        from engine.systems.feedback import FeedbackSystem
+        self.world.add_system(FeedbackSystem(self.world, self.world.event_bus, self))
 
     def register_block(self, block: Block):
         """Register a new block type."""

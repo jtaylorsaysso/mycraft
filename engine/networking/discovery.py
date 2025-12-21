@@ -21,12 +21,16 @@ class DiscoveredServer:
 class DiscoveryBroadcaster:
     """Broadcasts server presence over UDP."""
     def __init__(self, port: int, max_players: int):
+        from engine.core.logger import get_logger
+        
         self.server_port = port
         self.max_players = max_players
         self.running = False
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.broadcast_thread = None
+        self.logger = get_logger("net.discovery.broadcaster")
+        self._last_error_log = 0  # Rate limit error logging
 
     def start(self, get_player_count_cb):
         self.running = True
@@ -66,12 +70,18 @@ class DiscoveryBroadcaster:
                 
                 time.sleep(BROADCAST_INTERVAL)
             except Exception as e:
-                # print(f"[Discovery] Broadcast error: {e}") 
-                # Suppress spam
+                # Log broadcast errors but rate-limit to prevent spam (max once per 10s)
+                now = time.time()
+                if now - self._last_error_log > 10.0:
+                    self.logger.warning(f"Broadcast error: {e}")
+                    self._last_error_log = now
                 time.sleep(BROADCAST_INTERVAL)
 
 def find_servers(timeout: float = 2.0) -> List[DiscoveredServer]:
     """Listen for UDP broadcasts to find servers."""
+    from engine.core.logger import get_logger
+    logger = get_logger("net.discovery")
+    
     found_servers = {}
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Allow multiple listeners
@@ -101,9 +111,15 @@ def find_servers(timeout: float = 2.0) -> List[DiscoveredServer]:
                     found_servers[key] = server
             except socket.timeout:
                 continue
+            except json.JSONDecodeError as e:
+                logger.warning(f"Invalid JSON from {addr[0] if 'addr' in locals() else 'unknown'}: {e}")
+            except UnicodeDecodeError as e:
+                logger.warning(f"Invalid encoding from {addr[0] if 'addr' in locals() else 'unknown'}: {e}")
             except Exception as e:
-                print(f"Discovery error: {e}")
+                logger.error(f"Discovery recv error: {e}", exc_info=True)
                 
+    except Exception as e:
+        logger.error(f"Discovery bind/setup error: {e}", exc_info=True)
     finally:
         sock.close()
         

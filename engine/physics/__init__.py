@@ -19,6 +19,8 @@ from .kinematic import (
     update_timers,
     register_jump_press,
     can_consume_jump,
+    apply_horizontal_acceleration,
+    apply_slope_forces,
     SupportsY
 )
 
@@ -42,6 +44,8 @@ __all__ = [
     'update_timers',
     'register_jump_press',
     'can_consume_jump',
+    'apply_horizontal_acceleration',
+    'apply_slope_forces',
     'SupportsY',
     'PlayerHitbox',
     'get_hitbox',

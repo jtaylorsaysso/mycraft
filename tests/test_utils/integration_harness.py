@@ -61,7 +61,7 @@ class TestClientWrapper:
         
     async def connect(self, host: str, port: int):
         self.client = GameClient(host, port)
-        # Mock UI callbacks to avoid ursina errors
+        # Mock UI callbacks to avoid errors
         self.client.on_player_joined = MagicMock()
         self.client.on_player_left = MagicMock()
         self.client.on_chat_message = MagicMock()

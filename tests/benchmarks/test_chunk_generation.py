@@ -1,5 +1,5 @@
 
-from games.voxel_world.systems.world_gen import World
+from engine.ecs.world import World
 from games.voxel_world.blocks.blocks import Block
 from games.voxel_world.biomes.biomes import BiomeRegistry
 

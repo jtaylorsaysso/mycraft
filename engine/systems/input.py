@@ -2,7 +2,7 @@
 
 from engine.ecs.system import System
 from engine.input.manager import InputManager
-from engine.rendering.camera import FPSCamera
+from engine.rendering.camera import FPSCamera, ThirdPersonCamera
 from engine.components.core import Transform
 from engine.physics import (
     KinematicState,
@@ -47,6 +47,16 @@ class PlayerControlSystem(System):
         # Allow passing base later if needed, but InputManager needs it
         self.input = InputManager(base)
         self.camera_controller = None
+        self.fps_camera = None
+        self.third_person_camera = None
+        
+        # Camera mode: 'third_person' or 'first_person'
+        self.camera_mode = 'third_person'  # Default to third-person
+        self.camera_toggle_cooldown = 0.0  # Prevent rapid toggling
+        
+        # Local player visual representation
+        self.local_mannequin = None
+        self.local_animation_controller = None
         
         # Track physics state for entities
         # entity_id -> KinematicState
@@ -61,13 +71,33 @@ class PlayerControlSystem(System):
         # Find player entity
         player_id = self.world.get_entity_by_tag("player")
         if player_id:
-            # Setup FPS camera
-            self.camera_controller = FPSCamera(self.base.cam, player_entity=None, sensitivity=40.0)
-            
-            # Set initial camera orientation
-            self.base.cam.setHpr(0, 0, 0)
-            
-            self.input.lock_mouse()
+            transform = self.world.get_component(player_id, Transform)
+            if transform:
+                # Create local player mannequin (green color to distinguish from remote azure)
+                from engine.animation.mannequin import AnimatedMannequin, AnimationController
+                self.local_mannequin = AnimatedMannequin(
+                    self.base.render, 
+                    body_color=(0.4, 0.8, 0.4, 1.0)  # Green for local player
+                )
+                self.local_mannequin.root.setPos(transform.position)
+                self.local_animation_controller = AnimationController(self.local_mannequin)
+                
+                # Setup both camera modes
+                self.fps_camera = FPSCamera(self.base.cam, player_entity=None, sensitivity=40.0)
+                self.third_person_camera = ThirdPersonCamera(self.base.cam, player_entity=None, sensitivity=40.0)
+                
+                # Set active camera based on mode
+                if self.camera_mode == 'third_person':
+                    self.camera_controller = self.third_person_camera
+                    self.local_mannequin.root.show()  # Show mannequin in third-person
+                else:
+                    self.camera_controller = self.fps_camera
+                    self.local_mannequin.root.hide()  # Hide mannequin in first-person
+                
+                # Set initial camera orientation
+                self.base.cam.setHpr(0, 0, 0)
+                
+                self.input.lock_mouse()
 
     def update(self, dt: float):
         """Process input and update player transform."""
@@ -87,13 +117,29 @@ class PlayerControlSystem(System):
         
         state = self.physics_states[player_id]
         
+        # Handle camera mode toggle (V key)
+        self.camera_toggle_cooldown = max(0, self.camera_toggle_cooldown - dt)
+        if self.input.is_key_down('v') and self.camera_toggle_cooldown <= 0:
+            self._toggle_camera_mode()
+            self.camera_toggle_cooldown = 0.3  # 300ms cooldown
+        
         # 1. Update Camera
         if self.camera_controller:
-            self.camera_controller.update(
-                self.input.mouse_delta[0],
-                self.input.mouse_delta[1],
-                dt
-            )
+            if self.camera_mode == 'third_person':
+                # Third-person camera needs target position
+                self.camera_controller.update(
+                    self.input.mouse_delta[0],
+                    self.input.mouse_delta[1],
+                    dt,
+                    transform.position
+                )
+            else:
+                # FPS camera
+                self.camera_controller.update(
+                    self.input.mouse_delta[0],
+                    self.input.mouse_delta[1],
+                    dt
+                )
 
         # 2. Check Environment (Water & Ground)
         in_water = False
@@ -230,14 +276,45 @@ class PlayerControlSystem(System):
         
         update_timers(state, dt)
 
-        # Update camera position to follow player
-        cam_offset = LVector3f(0, 0, 1.8)
-        self.base.cam.setPos(transform.position + cam_offset)
+        # Update local mannequin position and animations
+        if self.local_mannequin:
+            self.local_mannequin.root.setPos(transform.position)
+            
+            # Update mannequin rotation to face camera direction (in third-person)
+            if self.camera_mode == 'third_person' and self.third_person_camera:
+                self.local_mannequin.root.setH(self.third_person_camera.yaw)
+            elif self.camera_mode == 'first_person' and self.fps_camera:
+                self.local_mannequin.root.setH(self.fps_camera.yaw)
+            
+            # Update animations based on physics state
+            if self.local_animation_controller:
+                velocity = LVector3f(state.velocity_x, state.velocity_z, state.velocity_y)
+                self.local_animation_controller.update(dt, velocity, state.grounded)
+        
+        # Update camera position for first-person mode
+        if self.camera_mode == 'first_person':
+            cam_offset = LVector3f(0, 0, 1.8)
+            self.base.cam.setPos(transform.position + cam_offset)
         
         # Debug toggle
         if self.input.is_key_down('escape'):
             self.input.unlock_mouse()
 
+    def _toggle_camera_mode(self):
+        """Toggle between first-person and third-person camera."""
+        if self.camera_mode == 'third_person':
+            self.camera_mode = 'first_person'
+            self.camera_controller = self.fps_camera
+            if self.local_mannequin:
+                self.local_mannequin.root.hide()
+            print("📷 Switched to First-Person")
+        else:
+            self.camera_mode = 'third_person'
+            self.camera_controller = self.third_person_camera
+            if self.local_mannequin:
+                self.local_mannequin.root.show()
+            print("📷 Switched to Third-Person")
+    
     def _get_system(self, system_name):
         """Helper to look up a sibling system."""
         if hasattr(self.world, '_systems'):

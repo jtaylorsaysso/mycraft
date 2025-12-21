@@ -1,6 +1,6 @@
 """Tests for dynamic chunk loading and world generation."""
 import pytest
-from games.voxel_world.systems.world_gen import World
+from games.voxel_world.systems.world_gen import TerrainSystem
 
 
 def test_get_player_chunk_coords():

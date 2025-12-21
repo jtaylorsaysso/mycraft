@@ -1,10 +1,13 @@
-# MyCraft – Playtest Build
+# MyCraft – Create Voxel Worlds Together
 
-A voxel engine experiment focused on performance and multiplayer.
+**A beginner-friendly voxel game engine** for building action-RPG adventures. No coding required - just creativity!
 
 ## Status
 
-Build Status: Pre-alpha playtest
+Build Status: Pre-alpha playtest  
+**Visual Map Editor**: Coming in Milestone 3
+
+**📖 [Vision](VISION.md)** | **🗺️ [Roadmap](ROADMAP.md)** | **📚 [Documentation](docs/index.md)**
 
 ---
 
@@ -54,70 +57,49 @@ Open terminal in this folder and run:
 
 ---
 
-## 🛠️ For Developers (Technical Details)
+## 🎨 What's Inside
 
-### Core Features
+MyCraft comes with a complete voxel world to explore:
 
-- **Chunk-Based Terrain**: Infinite generation, greedy meshing, dynamic loading/culling.
-- **Biome System**: 8 distinct biomes (Plains, Forest, Rocky, Desert, Mountain, Canyon, River, Beach, Swamp).
-- **Texture Atlas**: 16x16 tile grid from `terrain.png` with per-face UV mapping.
-- **Block Registry**: 19 block types with color fallback and texture support.
-- **Physics**: Kinematic character controller, Mario-style jumping, collision handling.
-- **Water Physics**: Buoyancy and swimming mechanics via `WaterPhysicsSystem`.
-- **Networking**: TCP sync + UDP Broadcast discovery (Port 5420/5421).
-- **Performance**: Frustum culling, throttled chunk generation.
+- **8 Unique Biomes**: Plains, forests, mountains, deserts, canyons, rivers, beaches, and swamps
+- **Multiplayer**: Play with friends on your local network
+- **Customization**: Change textures, colors, and more *(more tools coming soon!)*
+- **Action-RPG Gameplay**: Explore, jump, swim, and adventure
 
-### Architecture
+### Coming Soon
 
-```text
-mycraft/
-├── engine/           # Reusable Game Engine (ECS, Networking, Physics, Rendering)
-│   ├── animation/    # Panda3D-based animation system
-│   ├── core/         # Core utilities (logging, config)
-│   ├── ecs/          # Entity Component System (World, Entity, Component, System)
-│   ├── input/        # Input management (keyboard, mouse)
-│   ├── networking/   # Client/Server networking + remote player rendering
-│   ├── physics/      # Physics engine components
-│   ├── rendering/    # Rendering utilities (camera, texture atlas, environment)
-│   ├── systems/      # Core ECS systems (input, interaction, lifecycle, etc.)
-│   └── ui/           # HUD and UI components
-├── games/            # Specific game implementations
-│   └── voxel_world/  # The main Voxel Game
-│       ├── biomes/   # Biome definitions
-│       ├── blocks/   # Block types
-│       ├── config/   # Game configuration
-│       └── systems/  # Game-specific systems (world gen, gameplay input)
-├── launcher.py       # Tkinter GUI Entry Point
-└── run_client.py     # CLI Entry Point
-```
+- **Visual Map Editor** (Milestone 3): Build worlds with friends in real-time
+- **Character Customization** (Milestone 4): Create unique looks without coding
+- **More Biomes & Content**: Expanding the world
 
-### Manual CLI Commands
+---
 
-If the launcher isn't your thing, you can use the CLI:
+## 🔧 For Advanced Users
 
-#### Server
+Want to dive deeper? MyCraft is built on a solid technical foundation:
 
-```bash
-python run_server.py --broadcast-rate 20
-```
+- **Engine**: Powered by Panda3D with ECS architecture
+- **Physics**: Kinematic character controller with slope handling
+- **Networking**: TCP-based multiplayer with LAN discovery
+- **Extensible**: Python-based, fully customizable
 
-#### Client
+See the [Documentation](docs/index.md) for technical details and API references.
 
-```bash
-python run_client.py --host 127.0.0.1 --preset creative --debug
-```
+---
 
-### Troubleshooting
+## 🤝 Contributing
 
-- **"Permission denied"**: Run `chmod +x *.py` on Mac/Linux.
-- **Stuck Mouse**: Press `Esc` to unlock.
-- **Firewall**: Ensure ports **5420 (TCP)** and **5421 (UDP)** are allowed.
+Want to help make MyCraft better?
+
+- **Playtesters**: Your feedback shapes the game! See [CONTRIBUTING.md](CONTRIBUTING.md) for how to report bugs and share ideas
+- **Developers**: Check out [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code style, and how to submit changes
+- **Creators**: Share your custom content and ideas
 
 ---
 
 ## 📝 Summary
 
-- **Target**: Casual playtesters & devs.
-- **Stack**: Python 3.12 + Panda3D Engine.
-- **Status**: Pre-alpha playtest.
-- **Next Steps**: System completeness (server replication, inventory stacking), noise-based terrain, chat system.
+- **Target**: Absolute beginners who want to create voxel games
+- **Stack**: Python 3.12 + Panda3D Engine
+- **Status**: Pre-alpha playtest
+- **Next Steps**: Visual editor (Milestone 3), customization tools (Milestone 4)

@@ -9,7 +9,7 @@ from engine.physics import (
 
 
 class MockEntity:
-    """Mock entity for testing without Ursina dependency."""
+    """Mock entity for testing without Panda3D dependency."""
     def __init__(self, x=0.0, y=0.0, z=0.0):
         self.x = x
         self.y = y

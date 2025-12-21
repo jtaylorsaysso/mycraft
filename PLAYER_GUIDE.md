@@ -37,8 +37,14 @@ The game window will open, and you'll spawn into the world.
 | **Look** | Mouse |
 | **Jump / Fly Up** | `Space` |
 | **Crouch / Fly Down** | `Shift` |
+| **Toggle Camera View** | `V` |
 | **Interact / Build** | `Left Click` / `Right Click` |
 | **Menu / Unlock Mouse** | `Escape` |
+
+### 📷 Camera Modes
+
+- **Third-Person (Default)**: See your character from behind. Great for exploring and seeing your animations.
+- **First-Person**: Classic FPS view. Press `V` to toggle between modes.
 
 ### 🦸 God Mode Controls
 

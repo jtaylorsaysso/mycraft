@@ -1,13 +1,82 @@
 #!/usr/bin/env python3
+"""
+MyCraft Launcher
+Easy entry point for players - handles dependency checking and game launch
+"""
+
+# === DEPENDENCY CHECK (before importing engine code) ===
+import sys
+from pathlib import Path
+
+def check_dependencies():
+    """Check if required dependencies are available."""
+    try:
+        import panda3d
+        return True, None
+    except ImportError:
+        return False, "panda3d"
+
+def find_venv():
+    """Try to find a venv in common locations."""
+    possible_venvs = [
+        Path("venv/bin/python3"),
+        Path("venv/bin/python"),
+        Path(".venv/bin/python3"),
+        Path(".venv/bin/python"),
+    ]
+    
+    for venv_path in possible_venvs:
+        if venv_path.exists():
+            return str(venv_path.absolute())
+    return None
+
+# Check dependencies before doing anything else
+deps_ok, missing_dep = check_dependencies()
+if not deps_ok:
+    print("=" * 70)
+    print("⚠️  MyCraft Launcher - Missing Dependencies")
+    print("=" * 70)
+    print()
+    print(f"Missing: {missing_dep}")
+    print()
+    
+    # Try to find venv
+    venv_python = find_venv()
+    if venv_python:
+        print("✓ Found virtual environment!")
+        print()
+        print("Please run the launcher using:")
+        print(f"  {venv_python} launcher.py")
+        print()
+        print("Or activate the venv first:")
+        print("  source venv/bin/activate")
+        print("  ./launcher.py")
+    else:
+        print("Please install dependencies:")
+        print()
+        print("Option 1 - Use virtual environment (recommended):")
+        print("  python3 -m venv venv")
+        print("  source venv/bin/activate")
+        print("  pip install -r requirements.txt")
+        print("  ./launcher.py")
+        print()
+        print("Option 2 - Install system-wide:")
+        print("  pip install -r requirements.txt")
+        print("  ./launcher.py")
+    
+    print()
+    print("=" * 70)
+    input("Press Enter to exit...")
+    sys.exit(1)
+
+# === IMPORTS (only after dependency check passes) ===
 import tkinter as tk
 from tkinter import ttk, messagebox
 import subprocess
-import sys
 import socket
 import time
 import threading
 import json
-from pathlib import Path
 from engine.networking.discovery import find_servers
 
 class MyCraftLauncher:
@@ -264,8 +333,34 @@ class MyCraftLauncher:
             cmd.extend(["--record", f"{player_name}_{int(time.time())}"])
             
         print(f"Launching Single Player: {' '.join(cmd)}")
-        self.root.destroy()
-        subprocess.Popen(cmd)
+        self.status_var.set("Launching game...")
+        
+        try:
+            # Don't close launcher - keep it open for error reporting
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            
+            # Give it a moment to fail or succeed
+            try:
+                return_code = proc.wait(timeout=2.0)
+                if return_code != 0:
+                    # Game crashed immediately
+                    stderr = proc.stderr.read()
+                    self._handle_launch_error("Single Player", stderr)
+                else:
+                    # Clean exit within 2 seconds (shouldn't happen for game)
+                    self.status_var.set("Game started successfully!")
+                    self.root.after(2000, self.root.destroy)
+            except subprocess.TimeoutExpired:
+                # Still running after 2 seconds - good!
+                self.status_var.set("Game launched! Close this window or leave it open.")
+                self._enable_close_button()
+        except Exception as e:
+            self._handle_launch_error("Single Player", str(e))
 
     def launch_multiplayer(self):
         """Connection with validation and fallback."""
@@ -303,8 +398,34 @@ class MyCraftLauncher:
             cmd.extend(["--record", f"{player_name}_{int(time.time())}"])
             
         print(f"Launching Multiplayer: {' '.join(cmd)}")
-        self.root.destroy()
-        subprocess.Popen(cmd)
+        self.status_var.set("Launching multiplayer...")
+        
+        try:
+            # Don't close launcher - keep it open for error reporting
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            
+            # Give it a moment to fail or succeed
+            try:
+                return_code = proc.wait(timeout=2.0)
+                if return_code != 0:
+                    # Game crashed immediately
+                    stderr = proc.stderr.read()
+                    self._handle_launch_error("Multiplayer", stderr)
+                else:
+                    # Clean exit within 2 seconds (shouldn't happen for game)
+                    self.status_var.set("Game started successfully!")
+                    self.root.after(2000, self.root.destroy)
+            except subprocess.TimeoutExpired:
+                # Still running after 2 seconds - good!
+                self.status_var.set("Game launched! Close this window or leave it open.")
+                self._enable_close_button()
+        except Exception as e:
+            self._handle_launch_error("Multiplayer", str(e))
     
     def launch_server(self):
         self.save_settings()
@@ -330,6 +451,66 @@ class MyCraftLauncher:
         self.status_var.set("Server launch command sent!")
         # Brief delay then verify
         self.root.after(2000, lambda: self.status_var.set("Server active!" if self._check_server_active() else "Server starting..."))
+    
+    def _handle_launch_error(self, mode, error_msg):
+        """Handle game launch errors gracefully."""
+        self.status_var.set(f"{mode} launch failed - see error")
+        
+        # Parse error for common issues
+        error_lower = error_msg.lower()
+        
+        if "modulenotfounderror" in error_lower and "panda3d" in error_lower:
+            user_msg = (
+                "Missing dependency: Panda3D\n\n"
+                "Please install dependencies:\n"
+                "  pip install -r requirements.txt\n\n"
+                "If using a venv, make sure it's activated!"
+            )
+        elif "modulenotfounderror" in error_lower:
+            user_msg = (
+                f"Missing Python module\n\n"
+                f"Please install dependencies:\n"
+                f"  pip install -r requirements.txt\n\n"
+                f"Error: {error_msg[:200]}"
+            )
+        elif "permission denied" in error_lower:
+            user_msg = (
+                "Permission error\n\n"
+                "Make sure run_client.py is executable\n"
+                "and you have write permissions in this directory."
+            )
+        else:
+            # Generic error
+            user_msg = (
+                f"Game failed to start\n\n"
+                f"Error details: {error_msg[:300]}\n\n"
+                f"Check logs/ folder for more information."
+            )
+        
+        # Show error with option to retry or close
+        response = messagebox.askretrycancel(f"{mode} Launch Failed", user_msg)
+        if response:
+            # User wants to retry
+            if mode == "Single Player":
+                self.launch_single_player()
+            else:
+                self.launch_multiplayer()
+        else:
+            # User cancelled - keep launcher open
+            self.status_var.set("Launch cancelled - ready to try again")
+    
+    def _enable_close_button(self):
+        """Add a close button after successful launch."""
+        if hasattr(self, '_close_button_added'):
+            return
+        self._close_button_added = True
+        
+        close_btn = ttk.Button(
+            self.root,
+            text="Close Launcher",
+            command=self.root.destroy
+        )
+        close_btn.pack(side=tk.BOTTOM, pady=10)
 
 if __name__ == "__main__":
     try:

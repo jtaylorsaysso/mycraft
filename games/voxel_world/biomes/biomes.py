@@ -31,6 +31,10 @@ class Biome:
     subsurface_block: str
     color_tint: Optional[tuple[float, float, float]] = None
 
+    def get_height(self, x: float, z: float) -> int:
+        """Get terrain height at world coordinates."""
+        return self.height_function(x, z)
+
 
 class BiomeRegistry:
     """Central registry for all biome types.
