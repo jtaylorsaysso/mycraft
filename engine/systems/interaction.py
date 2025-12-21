@@ -15,51 +15,103 @@ class InventorySystem(System):
     def initialize(self):
         self.event_bus.subscribe("on_item_pickup", self.on_pickup)
         self.event_bus.subscribe("on_item_drop", self.on_drop)
+        self.event_bus.subscribe("request_drop_item", self.on_request_drop)
+
+    def on_request_drop(self, event: Any):
+        """Handle request to drop selected item."""
+        entity_id = event.entity_id
+        inventory = self.world.get_component(entity_id, Inventory)
+        if not inventory:
+            return
+            
+        slot_index = inventory.selected_slot
+        if 0 <= slot_index < len(inventory.slots):
+            slot = inventory.slots[slot_index]
+            if slot:
+                item_type, count = slot
+                # Drop entire stack
+                inventory.slots[slot_index] = None
+                
+                # Spawn item in world
+                transform = self.world.get_component(entity_id, Transform)
+                if transform:
+                    self.event_bus.publish("on_item_spawn", item_type=item_type, count=count, position=transform.position)
+
 
     def on_pickup(self, event: Any):
         entity_id = event.entity_id
         item_type = event.item_type
+        count = getattr(event, 'count', 1)  # Default to 1 if not specified
         
         inventory = self.world.get_component(entity_id, Inventory)
         if not inventory:
             return
 
-        # Simple add logic: find first empty slot or stackable slot
-        # In a real implementation this would check max_stack and item types
-        added = False
+        # Try to stack with existing items first
+        remaining = count
         for i, slot in enumerate(inventory.slots):
-            if slot is None:
-                inventory.slots[i] = item_type
-                added = True
-                break
-            elif slot == item_type:
-                # TODO: Implement stacking logic
-                pass
-                
-        if added:
-            logger.info(f"Entity {entity_id} picked up {item_type}")
+            if slot is not None:
+                slot_item, slot_count = slot
+                if slot_item == item_type and slot_count < inventory.max_stack:
+                    # Can stack here
+                    space_available = inventory.max_stack - slot_count
+                    to_add = min(remaining, space_available)
+                    inventory.slots[i] = (slot_item, slot_count + to_add)
+                    remaining -= to_add
+                    
+                    if remaining == 0:
+                        break
+        
+        # If we still have items remaining, find empty slots
+        if remaining > 0:
+            for i, slot in enumerate(inventory.slots):
+                if slot is None:
+                    to_add = min(remaining, inventory.max_stack)
+                    inventory.slots[i] = (item_type, to_add)
+                    remaining -= to_add
+                    
+                    if remaining == 0:
+                        break
+        
+        # Log result
+        picked_up = count - remaining
+        if picked_up > 0:
+            logger.info(f"Entity {entity_id} picked up {picked_up}x {item_type}")
             # If item was a world entity, destroy it
             item_entity = getattr(event, 'item_entity_id', None)
             if item_entity:
                 self.world.destroy_entity(item_entity)
+        
+        if remaining > 0:
+            logger.warning(f"Entity {entity_id} inventory full, {remaining}x {item_type} not picked up")
 
     def on_drop(self, event: Any):
         entity_id = event.entity_id
         slot_index = event.slot_index
+        count = getattr(event, 'count', None)  # None means drop entire stack
         
         inventory = self.world.get_component(entity_id, Inventory)
         if not inventory or slot_index >= len(inventory.slots):
             return
             
-        item = inventory.slots[slot_index]
-        if item:
-            inventory.slots[slot_index] = None
+        slot = inventory.slots[slot_index]
+        if slot:
+            item_type, slot_count = slot
+            
+            # Determine how many to drop
+            drop_count = count if count is not None else slot_count
+            drop_count = min(drop_count, slot_count)  # Can't drop more than we have
+            
+            # Update or clear slot
+            if drop_count >= slot_count:
+                inventory.slots[slot_index] = None
+            else:
+                inventory.slots[slot_index] = (item_type, slot_count - drop_count)
             
             # Spawn item in world
             transform = self.world.get_component(entity_id, Transform)
             if transform:
-                # TODO: Spawn item entity at position
-                self.event_bus.publish("on_item_spawn", item_type=item, position=transform.position)
+                self.event_bus.publish("on_item_spawn", item_type=item_type, count=drop_count, position=transform.position)
 
 
 class TriggerSystem(System):

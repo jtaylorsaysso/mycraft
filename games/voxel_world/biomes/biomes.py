@@ -9,6 +9,7 @@ playability (readable spaces, gentle slopes, clear navigation).
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional
 import math
+from games.voxel_world.biomes.noise import get_noise
 
 
 @dataclass
@@ -105,19 +106,15 @@ class BiomeRegistry:
         Returns:
             Biome instance for this location
         """
-        # Simple biome noise using sine waves
-        # Low frequency to create large biome regions
-        biome_noise_x = math.sin(x * 0.01) * math.cos(z * 0.01)
-        biome_noise_z = math.cos(x * 0.015) * math.sin(z * 0.015)
-        biome_value = biome_noise_x + biome_noise_z
+        # Perlin noise for biome selection
+        # Low frequency for large biome regions
+        biome_value = get_noise(x, z, scale=0.008, octaves=3) * 2.0  # Scale to ~[-2, 2]
         
         # Secondary noise for more variety
-        secondary_noise = math.sin(x * 0.008) * math.cos(z * 0.012)
+        secondary_noise = get_noise(x + 1000, z + 1000, scale=0.01, octaves=2)
         
-        # Map noise value to biomes
-        # Extended value range for new biomes
-        # River noise (ridges: variables width)
-        river_noise = abs(math.sin(x * 0.015 + z * 0.005) + math.cos(z * 0.012 - x * 0.005))
+        # River noise (looking for ridges/valleys)
+        river_noise = abs(get_noise(x, z, scale=0.012, octaves=2))
         if river_noise < 0.15: # Narrow bands
              return cls.get_biome("river")
 
@@ -127,7 +124,7 @@ class BiomeRegistry:
         elif biome_value < -0.8:
             # Check for water proximity for beach/swamp
             # Water noise (simulating moisture/water level)
-            water_noise = math.sin(x * 0.02) * math.cos(z * 0.02)
+            water_noise = get_noise(x + 2000, z + 2000, scale=0.015, octaves=2)
             
             # If low terrain and high moisture/water proximity
             if secondary_noise < -0.2: 
@@ -163,14 +160,13 @@ def plains_height(x: float, z: float) -> int:
     """
     base_height = 0
     
-    # Gentle sine waves for broad, readable terrain
-    wave_x = math.sin(x * 0.05) * 2.5
-    wave_z = math.cos(z * 0.05) * 2.5
+    # Perlin noise for natural rolling hills
+    terrain = get_noise(x, z, scale=0.04, octaves=3) * 2.5
     
     # Add subtle detail
-    detail = math.sin(x * 0.1) * math.cos(z * 0.1) * 0.5
+    detail = get_noise(x, z, scale=0.08, octaves=2) * 0.5
     
-    height = base_height + wave_x + wave_z + detail
+    height = base_height + terrain + detail
     height = max(-3, min(3, height))
     
     return int(round(height))
@@ -195,17 +191,17 @@ def rocky_height(x: float, z: float) -> int:
     """
     base_height = 0
     
-    # Larger amplitude waves
-    wave_x = math.sin(x * 0.04) * 3.5
-    wave_z = math.cos(z * 0.03) * 3.5
+    # Perlin noise for dramatic terrain
+    terrain = get_noise(x, z, scale=0.03, octaves=4) * 3.5
     
     # Sharper plateau effect for cliff-like features
-    plateau = math.floor(math.sin(x * 0.02) * 2.5) * 2
+    plateau_noise = get_noise(x, z, scale=0.015, octaves=2)
+    plateau = math.floor(plateau_noise * 2.5) * 2
     
-    # Add some roughness
-    roughness = math.sin(x * 0.08) * math.cos(z * 0.08) * 0.8
+    # Add roughness
+    roughness = get_noise(x + 500, z + 500, scale=0.06, octaves=3) * 0.8
     
-    height = base_height + wave_x + wave_z + plateau + roughness
+    height = base_height + terrain + plateau + roughness
     height = max(-6, min(6, height))
     
     return int(round(height))
@@ -221,11 +217,10 @@ def desert_height(x: float, z: float) -> int:
     """
     base_height = 0
     
-    # Very gentle waves
-    wave_x = math.sin(x * 0.03) * 0.5
-    wave_z = math.cos(z * 0.03) * 0.5
+    # Very gentle Perlin noise for dunes
+    terrain = get_noise(x, z, scale=0.025, octaves=2) * 0.5
     
-    height = base_height + wave_x + wave_z
+    height = base_height + terrain
     height = max(-1, min(1, height))
     
     return int(round(height))
@@ -242,18 +237,18 @@ def mountain_height(x: float, z: float) -> int:
     """
     base_height = 0
     
-    # Large amplitude waves for dramatic terrain
-    wave_x = math.sin(x * 0.03) * 6
-    wave_z = math.cos(z * 0.025) * 6
+    # Large amplitude Perlin noise for dramatic terrain
+    terrain = get_noise(x, z, scale=0.02, octaves=5) * 6
     
-    # Sharp peaks using squared sine
-    peaks = (math.sin(x * 0.015) ** 2) * 3
-    peaks += (math.cos(z * 0.015) ** 2) * 3
+    # Sharp peaks using power function
+    peak_noise = get_noise(x, z, scale=0.012, octaves=3)
+    peaks = (abs(peak_noise) ** 1.5) * 3
     
     # Plateau effect for flat "rest areas"
-    plateau = math.floor(math.sin(x * 0.01) * 1.5) * 2
+    plateau_noise = get_noise(x + 1500, z + 1500, scale=0.008, octaves=2)
+    plateau = math.floor(plateau_noise * 1.5) * 2
     
-    height = base_height + wave_x + wave_z + peaks + plateau
+    height = base_height + terrain + peaks + plateau
     height = max(-8, min(12, height))
     
     return int(round(height))
@@ -270,18 +265,18 @@ def canyon_height(x: float, z: float) -> int:
     """
     base_height = -2  # Biased toward valleys
     
-    # Create mesa shapes with flat tops
-    mesa_x = math.sin(x * 0.04) * 4
-    mesa_z = math.cos(z * 0.04) * 4
+    # Create mesa shapes with Perlin noise
+    mesa_noise = get_noise(x, z, scale=0.03, octaves=3) * 4
     
     # Flatten the tops using floor function (creates sharp edges)
-    mesa_top = math.floor((mesa_x + mesa_z) / 2)
+    mesa_top = math.floor(mesa_noise)
     
     # Add stepped terrain for parkour
-    steps = math.floor(math.sin(x * 0.08) * 1.5)
+    step_noise = get_noise(x + 3000, z + 3000, scale=0.06, octaves=2)
+    steps = math.floor(step_noise * 1.5)
     
     # Sharp valley cuts
-    valley = math.sin(x * 0.02) * math.cos(z * 0.02) * 3
+    valley = get_noise(x, z, scale=0.015, octaves=2) * 3
     
     height = base_height + mesa_top + steps + valley
     height = max(-6, min(2, height))
@@ -300,7 +295,7 @@ def river_height(x: float, z: float) -> int:
     base_depth = -3
     
     # Add some variation to river depth
-    variation = math.sin(x * 0.1) * 0.5
+    variation = get_noise(x, z, scale=0.08, octaves=2) * 0.5
     
     height = base_depth + variation
     
@@ -316,10 +311,10 @@ def beach_height(x: float, z: float) -> int:
     """
     base_height = -0.5
     
-    # Very gentle slope
-    wave = math.sin(x * 0.02) * 0.5 + math.cos(z * 0.02) * 0.5
+    # Very gentle slope with Perlin noise
+    terrain = get_noise(x, z, scale=0.015, octaves=2) * 0.5
     
-    height = base_height + wave * 0.5
+    height = base_height + terrain * 0.5
     height = max(-1, min(0, height))
     
     return int(round(height))
@@ -335,10 +330,10 @@ def swamp_height(x: float, z: float) -> int:
     """
     base_height = -1
     
-    # Mounds and pools
-    mound = math.sin(x * 0.1) * math.cos(z * 0.1)
+    # Mounds and pools with Perlin noise
+    terrain = get_noise(x, z, scale=0.08, octaves=3)
     
-    height = base_height + mound
+    height = base_height + terrain
     height = max(-2, min(0, height))
     
     return int(round(height))

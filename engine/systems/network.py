@@ -6,6 +6,7 @@ from engine.ecs.component import Component, get_component_class
 from engine.components.core import Transform, Health
 from engine.core.logger import get_logger
 from typing import Dict, Any, List
+import json
 
 logger = get_logger(__name__)
 
@@ -26,23 +27,109 @@ class SyncSystem(System):
             Transform,
             Health
         }
+        
+        # Track dirty components (changed since last sync)
+        self.dirty_entities: set = set()
+        
+        # Sync rate limiting
+        self.sync_interval = 0.05  # Sync every 50ms (20Hz)
+        self.time_since_sync = 0.0
 
     def initialize(self):
-        # We hook into the existing network events if available
-        # This will be wired up by the main game loop
+        # Subscribe to component change events if available
+        # For now, we'll sync all entities periodically
         pass
+
+    def mark_dirty(self, entity_id: str):
+        """Mark an entity as having changed components."""
+        self.dirty_entities.add(entity_id)
 
     def update(self, dt: float):
         if not self.is_server and not self.network_client:
             return
+        
+        self.time_since_sync += dt
+        
+        # Rate limit syncing
+        if self.time_since_sync < self.sync_interval:
+            return
+        
+        self.time_since_sync = 0.0
             
-        # If server: broadcast updates for dirty components
+        # If server: broadcast updates for all entities with synced components
         if self.is_server and self.network_server:
-            pass # TODO: Implement server replication logic
+            self._sync_server_to_clients()
             
         # If client: send local player components to server
         if not self.is_server and self.network_client:
             self._sync_client_to_server()
+
+    def _sync_server_to_clients(self):
+        """Broadcast entity component updates to all clients."""
+        # Collect all entities with syncable components
+        updates = []
+        
+        for entity_id in self.world._entities:
+            entity_data = {
+                "entity_id": entity_id,
+                "components": {}
+            }
+            
+            has_synced_components = False
+            
+            for comp_class in self.sync_registry:
+                component = self.world.get_component(entity_id, comp_class)
+                if component:
+                    has_synced_components = True
+                    # Serialize component data
+                    entity_data["components"][comp_class.__name__] = self._serialize_component(component)
+            
+            if has_synced_components:
+                updates.append(entity_data)
+        
+        if updates:
+            # Send via existing server infrastructure
+            message = json.dumps({
+                "type": "component_sync",
+                "entities": updates
+            }) + "\n"
+            
+            # Broadcast to all clients
+            # Note: This requires the server to expose a broadcast method
+            # For now, we'll assume it's available via the network_server
+            if hasattr(self.network_server, 'broadcast_to_all'):
+                import asyncio
+                asyncio.create_task(self.network_server.broadcast_to_all(message))
+        
+        # Clear dirty flags after sync
+        self.dirty_entities.clear()
+
+    def _serialize_component(self, component: Component) -> Dict[str, Any]:
+        """Convert a component to a JSON-serializable dict."""
+        data = {}
+        
+        # Handle Transform specially (LVector3f needs conversion)
+        if isinstance(component, Transform):
+            pos = component.position
+            data = {
+                "position": [pos.x, pos.y, pos.z] if pos else [0, 0, 0]
+            }
+        # Handle Health
+        elif isinstance(component, Health):
+            data = {
+                "current": component.current,
+                "max_hp": component.max_hp
+            }
+        else:
+            # Generic serialization for other components
+            for attr in dir(component):
+                if not attr.startswith('_') and not callable(getattr(component, attr)):
+                    value = getattr(component, attr)
+                    # Only serialize basic types
+                    if isinstance(value, (int, float, str, bool, list, dict)):
+                        data[attr] = value
+        
+        return data
 
     def _sync_client_to_server(self):
         """Send local entity updates to server."""
@@ -52,25 +139,39 @@ class SyncSystem(System):
             return
             
         # Get components to sync
-        # In a real impl, we'd check for changes (dirty flag)
         transform = self.world.get_component(player_id, Transform)
         if transform:
-            # Send position update (using existing protocol or new one)
-            # self.network_client.send_position(transform.position)
+            # Send position update (using existing protocol)
+            # The existing client already sends position updates
+            # This is redundant with the existing system, so we skip it
             pass
 
     def apply_remote_update(self, entity_id: str, component_name: str, data: Dict[str, Any]):
         """Apply an update received from the network."""
         comp_class = get_component_class(component_name)
         if not comp_class:
+            logger.warning(f"Unknown component class: {component_name}")
             return
             
         component = self.world.get_component(entity_id, comp_class)
         if not component:
-            # Create if missing? Or ignore?
-            return
+            # Create component if missing
+            component = comp_class()
+            self.world.add_component(entity_id, component)
             
-        # Update fields
-        for key, value in data.items():
-            if hasattr(component, key):
-                setattr(component, key, value)
+        # Update fields based on component type
+        if isinstance(component, Transform):
+            from panda3d.core import LVector3f
+            if "position" in data:
+                pos = data["position"]
+                component.position = LVector3f(pos[0], pos[1], pos[2])
+        elif isinstance(component, Health):
+            if "current" in data:
+                component.current = data["current"]
+            if "max_hp" in data:
+                component.max_hp = data["max_hp"]
+        else:
+            # Generic update for other components
+            for key, value in data.items():
+                if hasattr(component, key):
+                    setattr(component, key, value)

@@ -7,7 +7,7 @@ from typing import Any, Dict
 from engine.game import VoxelGame, Block
 from engine.ecs.component import get_component_class
 from engine.core.logger import get_logger
-from ursina import Vec3
+from panda3d.core import LVector3f as Vec3
 
 logger = get_logger(__name__)
 

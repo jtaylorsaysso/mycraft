@@ -1,3 +1,12 @@
+"""
+DEPRECATED: Tests for Ursina-based RemotePlayer.
+
+These tests use the deprecated games.voxel_world.entities.remote_player.RemotePlayer.
+New tests should target engine.networking.remote_player.RemotePlayer.
+
+Kept for reference during migration.
+"""
+
 import unittest
 from unittest.mock import MagicMock
 import sys

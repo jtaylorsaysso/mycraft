@@ -1,6 +1,6 @@
 """Tests for texture atlas system."""
 import pytest
-from ursina import Vec2
+from panda3d.core import LVector2f as Vec2
 from engine.rendering import TextureAtlas
 
 

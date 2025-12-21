@@ -5,7 +5,7 @@ from engine.components.gameplay import Trigger
 from engine.components.core import Transform
 import os
 import yaml
-from ursina import Vec3
+from panda3d.core import LVector3f as Vec3
 
 class TestConfigLoader(unittest.TestCase):
     def setUp(self):

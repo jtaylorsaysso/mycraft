@@ -4,7 +4,7 @@ from engine.components.core import Health, Transform, Inventory
 from engine.components.gameplay import Trigger
 from engine.systems.lifecycle import DamageSystem
 from engine.systems.interaction import InventorySystem, TriggerSystem
-from ursina import Vec3
+from panda3d.core import LVector3f as Vec3
 
 class TestGameplaySystems(unittest.TestCase):
     def setUp(self):

@@ -14,6 +14,10 @@ def run(**kwargs):
     # Register blocks (Engine provides defaults, we can add more)
     game.register_block(Block("gold_ore", (3,0), color="#FFD700", breakable=True))
     
+    # Register Game-Specific Systems
+    from games.voxel_world.systems.gameplay_input import GameplayInputSystem
+    game.world.add_system(GameplayInputSystem(game.world, game.world.event_bus, game))
+    
     # Hook into events
     def on_break(event):
         print(f"Block broken: {event.block_type}")

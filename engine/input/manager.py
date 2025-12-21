@@ -30,7 +30,17 @@ class InputManager:
         self.base.accept('keystroke', self._on_keystroke)
         
         # Also accept specific common keys for down/up tracking
-        common_keys = ['w', 's', 'a', 'd', 'space', 'shift', 'control', 'escape', 'e', 'q', 'tab']
+        common_keys = [
+            'w', 's', 'a', 'd', 'space', 'shift', 'control', 'escape', 
+            'e', 'q', 'tab', 't', '/', 'g', 'enter', 'backspace'
+        ]
+        # Function keys
+        for i in range(1, 13):
+            common_keys.append(f'f{i}')
+            
+        # Mouse buttons
+        common_keys.extend(['mouse1', 'mouse2', 'mouse3'])
+        
         for key in common_keys:
             self.base.accept(key, self._on_key_down, [key])
             self.base.accept(f'{key}-up', self._on_key_up, [key])

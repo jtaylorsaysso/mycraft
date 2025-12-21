@@ -71,17 +71,22 @@ Open terminal in this folder and run:
 
 ```text
 mycraft/
-├── engine/           # Reusable Game Engine (ECS, Networking, Physics)
+├── engine/           # Reusable Game Engine (ECS, Networking, Physics, Rendering)
+│   ├── animation/    # Panda3D-based animation system
 │   ├── core/         # Core utilities (logging, config)
 │   ├── ecs/          # Entity Component System (World, Entity, Component, System)
-│   ├── networking/   # Client/Server networking logic
+│   ├── input/        # Input management (keyboard, mouse)
+│   ├── networking/   # Client/Server networking + remote player rendering
 │   ├── physics/      # Physics engine components
-│   └── rendering/    # Rendering interactions
-├── games/            # specific game implementations
-│   └── voxel_world/  # The main Voxel RPG
-│       ├── systems/  # Game-specific systems (WorldGen, Input, etc.)
-│       ├── components/# Game specific components
-│       └── entities/ # Prefabs (Player, etc.)
+│   ├── rendering/    # Rendering utilities (camera, texture atlas, environment)
+│   ├── systems/      # Core ECS systems (input, interaction, lifecycle, etc.)
+│   └── ui/           # HUD and UI components
+├── games/            # Specific game implementations
+│   └── voxel_world/  # The main Voxel Game
+│       ├── biomes/   # Biome definitions
+│       ├── blocks/   # Block types
+│       ├── config/   # Game configuration
+│       └── systems/  # Game-specific systems (world gen, gameplay input)
 ├── launcher.py       # Tkinter GUI Entry Point
 └── run_client.py     # CLI Entry Point
 ```
@@ -90,13 +95,13 @@ mycraft/
 
 If the launcher isn't your thing, you can use the CLI:
 
-**Server**
+#### Server
 
 ```bash
 python run_server.py --broadcast-rate 20
 ```
 
-**Client**
+#### Client
 
 ```bash
 python run_client.py --host 127.0.0.1 --preset creative --debug
@@ -113,6 +118,6 @@ python run_client.py --host 127.0.0.1 --preset creative --debug
 ## 📝 Summary
 
 - **Target**: Casual playtesters & devs.
-- **Stack**: Python 3.12 + Ursina Engine.
+- **Stack**: Python 3.12 + Panda3D Engine.
 - **Status**: Pre-alpha playtest.
-- **Next Steps**: Persistence, RPG mechanics, additional NPC systems.
+- **Next Steps**: System completeness (server replication, inventory stacking), noise-based terrain, chat system.

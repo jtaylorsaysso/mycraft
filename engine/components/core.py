@@ -2,7 +2,7 @@
 Core gameplay components.
 """
 from dataclasses import dataclass, field
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Tuple
 from engine.ecs.component import Component, register_component
 from panda3d.core import LVector3f as Vec3
 
@@ -26,7 +26,10 @@ class Health(Component):
 @register_component
 @dataclass
 class Inventory(Component):
-    """Item storage."""
-    slots: List[Optional[str]] = field(default_factory=lambda: [None] * 9)
+    """Item storage with stacking support.
+    
+    Each slot contains either None or a tuple of (item_type: str, count: int).
+    """
+    slots: List[Optional[Tuple[str, int]]] = field(default_factory=lambda: [None] * 9)
     selected_slot: int = 0
     max_stack: int = 64
