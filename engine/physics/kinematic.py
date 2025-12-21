@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, Optional, Protocol, Any
+from typing import Callable, Optional, Protocol, Any, Tuple
 from panda3d.core import LVector3f, CollisionRay, CollisionNode, CollisionTraverser, CollisionHandlerQueue, BitMask32
 
 
@@ -42,6 +42,52 @@ def apply_gravity(state: KinematicState, dt: float, gravity: float = -9.81, max_
 
     if max_fall_speed is not None and state.velocity_y < max_fall_speed:
         state.velocity_y = max_fall_speed
+
+
+def apply_horizontal_acceleration(
+    state: KinematicState,
+    target_vel: tuple[float, float],
+    dt: float,
+    grounded: bool,
+) -> None:
+    """Smoothly accelerate/decelerate horizontal velocity.
+
+    Args:
+        state: The entity's kinematic state.
+        target_vel: Desired (x, z) velocity (already clamped to MOVE_SPEED).
+        dt: Frame delta time.
+        grounded: Whether the entity is on the ground.
+    """
+    from engine.physics.constants import ACCELERATION, FRICTION, AIR_CONTROL
+
+    # Effective acceleration based on grounded state
+    effective_accel = ACCELERATION if grounded else ACCELERATION * AIR_CONTROL
+
+    for axis, name in zip((0, 1), ("x", "z")):
+        cur = getattr(state, f"velocity_{name}")
+        target = target_vel[axis]
+        
+        if abs(target) > 0.001:
+            # Determine accel rate: use boosted deceleration if turning around
+            accel = effective_accel
+            if cur * target < 0:
+                # Opposing direction: apply boosted deceleration
+                accel = max(accel, FRICTION * 2.0)
+                
+            # Accelerate toward target speed
+            if cur < target:
+                cur = min(cur + accel * dt, target)
+            elif cur > target:
+                cur = max(cur - accel * dt, target)
+        else:
+            # No input – apply friction (decelerate to zero)
+            if abs(cur) > 0.001:
+                decel = FRICTION
+                if cur > 0:
+                    cur = max(cur - decel * dt, 0.0)
+                else:
+                    cur = min(cur + decel * dt, 0.0)
+        setattr(state, f"velocity_{name}", cur)
 
 
 def integrate_movement(
@@ -148,60 +194,161 @@ def perform_jump(state: KinematicState, jump_height: float) -> None:
 
 def raycast_ground_height(
     entity: Any,
-    collision_traverser: Optional[CollisionTraverser] = None,
+    collision_traverser: CollisionTraverser,
+    render_node: Any,
     max_distance: float = 5.0,
     foot_offset: float = 0.2,
-    ray_origin_offset: Optional[float] = None,
+    ray_origin_offset: float = 2.0,
     ignore: Optional[list] = None,
-) -> Optional[float]:
-    """Return the ground y-position below an entity using Panda3D collision system.
+    return_normal: bool = False
+) -> Optional[float] | Optional[Tuple[float, Tuple[float, float, float]]]:
+    """Return the ground y-position below an entity using Panda3D collision.
 
-    This casts a ray straight down from just above the entity and, if it hits
-    something, returns the y-position where the entity's origin should be
-    placed so that its feet (offset by foot_offset) rest on the surface.
+    Casts a ray straight down from above the entity to detect terrain.
     
     Args:
-        entity: The entity to raycast from (must have position or world_position)
-        collision_traverser: Panda3D CollisionTraverser instance (optional for Phase 3)
+        entity: The entity to raycast from (must have x, y, z attributes)
+        collision_traverser: Panda3D CollisionTraverser instance
+        render_node: Root render node to traverse against
         max_distance: Maximum raycast distance
         foot_offset: Offset for feet placement
         ray_origin_offset: Height above entity to start ray
         ignore: List of entities to ignore (not yet implemented)
+        return_normal: If True, return (height, normal) tuple
     
     Returns:
-        Ground Y position or None if no hit
+        Ground Y position, or (height, normal) if return_normal=True, or None if no hit
     """
-    # Phase 3: Stub implementation - will be fully implemented when collision system is integrated
-    # For now, return None to allow game to continue running
-    # This will be replaced with proper Panda3D collision raycasting
+    from panda3d.core import (
+        CollisionRay, CollisionNode, CollisionHandlerQueue, 
+        BitMask32, LPoint3f, NodePath
+    )
+    
+    # Create ray from above entity pointing down
+    # Entity coordinates: x, y (up), z (depth)
+    # Panda3D coordinates: x, y (depth), z (up)
+    ray_origin = LPoint3f(entity.x, entity.z, entity.y + ray_origin_offset)
+    ray_direction = LVector3f(0, 0, -1)  # Down in Panda3D
+    
+    ray = CollisionRay()
+    ray.setOrigin(ray_origin)
+    ray.setDirection(ray_direction)
+    
+    # Create temporary collision node for ray
+    ray_node = CollisionNode('ground_ray')
+    ray_node.addSolid(ray)
+    ray_node.setFromCollideMask(BitMask32.bit(1))  # Collide with terrain layer
+    ray_node.setIntoCollideMask(BitMask32.allOff())  # Ray itself is not collidable
+    
+    # Create temporary NodePath for the ray
+    ray_np = NodePath(ray_node)
+    
+    # Traverse and check for collisions
+    handler = CollisionHandlerQueue()
+    collision_traverser.addCollider(ray_np, handler)
+    collision_traverser.traverse(render_node)
+    
+    # Get closest hit
+    if handler.getNumEntries() > 0:
+        handler.sortEntries()
+        entry = handler.getEntry(0)
+        hit_point = entry.getSurfacePoint(render_node)
+        
+        # Clean up - remove the temporary collider
+        collision_traverser.removeCollider(ray_np)
+        
+        if return_normal:
+            # Get surface normal from collision
+            normal = entry.getSurfaceNormal(render_node)
+            return (hit_point.z + foot_offset, (normal.x, normal.y, normal.z))
+        else:
+            # Return height with foot offset (convert Panda3D Z to entity Y)
+            return hit_point.z + foot_offset
+    
+    # Clean up even if no hit
+    collision_traverser.removeCollider(ray_np)
     return None
 
 
 def raycast_wall_check(
     entity: Any,
     movement: tuple[float, float, float],
-    collision_traverser: Optional[CollisionTraverser] = None,
+    collision_traverser: CollisionTraverser,
+    render_node: Any,
     distance_buffer: float = 0.5,
     ignore: Optional[list] = None
 ) -> bool:
     """Check if moving by 'movement' would hit a wall using Panda3D collision.
     
-    This casts a ray in the direction of movement.
+    Casts a ray in the direction of movement to detect obstacles.
     
     Args:
         entity: The entity to check from
-        movement: Movement vector (dx, dy, dz)
-        collision_traverser: Panda3D CollisionTraverser instance (optional for Phase 3)
+        movement: Movement vector (dx, dy, dz) where dy is vertical, dx/dz are horizontal
+        collision_traverser: Panda3D CollisionTraverser instance
+        render_node: Root render node to traverse against
         distance_buffer: Extra distance to check beyond movement
         ignore: List of entities to ignore (not yet implemented)
     
     Returns:
         True if wall hit, False otherwise
     """
-    # Phase 3: Stub implementation - will be fully implemented when collision system is integrated
-    # For now, return False to allow free movement
-    # This will be replaced with proper Panda3D collision raycasting
-    return False
+    from panda3d.core import (
+        CollisionRay, CollisionNode, CollisionHandlerQueue,
+        BitMask32, LPoint3f, NodePath
+    )
+    import math
+    
+    dx, dy, dz = movement
+    
+    # Skip if no horizontal movement
+    if abs(dx) < 0.001 and abs(dz) < 0.001:
+        return False
+    
+    # Create ray from entity in movement direction
+    # Ray at mid-height of entity
+    ray_origin = LPoint3f(entity.x, entity.z, entity.y + 0.9)  # Mid-height
+    
+    # Normalize movement direction (horizontal only)
+    length = math.sqrt(dx*dx + dz*dz)
+    # Convert to Panda3D coordinates: (dx, dz, 0) -> (dx, dz, 0)
+    direction = LVector3f(dx/length, dz/length, 0)
+    
+    ray = CollisionRay()
+    ray.setOrigin(ray_origin)
+    ray.setDirection(direction)
+    
+    # Create temporary collision node
+    ray_node = CollisionNode('wall_ray')
+    ray_node.addSolid(ray)
+    ray_node.setFromCollideMask(BitMask32.bit(1))  # Collide with terrain
+    ray_node.setIntoCollideMask(BitMask32.allOff())
+    
+    ray_np = NodePath(ray_node)
+    
+    # Traverse and check for collisions
+    handler = CollisionHandlerQueue()
+    collision_traverser.addCollider(ray_np, handler)
+    collision_traverser.traverse(render_node)
+    
+    # Check if hit within movement distance + buffer
+    hit_wall = False
+    if handler.getNumEntries() > 0:
+        handler.sortEntries()
+        entry = handler.getEntry(0)
+        hit_point = entry.getSurfacePoint(render_node)
+        
+        # Calculate distance to hit
+        hit_distance = (hit_point - ray_origin).length()
+        
+        # Check if hit is within movement range
+        if hit_distance < (length + distance_buffer):
+            hit_wall = True
+    
+    # Clean up
+    collision_traverser.removeCollider(ray_np)
+    
+    return hit_wall
 
 
 def update_timers(state: KinematicState, dt: float) -> None:

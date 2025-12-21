@@ -24,7 +24,16 @@ def run(**kwargs):
         
     game.world.event_bus.subscribe("on_block_break", on_break)
         
-    game.spawn_player(position=(0, 10, 0))
+    game.spawn_player(position=(0, 10, 0)) # TODO: Remove hardcoded spawn position
+    
+    # Generate initial chunks around spawn
+    terrain_system = game.world.get_system_by_type("TerrainSystem")
+    if terrain_system:
+        # Create 3x3 grid of chunks centered at origin
+        for cx in range(-1, 2):
+            for cz in range(-1, 2):
+                terrain_system.create_chunk(cx, cz)
+        print("Generated 9 chunks around spawn")
     
     game.run()
 

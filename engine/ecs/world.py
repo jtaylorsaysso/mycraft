@@ -114,6 +114,20 @@ class World:
         self._systems.append(system)
         system.initialize()
         logger.info(f"Initialized ECS System: {system.__class__.__name__}")
+    
+    def get_system_by_type(self, system_name: str) -> Optional[System]:
+        """Get a system by its class name.
+        
+        Args:
+            system_name: Name of the system class (e.g., "TerrainSystem")
+            
+        Returns:
+            System instance or None if not found
+        """
+        for system in self._systems:
+            if system.__class__.__name__ == system_name:
+                return system
+        return None
 
     def update(self, dt: float):
         """Update all systems."""

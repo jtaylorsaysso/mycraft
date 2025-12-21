@@ -11,7 +11,16 @@ from engine.physics import (
     perform_jump,
     register_jump_press,
     can_consume_jump,
-    update_timers
+    update_timers,
+    apply_horizontal_acceleration
+)
+from engine.physics.constants import (
+    MOVE_SPEED,
+    ACCELERATION,
+    FRICTION,
+    AIR_CONTROL,
+    WATER_MULTIPLIER,
+    WATER_DRAG
 )
 from panda3d.core import LVector3f
 import math
@@ -19,17 +28,16 @@ import math
 class PlayerControlSystem(System):
     """System that handles player movement and camera controls with physics."""
     
-    # Physics Constants
-    MOVE_SPEED = 6.0
+    # Removed hardcoded constants - using engine.physics.constants
+    
+    # Keeping these for now as they might be specific to player or not yet in shared constants
     RUN_SPEED = 10.0
     JUMP_HEIGHT = 1.2
     GRAVITY = -20.0  # Snappy gravity
     
-    # Water Physics Constants
-    WATER_MOVE_SPEED = 4.0
+    # Water Physics Constants (Player specific)
     WATER_GRAVITY = -2.0      # Very low gravity in water
     WATER_BUOYANCY = 15.0     # Upward force when submerged
-    WATER_DRAG = 2.0          # High drag in water
     SWIM_SPEED = 3.0          # Vertical swim speed
     
     def __init__(self, world, event_bus, base):
@@ -42,6 +50,10 @@ class PlayerControlSystem(System):
         # Track physics state for entities
         # entity_id -> KinematicState
         self.physics_states = {}
+        
+        # Create collision traverser for physics raycasting
+        from panda3d.core import CollisionTraverser
+        self.collision_traverser = CollisionTraverser('player_physics')
         
     def initialize(self):
         """Setup camera when system is added."""
@@ -113,24 +125,20 @@ class PlayerControlSystem(System):
         # 4. Apply Physics
         
         # -- HORIZONTAL --
-        target_speed = self.MOVE_SPEED
+        target_speed = MOVE_SPEED
         if in_water:
-            target_speed = self.WATER_MOVE_SPEED
+            target_speed = MOVE_SPEED * WATER_MULTIPLIER
             
         target_vel = move_dir * target_speed
         
-        # Apply reduced control/friction
+        # Apply unified acceleration model
+        apply_horizontal_acceleration(state, (target_vel.x, target_vel.z), dt, state.grounded)
+
+        # Apply water drag if in water
         if in_water:
-            # Water resistance/drag
-            # Drag opposes velocity
-            drag = self.WATER_DRAG * dt
-            # Simple linear interpolation towards target velocity
-            state.velocity_x += (target_vel.x - state.velocity_x) * drag
-            state.velocity_z += (target_vel.z - state.velocity_z) * drag
-        else:
-            # Snappy ground movement
-            state.velocity_x = target_vel.x
-            state.velocity_z = target_vel.z
+            # Simple exponential decay of horizontal velocity
+            state.velocity_x *= max(0.0, 1 - WATER_DRAG * dt)
+            state.velocity_z *= max(0.0, 1 - WATER_DRAG * dt)
 
         # -- VERTICAL --
         jump_requested = self.input.is_key_down('space')
@@ -185,22 +193,36 @@ class PlayerControlSystem(System):
             
         wrapper = TransformWrapper(transform)
         
-        # Override ground check to handle coordinate mapping
+        # Ground check using collision raycast
         def remapped_ground_check(entity):
-            # Input is wrapper.
-            # entity.x -> Panda X
-            # entity.z -> Panda Y (World Depth)
-            if terrain_system:
-                # TerrainSystem uses (x, z) where z is depth/forward
-                h = terrain_system.get_height(entity.x, entity.z) 
-                return h
-            return 0.0
+            from engine.physics import raycast_ground_height
+            return raycast_ground_height(
+                entity,
+                self.collision_traverser,
+                self.base.render,  # Pass render node
+                max_distance=5.0,
+                foot_offset=0.2,
+                ray_origin_offset=2.0,
+                return_normal=False
+            )
+        
+        # Wall check using collision raycast
+        def wall_check(entity, movement):
+            from engine.physics import raycast_wall_check
+            return raycast_wall_check(
+                entity,
+                movement,
+                self.collision_traverser,
+                self.base.render,  # Pass render node
+                distance_buffer=0.5
+            )
 
         integrate_movement(
             wrapper,
             state,
             dt,
-            ground_check=remapped_ground_check
+            ground_check=remapped_ground_check,
+            wall_check=wall_check
         )
         
         update_timers(state, dt)

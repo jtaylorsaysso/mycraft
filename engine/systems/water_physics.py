@@ -6,28 +6,18 @@ from panda3d.core import LVector3f
 from typing import Optional
 
 
-class KinematicState:
-    """Temporary physics component for water physics.
-    
-    TODO: This should be imported from engine.components.physics once that module exists.
-    For now, we'll check if entities have velocity attributes directly.
-    """
-    def __init__(self):
-        self.velocity_x = 0.0
-        self.velocity_y = 0.0
-        self.velocity_z = 0.0
-        self.grounded = False
+from engine.physics.kinematic import KinematicState
+from engine.physics.constants import WATER_DRAG, WATER_MULTIPLIER
 
 
 class WaterPhysicsSystem(System):
     """Handles buoyancy, swimming, and underwater physics."""
     
-    # Physics constants (TODO: Make configurable)
+    # Physics constants (imported from engine.physics.constants where applicable)
     BUOYANCY_FORCE = 15.0        # Upward force in water
-    WATER_RESISTANCE = 0.7       # Horizontal damping (0-1)
-    SWIM_UP_FORCE = 8.0          # Force when pressing jump in water
-    SWIM_DOWN_FORCE = 6.0        # Force when pressing crouch in water
-    UNDERWATER_SPEED_MULT = 0.5  # Movement speed multiplier
+    # SWIM_UP/DOWN forces could also be moved to constants if they are universal
+    SWIM_UP_FORCE = 8.0          
+    SWIM_DOWN_FORCE = 6.0        
     
     def __init__(self, world, event_bus):
         super().__init__(world, event_bus)
@@ -100,17 +90,23 @@ class WaterPhysicsSystem(System):
             submersion: Submersion level (0-1)
             dt: Delta time
         """
-        # Try to get velocity from entity (if it has physics)
-        # For now, we'll just apply a simple upward force to position
-        # TODO: Integrate with proper physics system when available
+        # Try to get velocity from entity
+        state = self.world.get_component(entity_id, KinematicState)
+        if not state:
+            # If no physics state, we fall back to position manipulation or skip
+            # For this engine, we prefer entities have KinematicState for physics
+            return
+            
+        # Simple buoyancy: affect vertical velocity
+        # We use a simple force-like application: velocity_y += force * dt
+        state.velocity_y += self.BUOYANCY_FORCE * submersion * dt
         
-        # Simple buoyancy: push entity upward
-        buoyancy = self.BUOYANCY_FORCE * submersion * dt
-        transform.position = LVector3f(
-            transform.position.x,
-            transform.position.y,
-            transform.position.z + buoyancy * dt
-        )
+        # Apply water drag (imported from constants)
+        # This affects horizontal and vertical velocity
+        drag_factor = max(0.0, 1.0 - WATER_DRAG * dt)
+        state.velocity_x *= drag_factor
+        state.velocity_z *= drag_factor
+        state.velocity_y *= drag_factor  # Vertical drag too
         
         # TODO: Apply water resistance to horizontal velocity
         # TODO: Hook into input system for swim controls
