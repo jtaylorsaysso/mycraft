@@ -12,7 +12,8 @@ from engine.physics import (
     register_jump_press,
     can_consume_jump,
     update_timers,
-    apply_horizontal_acceleration
+    apply_horizontal_acceleration,
+    apply_slope_forces
 )
 from engine.physics.constants import (
     MOVE_SPEED,
@@ -142,13 +143,12 @@ class PlayerControlSystem(System):
 
         # -- VERTICAL --
         jump_requested = self.input.is_key_down('space')
-        
         if jump_requested:
             register_jump_press(state)
-
+            
         if in_water:
             # Swimming logic
-            # Apply buoyancy
+            # Apply buoyancy/water gravity
             apply_gravity(state, dt, gravity=self.WATER_GRAVITY)
             
             # Swim up
@@ -163,6 +163,9 @@ class PlayerControlSystem(System):
         else:
             # Standard Gravity
             apply_gravity(state, dt, gravity=self.GRAVITY)
+
+            # Apply slope forces if sliding
+            apply_slope_forces(state, dt)
             
             # Jumping
             if can_consume_jump(state):
@@ -203,7 +206,7 @@ class PlayerControlSystem(System):
                 max_distance=5.0,
                 foot_offset=0.2,
                 ray_origin_offset=2.0,
-                return_normal=False
+                return_normal=True  # Request surface normal for slope physics
             )
         
         # Wall check using collision raycast

@@ -16,15 +16,15 @@
 - [x] ~~Coyote time and jump buffering~~ - Implemented (0.2s windows)
 - [x] ~~Variable jump height~~ - Implemented (early release = 55% velocity)
 - [x] ~~Player floating above terrain after jumping~~ - Fixed by tuning raycast parameters (max_distance: 5.0, ray_origin_offset: 2.0)
-- [ ] Add horizontal acceleration and deceleration for smoother movement
-- [x] ~~Implement air control (limited horizontal movement while airborne)~~ - Implemented with 0.5 multiplier and 0.2 air friction
-- [ ] Add slope handling and surface normal projection for angled terrain
+- [x] ~~Add horizontal acceleration and deceleration for smoother movement~~ - Implemented with `apply_horizontal_acceleration` (ACCELERATION=30, FRICTION=15)
+- [x] ~~Implement air control (limited horizontal movement while airborne)~~ - Implemented with 0.5 multiplier via AIR_CONTROL constant
+- [x] ~~Add slope handling and surface normal projection for angled terrain~~ - Implemented with surface normal projection and 45° threshold
 - [x] ~~Wall collision detection~~ - Basic raycast wall check implemented in `physics.py`
 - [x] ~~Improve wall sliding to allow smooth movement along walls~~ - Enhanced with momentum preservation (0.5x sliding)
 - [x] ~~Collision parameters hardcoded~~ - Now tunable via hot-config (raycast_max_distance, raycast_origin_offset, foot_offset, hitbox dimensions)
 - [x] ~~No collision debug visualization~~ - Implemented in `collision_debug.py` with F3 toggle and `/debug collision` command
-- [ ] Consider different ground checks for liquids, ladders, etc.
-- [ ] Add sliding on steep slopes
+- [x] ~~Consider different ground checks for liquids, ladders, etc.~~ - Water physics unified with shared KinematicState and constants
+- [x] ~~Add sliding on steep slopes~~ - Implemented momentum-based sliding for slopes > 45°
 
 ## Performance
 
@@ -129,9 +129,9 @@ All deprecated code has been removed. The codebase is now 100% Panda3D native.
 
 **Physics Improvements:**
 
-- [ ] Horizontal acceleration and deceleration for smoother movement
-- [ ] Slope handling and surface normal projection
-- [ ] Liquid detection for proper water physics integration
+- [x] ~~Horizontal acceleration and deceleration for smoother movement~~ - Completed with unified physics model
+- [x] ~~Slope handling and surface normal projection~~ - Fully integrated with sliding and jump boosts
+- [x] ~~Liquid detection for proper water physics integration~~ - Water physics now uses shared KinematicState and constants
 
 **Camera Enhancements:**
 
