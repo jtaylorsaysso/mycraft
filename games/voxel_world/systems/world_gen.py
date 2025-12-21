@@ -14,11 +14,13 @@ from typing import Dict, Tuple, Optional
 class TerrainSystem(System):
     """Manages terrain generation, chunk loading, and collision geometry."""
     
-    def __init__(self, world, event_bus, base):
+    def __init__(self, world, event_bus, base, texture_atlas=None):
         super().__init__(world, event_bus)
         self.base = base
+        self.texture_atlas = texture_atlas
         self.chunks: Dict[Tuple[int, int], NodePath] = {}
         self.chunk_size = 16
+
         
     def get_height(self, x: float, z: float) -> float:
         """Get terrain height at world position using biome system.
@@ -59,19 +61,25 @@ class TerrainSystem(System):
         # Build visual mesh
         geom_node = MeshBuilder.build_chunk_mesh_with_callback(
             heights, biomes, chunk_x, chunk_z, self.chunk_size,
-            None,  # texture_atlas (TODO: integrate when ready)
+            self.texture_atlas,
             BlockRegistry,
             self.get_height
         )
+
         
         # Create NodePath for chunk and attach to render
         chunk_np = self.base.render.attachNewNode(geom_node)
+        
+        # Apply texture if available
+        if self.texture_atlas and self.texture_atlas.is_loaded():
+            chunk_np.setTexture(self.texture_atlas.get_texture())
         
         # Add collision geometry
         self._add_collision_to_chunk(chunk_np, heights, chunk_x, chunk_z)
         
         # Store chunk reference
         self.chunks[(chunk_x, chunk_z)] = chunk_np
+
         
         return chunk_np
     

@@ -446,8 +446,8 @@ def raycast_ground_height(
     ray_node.setFromCollideMask(BitMask32.bit(1))  # Collide with terrain layer
     ray_node.setIntoCollideMask(BitMask32.allOff())  # Ray itself is not collidable
     
-    # Create temporary NodePath for the ray
-    ray_np = NodePath(ray_node)
+    # Create temporary NodePath for the ray - MUST be attached to scene graph
+    ray_np = render_node.attachNewNode(ray_node)
     
     # Traverse and check for collisions
     handler = CollisionHandlerQueue()
@@ -460,8 +460,9 @@ def raycast_ground_height(
         entry = handler.getEntry(0)
         hit_point = entry.getSurfacePoint(render_node)
         
-        # Clean up - remove the temporary collider
+        # Clean up - remove the temporary collider and node
         collision_traverser.removeCollider(ray_np)
+        ray_np.removeNode()
         
         if return_normal:
             # Get surface normal from collision
@@ -473,7 +474,9 @@ def raycast_ground_height(
     
     # Clean up even if no hit
     collision_traverser.removeCollider(ray_np)
+    ray_np.removeNode()
     return None
+
 
 
 def raycast_wall_check(
@@ -530,7 +533,8 @@ def raycast_wall_check(
     ray_node.setFromCollideMask(BitMask32.bit(1))  # Collide with terrain
     ray_node.setIntoCollideMask(BitMask32.allOff())
     
-    ray_np = NodePath(ray_node)
+    # Attach to scene graph for collision detection to work
+    ray_np = render_node.attachNewNode(ray_node)
     
     # Traverse and check for collisions
     handler = CollisionHandlerQueue()
@@ -553,8 +557,10 @@ def raycast_wall_check(
     
     # Clean up
     collision_traverser.removeCollider(ray_np)
+    ray_np.removeNode()
     
     return hit_wall
+
 
 
 def update_timers(state: KinematicState, dt: float) -> None:

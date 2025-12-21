@@ -26,13 +26,27 @@ if 'panda3d' not in sys.modules:
             return math.sqrt(self.x**2 + self.y**2 + self.z**2)
         def __repr__(self): return f"Vec3({self.x}, {self.y}, {self.z})"
 
+    # Simple MockVector2 that behaves like LVector2f
+    class MockVector2:
+        def __init__(self, x=0, y=0):
+            self.x = float(x)
+            self.y = float(y)
+        def __add__(self, other): return MockVector2(self.x + other.x, self.y + other.y)
+        def __sub__(self, other): return MockVector2(self.x - other.x, self.y - other.y)
+        def __mul__(self, other):
+            if isinstance(other, (int, float)): return MockVector2(self.x * other, self.y * other)
+            return MockVector2(self.x * other.x, self.y * other.y)
+        def __repr__(self): return f"Vec2({self.x}, {self.y})"
+
     mock_core.LVector3f = MockVector3
+    mock_core.LVector2f = MockVector2
     mock_core.NodePath = MagicMock
     mock_core.WindowProperties = MagicMock
     mock_core.ModifierButtons = MagicMock
     mock_panda.core = mock_core
     sys.modules['panda3d'] = mock_panda
     sys.modules['panda3d.core'] = mock_core
+
 
 if 'direct' not in sys.modules:
     mock_direct = MagicMock()

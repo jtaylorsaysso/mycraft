@@ -43,6 +43,9 @@ class PlayerControlSystem(System):
     
     def __init__(self, world, event_bus, base):
         super().__init__(world, event_bus)
+        from engine.core.logger import get_logger
+        self.logger = get_logger("systems.player_control")
+        
         self.base = base
         # Allow passing base later if needed, but InputManager needs it
         self.input = InputManager(base)
@@ -66,46 +69,71 @@ class PlayerControlSystem(System):
         from panda3d.core import CollisionTraverser
         self.collision_traverser = CollisionTraverser('player_physics')
         
+        self.initialized = False
+
+        
     def initialize(self):
-        """Setup camera when system is added."""
-        # Find player entity
-        player_id = self.world.get_entity_by_tag("player")
-        if player_id:
-            transform = self.world.get_component(player_id, Transform)
-            if transform:
-                # Create local player mannequin (green color to distinguish from remote azure)
-                from engine.animation.mannequin import AnimatedMannequin, AnimationController
-                self.local_mannequin = AnimatedMannequin(
-                    self.base.render, 
-                    body_color=(0.4, 0.8, 0.4, 1.0)  # Green for local player
-                )
-                self.local_mannequin.root.setPos(transform.position)
-                self.local_animation_controller = AnimationController(self.local_mannequin)
-                
-                # Setup both camera modes
-                self.fps_camera = FPSCamera(self.base.cam, player_entity=None, sensitivity=40.0)
-                self.third_person_camera = ThirdPersonCamera(self.base.cam, player_entity=None, sensitivity=40.0)
-                
-                # Set active camera based on mode
-                if self.camera_mode == 'third_person':
-                    self.camera_controller = self.third_person_camera
-                    self.local_mannequin.root.show()  # Show mannequin in third-person
-                else:
-                    self.camera_controller = self.fps_camera
-                    self.local_mannequin.root.hide()  # Hide mannequin in first-person
-                
-                # Set initial camera orientation
-                self.base.cam.setHpr(0, 0, 0)
-                
-                self.input.lock_mouse()
+        """Standard System initialization."""
+        pass # We now initialize camera/mannequin during first update when player is found
+
+    def _setup_player(self, player_id):
+        """Setup camera and mannequin一旦 detected player entity."""
+        transform = self.world.get_component(player_id, Transform)
+        if not transform:
+            return False
+            
+        # Create local player mannequin
+        from engine.animation.mannequin import AnimatedMannequin, AnimationController
+        self.local_mannequin = AnimatedMannequin(
+            self.base.render, 
+            body_color=(0.4, 0.8, 0.4, 1.0)  # Green for local player
+        )
+        self.local_mannequin.root.setPos(transform.position)
+        self.local_animation_controller = AnimationController(self.local_mannequin)
+        
+        # Setup both camera modes (pass None as the entity, as we track it via transform in update)
+        self.fps_camera = FPSCamera(self.base.cam, None, sensitivity=40.0)
+        self.third_person_camera = ThirdPersonCamera(self.base.cam, None, sensitivity=40.0)
+
+        
+        # Set active camera based on mode
+        if self.camera_mode == 'third_person':
+            self.camera_controller = self.third_person_camera
+            self.local_mannequin.root.show()
+        else:
+            self.camera_controller = self.fps_camera
+            self.local_mannequin.root.hide()
+        
+        # Set initial camera orientation
+        self.base.cam.setHpr(0, 0, 0)
+        self.input.lock_mouse()
+        
+        self.initialized = True
+        self.logger.info(f"Initialized controls for player {player_id}")
+        return True
+
 
     def update(self, dt: float):
         """Process input and update player transform."""
         self.input.update()
         
         player_id = self.world.get_entity_by_tag("player")
+        
+        # Attempt late initialization if needed
+        if not self.initialized:
+            if player_id:
+                self.logger.info(f"Found player {player_id}, initializing controls...")
+                if not self._setup_player(player_id):
+                    self.logger.warning(f"Setup failed for player {player_id}")
+                    return
+            else:
+                # Still waiting for player to spawn
+                return
+            
         if not player_id:
+            self.logger.warning("Player entity disappeared!")
             return
+
             
         transform = self.world.get_component(player_id, Transform)
         if not transform:
@@ -117,7 +145,18 @@ class PlayerControlSystem(System):
         
         state = self.physics_states[player_id]
         
+        # Update spawn protection timer
+        from engine.components.core import Health
+        health = self.world.get_component(player_id, Health)
+        if health and health.invulnerable and health.invuln_timer > 0:
+            health.invuln_timer -= dt
+            if health.invuln_timer <= 0:
+                health.invulnerable = False
+                health.invuln_timer = 0.0
+                print("🛡️ Spawn protection expired")
+        
         # Handle camera mode toggle (V key)
+
         self.camera_toggle_cooldown = max(0, self.camera_toggle_cooldown - dt)
         if self.input.is_key_down('v') and self.camera_toggle_cooldown <= 0:
             self._toggle_camera_mode()

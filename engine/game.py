@@ -44,9 +44,13 @@ class VoxelGame(ShowBase):
         
         # Environment and Rendering
         from engine.rendering.environment import EnvironmentManager
+        from engine.rendering.texture_atlas import TextureAtlas
+        
         self.environment = EnvironmentManager(self)
+        self.texture_atlas = TextureAtlas("Spritesheets/terrain.png", self.loader)
         
         # Initialize default systems
+
         self._setup_default_systems()
         
         # Start game loop
@@ -77,7 +81,8 @@ class VoxelGame(ShowBase):
         
         # Rendering & World (Phase 6 Integration)
         from games.voxel_world.systems.world_gen import TerrainSystem
-        self.world.add_system(TerrainSystem(self.world, self.world.event_bus, self))
+        self.world.add_system(TerrainSystem(self.world, self.world.event_bus, self, self.texture_atlas))
+
         
         from engine.systems.water_physics import WaterPhysicsSystem
         self.world.add_system(WaterPhysicsSystem(self.world, self.world.event_bus))
