@@ -20,6 +20,7 @@ class World:
     def __init__(self):
         self.event_bus = EventBus()
         self._systems: List[System] = []
+        self._pending_systems: List[System] = []  # Systems waiting for dependencies
         
         # Entity ID -> {ComponentType -> ComponentInstance}
         self._entities: Dict[str, Dict[Type[Component], Component]] = {}
@@ -37,6 +38,8 @@ class World:
         
         if tag:
             self._tags[tag] = entity_id
+            # Check if any pending systems are now satisfied
+            self._check_pending_systems()
             
         return entity_id
 
@@ -114,6 +117,22 @@ class World:
         self._systems.append(system)
         system.initialize()
         logger.info(f"Initialized ECS System: {system.__class__.__name__}")
+        
+        # Check if system has dependencies
+        dependencies = system.get_dependencies()
+        if dependencies:
+            # System has dependencies - check if satisfied
+            if self._dependencies_satisfied(system):
+                system.on_ready()
+                logger.info(f"System ready immediately: {system.__class__.__name__}")
+            else:
+                # Add to pending list
+                self._pending_systems.append(system)
+                logger.info(f"System pending dependencies {dependencies}: {system.__class__.__name__}")
+        else:
+            # No dependencies - ready immediately
+            system.on_ready()
+            logger.info(f"System ready (no dependencies): {system.__class__.__name__}")
     
     def get_system_by_type(self, system_name: str) -> Optional[System]:
         """Get a system by its class name.
@@ -131,6 +150,33 @@ class World:
 
     def update(self, dt: float):
         """Update all systems."""
+        # Check pending systems periodically (in case dependencies appear)
+        self._check_pending_systems()
+        
+        # Update only ready systems
         for system in self._systems:
-            if system.enabled:
+            if system.enabled and system.ready:
                 system.update(dt)
+    
+    def _dependencies_satisfied(self, system: System) -> bool:
+        """Check if all dependencies for a system are satisfied.
+        
+        Args:
+            system: System to check dependencies for
+            
+        Returns:
+            True if all required entity tags exist
+        """
+        dependencies = system.get_dependencies()
+        for tag in dependencies:
+            if tag not in self._tags:
+                return False
+        return True
+    
+    def _check_pending_systems(self):
+        """Check if any pending systems have their dependencies satisfied."""
+        for system in list(self._pending_systems):
+            if self._dependencies_satisfied(system):
+                system.on_ready()
+                self._pending_systems.remove(system)
+                logger.info(f"System ready: {system.__class__.__name__}")

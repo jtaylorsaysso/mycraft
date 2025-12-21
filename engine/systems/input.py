@@ -47,8 +47,7 @@ class PlayerControlSystem(System):
         self.logger = get_logger("systems.player_control")
         
         self.base = base
-        # Allow passing base later if needed, but InputManager needs it
-        self.input = InputManager(base)
+        self.input = None  # Created in initialize()
         self.camera_controller = None
         self.fps_camera = None
         self.third_person_camera = None
@@ -68,19 +67,30 @@ class PlayerControlSystem(System):
         # Create collision traverser for physics raycasting
         from panda3d.core import CollisionTraverser
         self.collision_traverser = CollisionTraverser('player_physics')
-        
-        self.initialized = False
 
+    def get_dependencies(self) -> list:
+        """PlayerControlSystem requires a player entity to function."""
+        return ["player"]
         
     def initialize(self):
-        """Standard System initialization."""
-        pass # We now initialize camera/mannequin during first update when player is found
+        """Phase 2: Setup input manager (no player needed yet)."""
+        # Create input manager but DON'T lock mouse yet
+        self.input = InputManager(self.base)
+        self.logger.info("Input manager initialized (waiting for player)")
 
-    def _setup_player(self, player_id):
-        """Setup camera and mannequin一旦 detected player entity."""
+    def on_ready(self):
+        """Phase 3: Called when player entity exists - setup camera and controls."""
+        super().on_ready()
+        
+        player_id = self.world.get_entity_by_tag("player")
+        if not player_id:
+            self.logger.error("on_ready called but player entity not found!")
+            return
+            
         transform = self.world.get_component(player_id, Transform)
         if not transform:
-            return False
+            self.logger.error(f"Player {player_id} has no Transform component!")
+            return
             
         # Create local player mannequin
         from engine.animation.mannequin import AnimatedMannequin, AnimationController
@@ -91,10 +101,9 @@ class PlayerControlSystem(System):
         self.local_mannequin.root.setPos(transform.position)
         self.local_animation_controller = AnimationController(self.local_mannequin)
         
-        # Setup both camera modes (pass None as the entity, as we track it via transform in update)
+        # Setup both camera modes
         self.fps_camera = FPSCamera(self.base.cam, None, sensitivity=40.0)
         self.third_person_camera = ThirdPersonCamera(self.base.cam, None, sensitivity=40.0)
-
         
         # Set active camera based on mode
         if self.camera_mode == 'third_person':
@@ -106,32 +115,22 @@ class PlayerControlSystem(System):
         
         # Set initial camera orientation
         self.base.cam.setHpr(0, 0, 0)
+        
+        # NOW lock the mouse (player is ready)
         self.input.lock_mouse()
         
-        self.initialized = True
-        self.logger.info(f"Initialized controls for player {player_id}")
-        return True
+        self.logger.info(f"Player controls ready for player {player_id}")
 
 
     def update(self, dt: float):
         """Process input and update player transform."""
+        # System only updates when ready (player exists)
         self.input.update()
         
         player_id = self.world.get_entity_by_tag("player")
-        
-        # Attempt late initialization if needed
-        if not self.initialized:
-            if player_id:
-                self.logger.info(f"Found player {player_id}, initializing controls...")
-                if not self._setup_player(player_id):
-                    self.logger.warning(f"Setup failed for player {player_id}")
-                    return
-            else:
-                # Still waiting for player to spawn
-                return
-            
         if not player_id:
-            self.logger.warning("Player entity disappeared!")
+            # Player disappeared - this shouldn't happen if dependencies work correctly
+            self.logger.warning("Player entity disappeared during update!")
             return
 
             
@@ -338,6 +337,19 @@ class PlayerControlSystem(System):
         # Debug toggle
         if self.input.is_key_down('escape'):
             self.input.unlock_mouse()
+    
+    def cleanup(self):
+        """Clean up resources when system is removed."""
+        # Unlock mouse
+        if self.input:
+            self.input.unlock_mouse()
+        
+        # Clean up mannequin
+        if self.local_mannequin:
+            self.local_mannequin.cleanup()
+            self.local_mannequin = None
+        
+        self.logger.info("PlayerControlSystem cleaned up")
 
     def _toggle_camera_mode(self):
         """Toggle between first-person and third-person camera."""

@@ -74,7 +74,25 @@ class TestPlayerPhysics(unittest.TestCase):
         # Use our mock vector
         # Panda3D is Z-up. Position should be (0, 0, 10) to be in air (10 units high).
         self.mock_transform.position = MockVector3(0, 0, 10)
-        self.mock_world.get_component.return_value = self.mock_transform
+        
+        # Mock Health component with proper attributes
+        self.mock_health = MagicMock()
+        self.mock_health.invulnerable = False
+        self.mock_health.invuln_timer = 0.0
+        
+        # Setup get_component to return appropriate mocks
+        def get_component_side_effect(entity_id, component_type):
+            if component_type.__name__ == 'Transform':
+                return self.mock_transform
+            elif component_type.__name__ == 'Health':
+                return self.mock_health
+            return None
+        
+        self.mock_world.get_component.side_effect = get_component_side_effect
+        
+        # Manually trigger on_ready since we're not using real World
+        # In real usage, World would call this when player entity is created
+        self.system.ready = True
 
     def tearDown(self):
         self.patcher.stop()

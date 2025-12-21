@@ -22,6 +22,14 @@ class RemotePlayerManager(System):
         # Track mannequins for each remote player
         # player_id -> {"mannequin": AnimatedMannequin, "controller": AnimationController}
         self.remote_mannequins: Dict[str, Dict] = {}
+    
+    def get_dependencies(self) -> list:
+        """RemotePlayerManager has no hard dependencies.
+        
+        It gracefully handles the case where no network client exists.
+        Returns empty list to indicate it's always ready.
+        """
+        return []
         
     def update(self, dt: float):
         """Update remote player mannequins based on network state."""
