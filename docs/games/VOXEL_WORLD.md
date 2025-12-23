@@ -1,26 +1,23 @@
 # voxel_world - The Flagship Game
 
-## What is voxel_world?
+**voxel_world** is the flagship game built with MyCraft - an exploration-driven action adventure focused on deep movement mechanics and momentum-based combat.
 
-**voxel_world** is the first game built with MyCraft - a Minecraft-inspired action-RPG adventure. It's both a playable game and a demonstration of what you can create with the MyCraft engine.
+### For Players
 
-### For Playtesters
+voxel_world offers a cooperative adventure where you:
 
-voxel_world is your playground to:
-
-- **Explore** 8 unique biomes with varied terrain
-- **Adventure** with friends in multiplayer
-- **Discover** the possibilities of voxel worlds
-
-See the [Player Guide](../../PLAYER_GUIDE.md) for controls and gameplay.
+- **Explore** a vast, vertical world marked by mysterious ruins
+- **Master** deep traversal mechanics: climbing, vaulting, and sliding
+- **Battle** enemies using timing, positioning, and momentum
+- **Discover** hidden Points of Interest and overcome their challenges
 
 ### For Creators
 
-voxel_world serves as:
+voxel_world demonstrates the engine's capabilities:
 
-- **Example**: See what's possible with MyCraft
-- **Template**: Use it as a starting point for your own game
-- **Inspiration**: Learn from how it's built
+- **Example**: Shows how to build a complete game on MyCraft
+- **Template**: Provides a solid foundation for action games
+- **Proving Ground**: The place where new engine features are tested
 
 ---
 
@@ -30,35 +27,29 @@ voxel_world serves as:
 
 **8 Distinct Biomes:**
 
-- **Plains**: Gentle rolling hills, perfect for building
-- **Forest**: Dense vegetation with varied elevation
-- **Rocky**: Dramatic cliffs and plateaus
-- **Desert**: Flat sandy expanses
-- **Mountain**: Towering peaks and valleys
-- **Canyon**: Deep gorges with mesa tops
-- **River**: Flowing water channels
-- **Beach**: Coastal transitions
-- **Swamp**: Low-lying wetlands
+- **Plains**: Rolling hills for mastering movement speed
+- **Forest**: Dense vegetation with vertical opportunities
+- **Rocky**: Cliffs and plateaus for climbing challenges
+- **Desert**: Open dunes for sliding and momentum
+- **Mountain**: Epic peaks requiring advanced traversal
+- **Canyon**: Technical jumps and wall interactions
+- **River**: Fast travel channels
+- **Beach** & **Swamp**: Transitions and unique terrain
 
-Each biome has unique terrain generation, block types, and visual character.
+### Gameplay Loop
+
+**Explore → Discover → Challenge → Reward**
+
+1. **Spot** a Point of Interest on the horizon
+2. **Traverse** the terrain using parkour skills
+3. **Overcome** the combat or puzzle challenge
+4. **Collect** the reward and find the next landmark
 
 ### Multiplayer
 
-- **LAN-based**: Play with friends on your local network
-- **Real-time sync**: See other players move in real-time
-- **Zero-config**: Auto-discovery on WiFi
-- **Admin console**: In-game server management
-
-See the [Networking Guide](../networking_guide.md) for technical details.
-
-### Physics & Movement
-
-- **Smooth movement**: Acceleration-based controls
-- **Mario-style jumping**: Variable height, coyote time, jump buffering
-- **Slope handling**: Walk up gentle slopes, slide down steep ones
-- **Water physics**: Buoyancy and swimming mechanics
-
-See the [Physics System](../physics_system.md) for implementation details.
+- **Cooperative PvE**: Adventure together with no friendly fire
+- **Shared Discovery**: Spot landmarks for your team
+- **Tactical Combat**: Flank enemies while allies distract
 
 ---
 
@@ -68,66 +59,12 @@ See the [Physics System](../physics_system.md) for implementation details.
 
 ```
 games/voxel_world/
-├── biomes/           # Biome definitions and terrain generation
-│   ├── biomes.py     # BiomeRegistry and biome classes
-│   └── noise.py      # Perlin noise utilities
-├── blocks/           # Block types and properties
-│   └── blocks.py     # BlockRegistry
-├── systems/          # Game-specific ECS systems
-│   ├── world_gen.py  # TerrainSystem for chunk generation
-│   └── gameplay_input.py  # GameplayInputSystem
-├── config/           # Game configuration
-└── main.py           # Game entry point
+├── biomes/           # Procedural terrain generation
+├── blocks/           # Content definitions
+├── systems/          # Game-specific logic (Combat, AI)
+├── config/           # Game balancing
+└── main.py           # Entry point
 ```
-
-### How It Works
-
-1. **Terrain Generation**: `TerrainSystem` creates chunks using biome-specific height functions
-2. **Player Control**: `PlayerControlSystem` handles movement and physics
-3. **Gameplay Input**: `GameplayInputSystem` manages game-specific actions
-4. **Networking**: `SyncSystem` synchronizes state across clients
-
----
-
-## For Creators: Customizing voxel_world
-
-### Easy Customizations
-
-**Change Textures:**
-
-- Edit `terrain.png` in the root directory
-- Modify block texture coordinates in `blocks/blocks.py`
-
-**Adjust Biomes:**
-
-- Edit height functions in `biomes/biomes.py`
-- Change block types for surface/subsurface
-
-**Tune Physics:**
-
-- Modify constants in `engine/physics/constants.py`
-- Adjust player speed, jump height, gravity
-
-### Advanced Customizations
-
-**Add New Biomes:**
-
-1. Define biome class in `biomes/biomes.py`
-2. Create height function
-3. Register with `BiomeRegistry`
-4. Update biome selection logic
-
-**Add New Blocks:**
-
-1. Register in `blocks/blocks.py`
-2. Define texture coordinates
-3. Use in biome definitions
-
-**Custom Systems:**
-
-1. Create new system class in `systems/`
-2. Register with `World` in `main.py`
-3. Implement `update()` logic
 
 ---
 
@@ -136,23 +73,21 @@ games/voxel_world/
 ### Completed ✅
 
 - 8 biomes with Perlin noise terrain
+- Basic physics and collision
 - Multiplayer networking
-- Physics and movement
-- Water physics
-- Character animation
 
 ### In Progress 🚧
 
-- Content expansion (more blocks, items)
-- Gameplay loop (progression, objectives)
-- Polish and optimization
+- **Movement**: Climbing, vaulting, and fluid traversal
+- **Combat**: Basic attacks and enemy interactions
+- **Content**: First Challenge Shrine prototype
 
 ### Planned 📋
 
-- Combat system
-- Inventory and crafting
-- NPC entities
-- Quests and story
+- **Advanced Movement**: Wall mechanics, gliding
+- **Combat Depth**: Parry, combos, boss encounters
+- **Points of Interest**: Procedural ruins and camps
+- **Progression**: Unlockable abilities
 
 ---
 

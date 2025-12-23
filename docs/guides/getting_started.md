@@ -6,7 +6,7 @@ Welcome to MyCraft! This guide will get you from zero to playing in under 5 minu
 
 ## What is MyCraft?
 
-MyCraft is a **beginner-friendly voxel game engine** for creating action-RPG adventures. Think exploring colorful worlds with friends, jumping across biomes, and swimming through rivers—all powered by a solid multiplayer foundation.
+MyCraft is a **beginner-friendly voxel game engine** for creating action-RPG adventures. Think exploring colorful vertical worlds with friends, mastering momentum-based movement, and overcoming challenges—all powered by a solid multiplayer foundation.
 
 **Right now**, we're in pre-alpha playtest mode. You'll be playing `voxel_world`, our flagship game that demonstrates all the engine's capabilities.
 

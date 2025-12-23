@@ -5,9 +5,9 @@ from panda3d.core import LVector3f, CollisionRay, CollisionNode, CollisionTraver
 
 class SupportsY(Protocol):
     """Protocol for entities that have a mutable y-position.
-
-    This matches Ursina's Entity interface enough for our purposes
-    without importing Ursina here.
+    
+    Used for type-hinting physics functions that operate on entities
+    with vertical position attributes.
     """
 
     y: float
@@ -15,15 +15,18 @@ class SupportsY(Protocol):
 
 @dataclass
 class KinematicState:
-    """Shared vertical-physics state for kinematic entities.
+    """Shared physics state for kinematic entities.
 
+    Uses Panda3D coordinate system: X-right, Y-forward, Z-up.
     This is intentionally minimal so it can be reused by multiple
     controllers (player, NPCs, etc.).
     """
 
-    velocity_y: float = 0.0
-    velocity_x: float = 0.0
-    velocity_z: float = 0.0
+    # Velocity components (Panda3D coordinates: Z is vertical)
+    velocity_x: float = 0.0  # Horizontal: right/left
+    velocity_y: float = 0.0  # Horizontal: forward/back  
+    velocity_z: float = 0.0  # Vertical: up/down
+    
     grounded: bool = True
     # Time since we were last on the ground. Used for coyote time.
     time_since_grounded: float = 0.0
@@ -32,21 +35,21 @@ class KinematicState:
 
     # Slope physics
     sliding: bool = False
-    surface_normal: Tuple[float, float, float] = (0, 1, 0)  # Y-up by default
+    surface_normal: Tuple[float, float, float] = (0, 0, 1)  # Z-up by default
     slope_angle: float = 0.0  # degrees
 
 
 def apply_gravity(state: KinematicState, dt: float, gravity: float = -9.81, max_fall_speed: Optional[float] = None) -> None:
     """Apply gravity to the vertical velocity.
 
-    Does not move the entity; use integrate_vertical() after this
+    Does not move the entity; use integrate_movement() after this
     to actually apply the movement and handle ground collisions.
     """
 
-    state.velocity_y += gravity * dt
+    state.velocity_z += gravity * dt
 
-    if max_fall_speed is not None and state.velocity_y < max_fall_speed:
-        state.velocity_y = max_fall_speed
+    if max_fall_speed is not None and state.velocity_z < max_fall_speed:
+        state.velocity_z = max_fall_speed
 
 
 def apply_horizontal_acceleration(
@@ -59,7 +62,7 @@ def apply_horizontal_acceleration(
 
     Args:
         state: The entity's kinematic state.
-        target_vel: Desired (x, z) velocity (already clamped to MOVE_SPEED).
+        target_vel: Desired (x, y) velocity (already clamped to MOVE_SPEED).
         dt: Frame delta time.
         grounded: Whether the entity is on the ground.
     """
@@ -72,7 +75,7 @@ def apply_horizontal_acceleration(
     if state.sliding:
         effective_accel *= SLIDE_CONTROL  # 30% control while sliding
 
-    for axis, name in zip((0, 1), ("x", "z")):
+    for axis, name in zip((0, 1), ("x", "y")):
         cur = getattr(state, f"velocity_{name}")
         target = target_vel[axis]
         
@@ -103,18 +106,18 @@ def calculate_slope_angle(normal: Tuple[float, float, float]) -> float:
     """Calculate slope angle in degrees from surface normal.
 
     Args:
-        normal: Surface normal (nx, ny, nz) where y is up
+        normal: Surface normal (nx, ny, nz) where z is up
 
     Returns:
         Angle in degrees (0 = flat, 90 = vertical wall)
     """
     import math
-    # Angle between normal and up vector (0, 1, 0)
-    # cos(angle) = normal · up = normal.y (since up is unit vector)
-    ny = normal[1]
+    # Angle between normal and up vector (0, 0, 1)
+    # cos(angle) = normal · up = normal.z (since up is unit vector)
+    nz = normal[2]
     # Clamp to avoid numerical errors with acos
-    ny = max(-1.0, min(1.0, ny))
-    angle_rad = math.acos(ny)
+    nz = max(-1.0, min(1.0, nz))
+    angle_rad = math.acos(nz)
     return math.degrees(angle_rad)
 
 
@@ -151,7 +154,7 @@ def get_downslope_direction(normal: Tuple[float, float, float]) -> Tuple[float, 
     """Get the direction of steepest descent on a slope.
 
     Args:
-        normal: Surface normal (nx, ny, nz) where y is up
+        normal: Surface normal (nx, ny, nz) where z is up
 
     Returns:
         Normalized downslope direction vector (horizontal component only)
@@ -162,13 +165,13 @@ def get_downslope_direction(normal: Tuple[float, float, float]) -> Tuple[float, 
     # The downslope direction is the horizontal component of the normal, negated
     # (negative because we want to go down, and normal points up from surface)
     horiz_x = -nx
-    horiz_z = -nz
+    horiz_y = -ny
 
-    length = math.sqrt(horiz_x**2 + horiz_z**2)
+    length = math.sqrt(horiz_x**2 + horiz_y**2)
     if length < 0.001:
         return (0.0, 0.0, 0.0)  # Flat surface, no downslope
 
-    return (horiz_x / length, 0.0, horiz_z / length)
+    return (horiz_x / length, horiz_y / length, 0.0)
 
 
 def get_slope_velocity_component(state: KinematicState) -> Tuple[float, float, float]:
@@ -190,37 +193,37 @@ def get_slope_velocity_component(state: KinematicState) -> Tuple[float, float, f
     nx, ny, nz = state.surface_normal
 
     # Calculate horizontal speed
-    horiz_speed = math.sqrt(state.velocity_x**2 + state.velocity_z**2)
+    horiz_speed = math.sqrt(state.velocity_x**2 + state.velocity_y**2)
 
     # The slope contribution is proportional to:
     # 1. How steep the slope is (more steep = more vertical component)
     # 2. How fast we're moving horizontally
 
     # For a slope, the vertical boost is: horiz_speed * tan(angle)
-    # But we can compute this from the normal: tan(angle) = sqrt(nx² + nz²) / ny
+    # But we can compute this from the normal: tan(angle) = sqrt(nx² + ny²) / nz
 
-    if abs(ny) < 0.001:  # Nearly vertical surface
+    if abs(nz) < 0.001:  # Nearly vertical surface
         return (0.0, 0.0, 0.0)
 
-    slope_factor = math.sqrt(nx**2 + nz**2) / ny
+    slope_factor = math.sqrt(nx**2 + ny**2) / nz
 
     # Direction of movement on slope
     if horiz_speed > 0.001:
         move_dir_x = state.velocity_x / horiz_speed
-        move_dir_z = state.velocity_z / horiz_speed
+        move_dir_y = state.velocity_y / horiz_speed
     else:
         return (0.0, 0.0, 0.0)
 
     # Check if moving uphill or downhill
     # Dot product of movement direction with downslope direction
     downslope = get_downslope_direction(state.surface_normal)
-    dot = move_dir_x * downslope[0] + move_dir_z * downslope[2]
+    dot = move_dir_x * downslope[0] + move_dir_y * downslope[1]
 
     # If moving uphill (dot < 0), add upward velocity
     # If moving downhill (dot > 0), add downward velocity
     vertical_boost = -dot * horiz_speed * slope_factor * 0.5  # 0.5 is tuning factor
 
-    return (0.0, vertical_boost, 0.0)
+    return (0.0, 0.0, vertical_boost)
 
 
 def apply_slope_forces(state: KinematicState, dt: float) -> None:
@@ -244,10 +247,10 @@ def apply_slope_forces(state: KinematicState, dt: float) -> None:
 
     # Apply downslope acceleration
     state.velocity_x += downslope[0] * SLIDE_ACCELERATION * dt
-    state.velocity_z += downslope[2] * SLIDE_ACCELERATION * dt
+    state.velocity_y += downslope[1] * SLIDE_ACCELERATION * dt
 
     # Apply slide friction (opposes velocity)
-    speed = math.sqrt(state.velocity_x**2 + state.velocity_z**2)
+    speed = math.sqrt(state.velocity_x**2 + state.velocity_y**2)
     if speed > 0.001:
         # Friction reduces speed proportionally
         friction_reduction = SLIDE_FRICTION * dt
@@ -255,7 +258,7 @@ def apply_slope_forces(state: KinematicState, dt: float) -> None:
         speed_factor = new_speed / speed
 
         state.velocity_x *= speed_factor
-        state.velocity_z *= speed_factor
+        state.velocity_y *= speed_factor
 
 
 def integrate_movement(
@@ -267,8 +270,10 @@ def integrate_movement(
 ) -> None:
     """Integrate 3D motion and resolve collisions.
     
+    Uses Panda3D coordinate system: X-right, Y-forward, Z-up.
+    
     Args:
-        entity: The entity to move (must have x, y, z, position).
+        entity: The entity to move (must have x, y, z attributes).
         state: The physics state containing velocity.
         dt: Delta time.
         ground_check: Function returning height or (height, normal) tuple.
@@ -276,9 +281,9 @@ def integrate_movement(
                     Signature: (entity, movement_vector) -> hit_wall
     """
     
-    # 1. Horizontal Movement (X/Z)
+    # 1. Horizontal Movement (X/Y)
     dx = state.velocity_x * dt
-    dz = state.velocity_z * dt
+    dy = state.velocity_y * dt
     
     # Simple collision check: try moving, if hit, slide or stop
     # For now, we'll do a simple "try move one axis at a time" approach
@@ -286,42 +291,43 @@ def integrate_movement(
     
     if wall_check:
         # Try full diagonal movement first
-        if (dx != 0 or dz != 0) and not wall_check(entity, (dx, 0, dz)):
+        if (dx != 0 or dy != 0) and not wall_check(entity, (dx, dy, 0)):
             # No collision on diagonal movement
             entity.x += dx
-            entity.z += dz
+            entity.y += dy
         else:
             # Hit a wall on diagonal, try sliding along each axis
             x_blocked = False
-            z_blocked = False
+            y_blocked = False
             
             # Try X movement
-            if dx != 0 and not wall_check(entity, (dx, 0, 0)):
-                entity.x += dx
-            else:
-                x_blocked = True
-                # Don't fully stop X velocity - allow some sliding momentum
-                state.velocity_x *= 0.5  # Preserve some momentum for sliding
+            if dx != 0:
+                if not wall_check(entity, (dx, 0, 0)):
+                    entity.x += dx
+                else:
+                    x_blocked = True
+                    # print("DEBUG: X Blocked")
+                    state.velocity_x *= 0.5  # Preserve some momentum for sliding
             
-            # Try Z movement
-            if dz != 0 and not wall_check(entity, (0, 0, dz)):
-                entity.z += dz
+            # Try Y movement
+            if dy != 0 and not wall_check(entity, (0, dy, 0)):
+                entity.y += dy
             else:
-                z_blocked = True
-                # Don't fully stop Z velocity - allow some sliding momentum
-                state.velocity_z *= 0.5  # Preserve some momentum for sliding
+                y_blocked = True
+                # Don't fully stop Y velocity - allow some sliding momentum
+                state.velocity_y *= 0.5  # Preserve some momentum for sliding
             
             # If both axes blocked, fully stop (corner case)
-            if x_blocked and z_blocked:
+            if x_blocked and y_blocked:
                 state.velocity_x = 0
-                state.velocity_z = 0
+                state.velocity_y = 0
     else:
         # No collision checks, just move
         entity.x += dx
-        entity.z += dz
+        entity.y += dy
 
-    # 2. Vertical Movement (Y) with slope handling
-    entity.y += state.velocity_y * dt
+    # 2. Vertical Movement (Z) with slope handling
+    entity.z += state.velocity_z * dt
 
     # Get ground height and surface normal
     ground_result = ground_check(entity)
@@ -329,18 +335,18 @@ def integrate_movement(
     if ground_result is not None:
         # Check if we got a tuple (height, normal) or just height
         if isinstance(ground_result, tuple):
-            ground_y, normal = ground_result
+            ground_z, normal = ground_result
             state.surface_normal = normal
             state.slope_angle = calculate_slope_angle(normal)
         else:
-            ground_y = ground_result
-            state.surface_normal = (0, 1, 0)
+            ground_z = ground_result
+            state.surface_normal = (0, 0, 1)  # Z-up default
             state.slope_angle = 0.0
         
-        if entity.y <= ground_y:
+        if entity.z <= ground_z:
             # Snap to ground
-            entity.y = ground_y
-            state.velocity_y = 0.0
+            entity.z = ground_z
+            state.velocity_z = 0.0
             state.grounded = True
             state.time_since_grounded = 0.0
             
@@ -354,13 +360,13 @@ def integrate_movement(
             # In air
             state.grounded = False
             state.sliding = False
-            state.surface_normal = (0, 1, 0)
+            state.surface_normal = (0, 0, 1)
             state.slope_angle = 0.0
     else:
         # No ground detected
         state.grounded = False
         state.sliding = False
-        state.surface_normal = (0, 1, 0)
+        state.surface_normal = (0, 0, 1)
         state.slope_angle = 0.0
 
 
@@ -385,13 +391,13 @@ def perform_jump(state: KinematicState, jump_height: float) -> None:
         state: Kinematic state
         jump_height: Base jump velocity
     """
-    # Base jump velocity
-    state.velocity_y = jump_height
+    # Base jump velocity (Z is up in Panda3D)
+    state.velocity_z = jump_height
 
     # Add slope contribution if on a slope
     if state.grounded and state.slope_angle > 1.0:  # More than 1° slope
         slope_vel = get_slope_velocity_component(state)
-        state.velocity_y += slope_vel[1]  # Add vertical component
+        state.velocity_z += slope_vel[2]  # Add vertical component (Z)
 
     state.grounded = False
     # After performing a jump, clear any buffered jump request.
@@ -408,9 +414,10 @@ def raycast_ground_height(
     ignore: Optional[list] = None,
     return_normal: bool = False
 ) -> Optional[float] | Optional[Tuple[float, Tuple[float, float, float]]]:
-    """Return the ground y-position below an entity using Panda3D collision.
+    """Return the ground z-position below an entity using Panda3D collision.
 
     Casts a ray straight down from above the entity to detect terrain.
+    Uses Panda3D coordinate system: X-right, Y-forward, Z-up.
     
     Args:
         entity: The entity to raycast from (must have x, y, z attributes)
@@ -423,17 +430,15 @@ def raycast_ground_height(
         return_normal: If True, return (height, normal) tuple
     
     Returns:
-        Ground Y position, or (height, normal) if return_normal=True, or None if no hit
+        Ground Z position, or (height, normal) if return_normal=True, or None if no hit
     """
     from panda3d.core import (
         CollisionRay, CollisionNode, CollisionHandlerQueue, 
         BitMask32, LPoint3f, NodePath
     )
     
-    # Create ray from above entity pointing down
-    # Entity coordinates: x, y (up), z (depth)
-    # Panda3D coordinates: x, y (depth), z (up)
-    ray_origin = LPoint3f(entity.x, entity.z, entity.y + ray_origin_offset)
+    # Create ray from above entity pointing down (Panda3D: Z is up)
+    ray_origin = LPoint3f(entity.x, entity.y, entity.z + ray_origin_offset)
     ray_direction = LVector3f(0, 0, -1)  # Down in Panda3D
     
     ray = CollisionRay()
@@ -469,7 +474,7 @@ def raycast_ground_height(
             normal = entry.getSurfaceNormal(render_node)
             return (hit_point.z + foot_offset, (normal.x, normal.y, normal.z))
         else:
-            # Return height with foot offset (convert Panda3D Z to entity Y)
+            # Return height with foot offset
             return hit_point.z + foot_offset
     
     # Clean up even if no hit
@@ -490,10 +495,11 @@ def raycast_wall_check(
     """Check if moving by 'movement' would hit a wall using Panda3D collision.
     
     Casts a ray in the direction of movement to detect obstacles.
+    Uses Panda3D coordinate system: X-right, Y-forward, Z-up.
     
     Args:
         entity: The entity to check from
-        movement: Movement vector (dx, dy, dz) where dy is vertical, dx/dz are horizontal
+        movement: Movement vector (dx, dy, dz) where dz is vertical, dx/dy are horizontal
         collision_traverser: Panda3D CollisionTraverser instance
         render_node: Root render node to traverse against
         distance_buffer: Extra distance to check beyond movement
@@ -511,17 +517,17 @@ def raycast_wall_check(
     dx, dy, dz = movement
     
     # Skip if no horizontal movement
-    if abs(dx) < 0.001 and abs(dz) < 0.001:
+    if abs(dx) < 0.001 and abs(dy) < 0.001:
         return False
     
     # Create ray from entity in movement direction
     # Ray at mid-height of entity
-    ray_origin = LPoint3f(entity.x, entity.z, entity.y + 0.9)  # Mid-height
+    ray_origin = LPoint3f(entity.x, entity.y, entity.z + 0.9)  # Mid-height
     
     # Normalize movement direction (horizontal only)
-    length = math.sqrt(dx*dx + dz*dz)
-    # Convert to Panda3D coordinates: (dx, dz, 0) -> (dx, dz, 0)
-    direction = LVector3f(dx/length, dz/length, 0)
+    length = math.sqrt(dx*dx + dy*dy)
+    # Direction in Panda3D coordinates
+    direction = LVector3f(dx/length, dy/length, 0)
     
     ray = CollisionRay()
     ray.setOrigin(ray_origin)

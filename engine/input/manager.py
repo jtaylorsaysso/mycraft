@@ -56,7 +56,25 @@ class InputManager:
         self.keys_down.discard(key)
     
     def is_key_down(self, key: str) -> bool:
-        return key.lower() in self.keys_down
+        # Check event-based tracking first
+        if key.lower() in self.keys_down:
+            return True
+            
+        # Fallback: Poll Panda3D directly (more robust)
+        if self.base and self.base.mouseWatcherNode.hasMouse():
+            from panda3d.core import KeyboardButton
+            try:
+                # Handle single characters
+                if len(key) == 1:
+                    p3d_key = KeyboardButton.ascii_key(key.lower())
+                    return self.base.mouseWatcherNode.is_button_down(p3d_key)
+                
+                # Handle special keys if needed (space, etc - tricky map)
+                # For now just trust w,a,s,d come through as ascii
+            except Exception:
+                pass
+                
+        return False
     
     def lock_mouse(self):
         if not self.base: return
@@ -77,16 +95,33 @@ class InputManager:
     def update(self):
         """Update mouse delta tracking."""
         if self.mouse_locked and self.base and self.base.mouseWatcherNode.hasMouse():
-            mx = self.base.mouseWatcherNode.getMouseX()
-            my = self.base.mouseWatcherNode.getMouseY()
+            # Manual centered locking: reliable across platforms
+            # 1. Get window size and center
+            win_width = self.base.win.getXSize()
+            win_height = self.base.win.getYSize()
+            center_x = win_width // 2
+            center_y = win_height // 2
             
-            # In relative mode, Panda3D centers the mouse, but we can track the delta directly from mouseWatcherNode
-            # Or if using M_relative, GetMouseX/Y returns the accumulated delta since last frame often?
-            # Actually, Panda3D M_relative mode resets mouse to center. 
-            # The getMouseX/Y returns coordinates from -1 to 1.
+            # 2. Get current mouse position (pixels)
+            md = self.base.win.getPointer(0)
+            current_x = md.getX()
+            current_y = md.getY()
             
-            self.mouse_delta = (mx, my)
-            # Re-center is handled by M_relative
+            # 3. Calculate delta
+            dx_pixels = current_x - center_x
+            dy_pixels = current_y - center_y
+            
+            # 4. Normalize delta to reasonable range (similar to getMouseX range of -1 to 1)
+            # Assuming 1.0 corresponds to half-screen width
+            self.mouse_delta = (
+                (dx_pixels / win_width) * 2.0, 
+                (dy_pixels / win_height) * 2.0
+            )
+            
+            # 5. Re-center mouse if it moved
+            if dx_pixels != 0 or dy_pixels != 0:
+                self.base.win.movePointer(0, center_x, center_y)
+                
         else:
             self.mouse_delta = (0.0, 0.0)
 

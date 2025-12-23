@@ -80,8 +80,6 @@ class PlayerControlSystem(System):
 
     def on_ready(self):
         """Phase 3: Called when player entity exists - setup camera and controls."""
-        super().on_ready()
-        
         player_id = self.world.get_entity_by_tag("player")
         if not player_id:
             self.logger.error("on_ready called but player entity not found!")
@@ -119,14 +117,15 @@ class PlayerControlSystem(System):
         # NOW lock the mouse (player is ready)
         self.input.lock_mouse()
         
+        # IMPORTANT: Call super().on_ready() LAST to set ready=True
+        # This ensures all setup is complete before system starts updating
+        super().on_ready()
+        
         self.logger.info(f"Player controls ready for player {player_id}")
 
 
     def update(self, dt: float):
         """Process input and update player transform."""
-        # System only updates when ready (player exists)
-        self.input.update()
-        
         player_id = self.world.get_entity_by_tag("player")
         if not player_id:
             # Player disappeared - this shouldn't happen if dependencies work correctly
@@ -154,8 +153,10 @@ class PlayerControlSystem(System):
                 health.invuln_timer = 0.0
                 print("🛡️ Spawn protection expired")
         
+        # Update input state (mouse delta, etc.)
+        self.input.update()
+        
         # Handle camera mode toggle (V key)
-
         self.camera_toggle_cooldown = max(0, self.camera_toggle_cooldown - dt)
         if self.input.is_key_down('v') and self.camera_toggle_cooldown <= 0:
             self._toggle_camera_mode()
@@ -206,6 +207,10 @@ class PlayerControlSystem(System):
         
         if move_dir.length() > 0:
             move_dir.normalize()
+            # print(f"DEBUG: Input Detected - keys={self.input.keys if hasattr(self.input, 'keys') else 'unknown'} dir={move_dir}")
+        else:
+            # print("DEBUG: No Input")
+            pass
             
         # 4. Apply Physics
         
@@ -216,14 +221,14 @@ class PlayerControlSystem(System):
             
         target_vel = move_dir * target_speed
         
-        # Apply unified acceleration model
-        apply_horizontal_acceleration(state, (target_vel.x, target_vel.z), dt, state.grounded)
+        # Apply unified acceleration model (x, y are horizontal in Panda3D)
+        apply_horizontal_acceleration(state, (target_vel.x, target_vel.y), dt, state.grounded)
 
         # Apply water drag if in water
         if in_water:
             # Simple exponential decay of horizontal velocity
             state.velocity_x *= max(0.0, 1 - WATER_DRAG * dt)
-            state.velocity_z *= max(0.0, 1 - WATER_DRAG * dt)
+            state.velocity_y *= max(0.0, 1 - WATER_DRAG * dt)
 
         # -- VERTICAL --
         jump_requested = self.input.is_key_down('space')
@@ -237,10 +242,10 @@ class PlayerControlSystem(System):
             
             # Swim up
             if jump_requested:
-                state.velocity_y += self.SWIM_SPEED * dt
+                state.velocity_z += self.SWIM_SPEED * dt
                 # Cap swim speed
-                if state.velocity_y > self.SWIM_SPEED:
-                    state.velocity_y = self.SWIM_SPEED
+                if state.velocity_z > self.SWIM_SPEED:
+                    state.velocity_z = self.SWIM_SPEED
                     
             state.grounded = False # Always floating in water
             
@@ -256,37 +261,33 @@ class PlayerControlSystem(System):
                 perform_jump(state, self.JUMP_HEIGHT * -self.GRAVITY * 0.4) # Approx height based on gravity
 
         # 5. Integrate & Move
-        # We wrap transform to match protocol needed by physics (x,y,z properties)
-        # Physics Engine Expects: Y=Up, Z=Forward/Back (Ursina legacy)
-        # Panda3D Expects: Z=Up, Y=Forward/Back
-        # We must bridge this.
-        
-        class TransformWrapper:
-            def __init__(self, t): self.t = t
+        # Physics now uses Panda3D coordinates directly (Z-up)
+        # Create simple wrapper that exposes x, y, z attributes for physics
+        class EntityWrapper:
+            def __init__(self, transform):
+                self._transform = transform
             @property
-            def x(self): return self.t.position.x
+            def x(self): return self._transform.position.x
             @x.setter
-            def x(self, v): self.t.position.x = v
-            # Map Physics Y (Up) -> Panda Z (Up)
+            def x(self, v): self._transform.position.x = v
             @property
-            def y(self): return self.t.position.z
+            def y(self): return self._transform.position.y
             @y.setter
-            def y(self, v): self.t.position.z = v
-            # Map Physics Z (Depth) -> Panda Y (Depth)
+            def y(self, v): self._transform.position.y = v
             @property
-            def z(self): return self.t.position.y
+            def z(self): return self._transform.position.z
             @z.setter
-            def z(self, v): self.t.position.y = v
-            
-        wrapper = TransformWrapper(transform)
+            def z(self, v): self._transform.position.z = v
+        
+        entity = EntityWrapper(transform)
         
         # Ground check using collision raycast
-        def remapped_ground_check(entity):
+        def ground_check(entity):
             from engine.physics import raycast_ground_height
             return raycast_ground_height(
                 entity,
                 self.collision_traverser,
-                self.base.render,  # Pass render node
+                self.base.render,
                 max_distance=5.0,
                 foot_offset=0.2,
                 ray_origin_offset=2.0,
@@ -300,15 +301,20 @@ class PlayerControlSystem(System):
                 entity,
                 movement,
                 self.collision_traverser,
-                self.base.render,  # Pass render node
+                self.base.render,
                 distance_buffer=0.5
             )
+            # return False # DISABLE FOR DEBUGGING INPUT
+
+        # DEBUG: Trace movement (Reduced)
+        # if move_dir.length() > 0:
+        #     print(f"DEBUG: Move Dir: {move_dir}")
 
         integrate_movement(
-            wrapper,
+            entity,
             state,
             dt,
-            ground_check=remapped_ground_check,
+            ground_check=ground_check,
             wall_check=wall_check
         )
         
@@ -325,8 +331,9 @@ class PlayerControlSystem(System):
                 self.local_mannequin.root.setH(self.fps_camera.yaw)
             
             # Update animations based on physics state
+            # Velocity in Panda3D coordinates: X-right, Y-forward, Z-up
             if self.local_animation_controller:
-                velocity = LVector3f(state.velocity_x, state.velocity_z, state.velocity_y)
+                velocity = LVector3f(state.velocity_x, state.velocity_y, state.velocity_z)
                 self.local_animation_controller.update(dt, velocity, state.grounded)
         
         # Update camera position for first-person mode
@@ -368,8 +375,4 @@ class PlayerControlSystem(System):
     
     def _get_system(self, system_name):
         """Helper to look up a sibling system."""
-        if hasattr(self.world, '_systems'):
-             for sys in self.world._systems:
-                 if sys.__class__.__name__ == system_name:
-                     return sys
-        return None
+        return self.world.get_system_by_type(system_name)

@@ -8,7 +8,9 @@ Welcome to MyCraft! Whether you're just starting out or diving deep into the eng
 
 | Document | Description |
 |----------|-------------|
-| [Vision](../VISION.md) | What MyCraft is all about |
+| [Engine Vision](../VISION.md) | What MyCraft is all about |
+| [Game Vision](../VISION_VOXEL_WORLD.md) | Direction for voxel_world |
+| [Engine/Game Boundaries](../ENGINE_GAME_BOUNDARIES.md) | Who owns what |
 | [Roadmap](../ROADMAP.md) | What's coming next |
 | [README](../README.md) | Quick start guide |
 

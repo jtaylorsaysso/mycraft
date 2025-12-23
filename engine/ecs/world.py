@@ -47,6 +47,19 @@ class World:
         """Get entity ID by tag name."""
         return self._tags.get(tag)
 
+    def register_tag(self, entity_id: str, tag: str):
+        """Register a tag for an existing entity.
+        
+        This is useful for delaying tag assignment until after components 
+        are initialized, ensuring systems don't wake up too early.
+        """
+        if entity_id not in self._entities:
+            raise KeyError(f"Entity {entity_id} does not exist")
+            
+        self._tags[tag] = entity_id
+        # Check if any pending systems are now satisfied
+        self._check_pending_systems()
+
     def destroy_entity(self, entity_id: str):
         """Remove an entity and all its components."""
         if entity_id not in self._entities:

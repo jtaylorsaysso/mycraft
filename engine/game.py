@@ -79,10 +79,9 @@ class VoxelGame(ShowBase):
         # Network
         self.world.add_system(SyncSystem(self.world, self.world.event_bus))
         
-        # Rendering & World (Phase 6 Integration)
-        from games.voxel_world.systems.world_gen import TerrainSystem
-        self.world.add_system(TerrainSystem(self.world, self.world.event_bus, self, self.texture_atlas))
-
+        # Rendering & World
+        # Note: Terrain system is now registered by games via register_terrain_system()
+        
         
         from engine.systems.water_physics import WaterPhysicsSystem
         self.world.add_system(WaterPhysicsSystem(self.world, self.world.event_bus))
@@ -102,6 +101,18 @@ class VoxelGame(ShowBase):
         """Register a new block type."""
         self.blocks[block.id] = block
         logger.info(f"Registered block: {block.id}")
+    
+    def register_terrain_system(self, terrain_system: System):
+        """Register a game-specific terrain system.
+        
+        This allows games to inject their terrain generation logic
+        while maintaining clean engine/game boundaries.
+        
+        Args:
+            terrain_system: Game-specific terrain/chunk system
+        """
+        self.world.add_system(terrain_system)
+        logger.info(f"Registered terrain system: {terrain_system.__class__.__name__}")
 
     def spawn_entity(self, components: list[Component]) -> str:
         """Create an entity with the given components."""
@@ -114,7 +125,8 @@ class VoxelGame(ShowBase):
         """Spawn the player character."""
         from engine.components.core import Transform, Health, Inventory
         
-        entity_id = self.world.create_entity(tag="player")
+        # Create entity WITHOUT tag first to prevent early system wakeup
+        entity_id = self.world.create_entity() # tag="player" removed
         
         # Use native Panda3D vector
         pos = LVector3f(*position)
@@ -122,6 +134,9 @@ class VoxelGame(ShowBase):
         self.world.add_component(entity_id, Transform(position=pos))
         self.world.add_component(entity_id, Health(current=100, max_hp=100))
         self.world.add_component(entity_id, Inventory(slots=[None]*9))
+        
+        # Now register tag to wake up systems (PlayerControlSystem)
+        self.world.register_tag(entity_id, "player")
         
         logger.info(f"Spawned player at {position}")
         return entity_id

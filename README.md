@@ -7,7 +7,7 @@
 Build Status: Pre-alpha playtest  
 **Visual Map Editor**: Coming in Milestone 3
 
-**📖 [Vision](VISION.md)** | **🗺️ [Roadmap](ROADMAP.md)** | **📚 [Documentation](docs/index.md)**
+**📖 [Engine Vision](VISION.md)** | **🎮 [Game Vision](VISION_VOXEL_WORLD.md)** | **🚧 [Boundaries](ENGINE_GAME_BOUNDARIES.md)** | **🗺️ [Roadmap](ROADMAP.md)**
 
 ---
 

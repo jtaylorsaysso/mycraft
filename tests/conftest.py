@@ -24,6 +24,13 @@ if 'panda3d' not in sys.modules:
         def length(self):
             import math
             return math.sqrt(self.x**2 + self.y**2 + self.z**2)
+        def normalize(self):
+            l = self.length()
+            if l > 0:
+                self.x /= l
+                self.y /= l
+                self.z /= l
+            return True
         def __repr__(self): return f"Vec3({self.x}, {self.y}, {self.z})"
 
     # Simple MockVector2 that behaves like LVector2f

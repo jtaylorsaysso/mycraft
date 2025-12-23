@@ -45,23 +45,23 @@ This roadmap outlines the high-level milestones for MyCraft's development. Sprin
 
 ## Milestone 2: voxel_world Alpha
 
-**Status**: Planned  
-**Goal**: Complete first game demonstrating engine capabilities
+ **Status**: Planned  
+ **Goal**: First playable version with core combat and exploration loop
 
 ### Planned Features
 
-- **Gameplay Loop**: Exploration, resource gathering, basic progression
-- **Biome Variety**: 8+ distinct biomes with unique terrain
-- **Multiplayer**: Stable LAN play for 2-8 players
-- **Content**: Sufficient blocks, items, and mechanics for 1+ hour of gameplay
-- **Polish**: Smooth performance, intuitive controls, visual appeal
+- **Movement Mastery**: Climbing, vaulting, and fluid traversal
+- **Combat Prototype**: Basic attacks, dodging, and one enemy type
+- **Gameplay Loop**: Spawn → Find PoI → Challenge → Reward
+- **Content**: First "Challenge Shrine" implementation
+- **Multiplayer**: Sync for combat and movement state
 
 ### Milestone 2 Success Criteria
 
-- [ ] Playable alpha release for external playtesters
-- [ ] Multiplayer stress-tested with 8 concurrent players
-- [ ] Player feedback incorporated into iteration plan
-- [ ] Game serves as reference implementation for engine
+- [ ] Playable combat loop (attack/dodge feels good)
+- [ ] Functional traversal (climbing/vaulting working)
+- [ ] Complete PoI loop (Enter/Complete/Reward)
+- [ ] Multiplayer functionality for combat interactions
 
 ---
 

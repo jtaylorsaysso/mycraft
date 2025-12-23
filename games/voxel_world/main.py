@@ -10,8 +10,18 @@ def run(**kwargs):
     # Extract config
     name = kwargs.get('name', "MyCraft Voxel World")
     
-    # Option 1: Code-based (For flexibility)
+    # Create game instance
     game = VoxelGame(name=name)
+    
+    # Register voxel_world's terrain system
+    from games.voxel_world.systems.world_gen import TerrainSystem
+    terrain_system = TerrainSystem(
+        game.world, 
+        game.world.event_bus, 
+        game, 
+        game.texture_atlas
+    )
+    game.register_terrain_system(terrain_system)
     
     # Register blocks 
     # (Engine provides defaults in BlockRegistry, we can add game-specific ones here if needed)
@@ -23,7 +33,7 @@ def run(**kwargs):
     game.world.event_bus.subscribe("on_block_break", on_break)
     
     # STEP 1: Generate initial chunks FIRST (before spawning player)
-    terrain_system = game.world.get_system_by_type("TerrainSystem")
+    # Terrain system was registered above, retrieve it for chunk generation
     if terrain_system:
         print("🌍 Generating initial chunks...")
         # Create 3x3 grid of chunks centered at origin
