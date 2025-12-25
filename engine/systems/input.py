@@ -21,7 +21,9 @@ from engine.physics.constants import (
     FRICTION,
     AIR_CONTROL,
     WATER_MULTIPLIER,
-    WATER_DRAG
+    WATER_DRAG,
+    GRAVITY,
+    JUMP_VELOCITY
 )
 from panda3d.core import LVector3f
 import math
@@ -29,12 +31,7 @@ import math
 class PlayerControlSystem(System):
     """System that handles player movement and camera controls with physics."""
     
-    # Removed hardcoded constants - using engine.physics.constants
-    
-    # Keeping these for now as they might be specific to player or not yet in shared constants
-    RUN_SPEED = 10.0
-    JUMP_HEIGHT = 1.2
-    GRAVITY = -20.0  # Snappy gravity
+    # All physics constants are now in engine.physics.constants
     
     # Water Physics Constants (Player specific)
     WATER_GRAVITY = -2.0      # Very low gravity in water
@@ -251,14 +248,14 @@ class PlayerControlSystem(System):
             
         else:
             # Standard Gravity
-            apply_gravity(state, dt, gravity=self.GRAVITY)
+            apply_gravity(state, dt, gravity=GRAVITY)
 
             # Apply slope forces if sliding
             apply_slope_forces(state, dt)
             
             # Jumping
             if can_consume_jump(state):
-                perform_jump(state, self.JUMP_HEIGHT * -self.GRAVITY * 0.4) # Approx height based on gravity
+                perform_jump(state, JUMP_VELOCITY)
 
         # 5. Integrate & Move
         # Physics now uses Panda3D coordinates directly (Z-up)

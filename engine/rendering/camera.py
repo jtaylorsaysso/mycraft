@@ -28,15 +28,16 @@ class FPSCamera:
         """Update camera rotation based on mouse movement.
         
         Args:
-            mouse_dx: Mouse delta X (horizontal movement)
-            mouse_dy: Mouse delta Y (vertical movement)
-            dt: Delta time
+            mouse_dx: Mouse delta X (horizontal movement) - already per-frame
+            mouse_dy: Mouse delta Y (vertical movement) - already per-frame
+            dt: Delta time (not used for mouse input, which is already per-frame)
         """
         # Horizontal rotation (yaw)
-        self.yaw += mouse_dx * self.sensitivity * dt
+        # NOTE: mouse_dx is already a per-frame delta, don't multiply by dt!
+        self.yaw += mouse_dx * self.sensitivity
         
         # Vertical rotation (pitch)
-        self.pitch -= mouse_dy * self.sensitivity * dt
+        self.pitch -= mouse_dy * self.sensitivity
         
         # Clamp vertical rotation
         if self.clamp_vertical:
@@ -92,8 +93,9 @@ class ThirdPersonCamera:
             target_position: World position of the target entity
         """
         # Update rotation from mouse input
-        self.yaw += mouse_dx * self.sensitivity * dt
-        self.pitch -= mouse_dy * self.sensitivity * dt
+        # NOTE: mouse_dx/dy are already per-frame deltas, don't multiply by dt!
+        self.yaw += mouse_dx * self.sensitivity
+        self.pitch -= mouse_dy * self.sensitivity
         
         # Clamp pitch
         self.pitch = max(self.min_pitch, min(self.max_pitch, self.pitch))

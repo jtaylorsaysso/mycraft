@@ -21,3 +21,9 @@ MAX_WALKABLE_SLOPE = 45.0   # degrees - slopes steeper than this cause sliding
 SLIDE_FRICTION = 5.0        # friction coefficient when sliding down slopes
 SLIDE_ACCELERATION = 15.0   # units/s² - downslope acceleration when sliding
 SLIDE_CONTROL = 0.3         # 0.0-1.0 - player control multiplier while sliding
+# Jump Physics
+JUMP_VELOCITY = 9.6  # units/s - explicit jump velocity (tuned for ~1.2 unit height)
+GRAVITY = -20.0      # units/s² - snappy downward acceleration
+
+# Player-specific movement
+RUN_SPEED = 10.0     # units/s - sprint speed (future feature)

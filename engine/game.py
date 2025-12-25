@@ -86,7 +86,8 @@ class VoxelGame(ShowBase):
         from engine.systems.water_physics import WaterPhysicsSystem
         self.world.add_system(WaterPhysicsSystem(self.world, self.world.event_bus))
         
-        from engine.systems.input import PlayerControlSystem
+        # Player Control System (Composition-based mechanics)
+        from engine.systems.player_controller import PlayerControlSystem
         self.world.add_system(PlayerControlSystem(self.world, self.world.event_bus, self))
         
         # Remote player rendering (multiplayer)

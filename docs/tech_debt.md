@@ -1,5 +1,22 @@
 # Tech Debt
 
+## Coordinate System Test Issues (2025-12-25)
+
+**Priority:** Medium | **Effort:** ~30 minutes
+
+During controls polishing audit, found test files still using Ursina (Y-up) instead of Panda3D (Z-up):
+
+- [ ] `tests/test_player_physics.py` - Lines 116, 120, 122, 145, 151 check `velocity_y` instead of `velocity_z`
+- [ ] `tests/test_physics_raycast.py` - Uses `entity.y` for vertical position throughout
+- [ ] `tests/test_physics_manual.py` - MockEntity uses Y for vertical (lines 13-17)
+- [ ] `tests/benchmarks/test_physics.py` - Line 39 sets vertical velocity on wrong axis
+- [ ] Clean up outdated "Ursina" references in test comments (6 files)
+
+**Impact:** Tests provide false confidence - actual vertical physics coverage incomplete.  
+**Reference:** `coordinate_audit.md` in artifacts directory
+
+---
+
 ## World Generation
 
 - [x] ~~World generation is currently a placeholder~~ - Now uses proper sine-wave based height function with greedy meshing

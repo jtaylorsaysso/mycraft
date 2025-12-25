@@ -40,6 +40,9 @@ class MockVector3:
 mock_core.LVector3f = MockVector3
 mock_core.WindowProperties = MagicMock()
 mock_core.ModifierButtons = MagicMock()
+mock_core.CollisionHandlerQueue.return_value.getNumEntries.return_value = 0
+mock_core.BitMask32.bit.return_value = 1
+mock_core.BitMask32.allOff.return_value = 0
 mock_panda.core = mock_core
 sys.modules['panda3d'] = mock_panda
 sys.modules['panda3d.core'] = mock_core

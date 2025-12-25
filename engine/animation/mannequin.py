@@ -58,11 +58,49 @@ class AnimatedMannequin:
     
     def _create_cube(self, name: str, parent: NodePath, scale: tuple, pos: tuple = (0, 0, 0)):
         """Create a simple cube using CardMaker (placeholder for proper models)."""
-        # For now, create a simple node - in production you'd load actual models
         node = parent.attachNewNode(name)
+        
+        # Create a unit cube (roughly) using CardMaker for visibility
+        cm = CardMaker('card')
+        cm.setFrame(-0.5, 0.5, -0.5, 0.5)  # 1x1 centered
+        
+        # Create 6 faces
+        # Front
+        f = node.attachNewNode(cm.generate())
+        f.setPos(0, -0.5, 0)
+        
+        # Back
+        b = node.attachNewNode(cm.generate())
+        b.setPos(0, 0.5, 0)
+        b.setH(180)
+        
+        # Left
+        l = node.attachNewNode(cm.generate())
+        l.setPos(-0.5, 0, 0)
+        l.setH(90)
+        
+        # Right
+        r = node.attachNewNode(cm.generate())
+        r.setPos(0.5, 0, 0)
+        r.setH(-90)
+        
+        # Top
+        t = node.attachNewNode(cm.generate())
+        t.setPos(0, 0, 0.5)
+        t.setP(-90)
+        
+        # Bottom
+        bt = node.attachNewNode(cm.generate())
+        bt.setPos(0, 0, -0.5)
+        bt.setP(90)
+        
+        # Apply color
+        node.setColorScale(*self.body_color)
+        
+        # Apply transform
         node.setScale(*scale)
         node.setPos(*pos)
-        # TODO: Attach actual geometry here
+        
         return node
     
     def _build_body(self):

@@ -97,16 +97,16 @@ class WaterPhysicsSystem(System):
             # For this engine, we prefer entities have KinematicState for physics
             return
             
-        # Simple buoyancy: affect vertical velocity
-        # We use a simple force-like application: velocity_y += force * dt
-        state.velocity_y += self.BUOYANCY_FORCE * submersion * dt
+        # Simple buoyancy: affect vertical velocity (Z-axis in Panda3D)
+        # We use a simple force-like application: velocity_z += force * dt
+        state.velocity_z += self.BUOYANCY_FORCE * submersion * dt
         
         # Apply water drag (imported from constants)
         # This affects horizontal and vertical velocity
         drag_factor = max(0.0, 1.0 - WATER_DRAG * dt)
-        state.velocity_x *= drag_factor
-        state.velocity_z *= drag_factor
-        state.velocity_y *= drag_factor  # Vertical drag too
+        state.velocity_x *= drag_factor  # Horizontal X
+        state.velocity_y *= drag_factor  # Horizontal Y
+        state.velocity_z *= drag_factor  # Vertical Z
         
         # TODO: Apply water resistance to horizontal velocity
         # TODO: Hook into input system for swim controls

@@ -32,7 +32,7 @@ class InputManager:
         # Also accept specific common keys for down/up tracking
         common_keys = [
             'w', 's', 'a', 'd', 'space', 'shift', 'control', 'escape', 
-            'e', 'q', 'tab', 't', '/', 'g', 'enter', 'backspace'
+            'e', 'q', 'tab', 't', '/', 'g', 'enter', 'backspace', 'v'  # Added 'v' for camera toggle
         ]
         # Function keys
         for i in range(1, 13):
