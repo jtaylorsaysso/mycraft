@@ -13,12 +13,13 @@ from direct.gui.OnscreenText import OnscreenText
 from direct.gui.DirectGui import DirectFrame
 from panda3d.core import TextNode, LVector3f
 from typing import Optional
-
+from engine.ui.settings_overlay import SettingsOverlay
+from engine.core.hot_config import HotConfig
 
 class HUD:
     """Heads-up display showing game information and controls using Panda3D DirectGUI."""
     
-    def __init__(self, base, player_entity_id: Optional[str] = None, world=None, networking=False):
+    def __init__(self, base, player_entity_id: Optional[str] = None, world=None, networking=False, hot_config=None):
         """
         Initialize the HUD.
         
@@ -27,11 +28,20 @@ class HUD:
             player_entity_id: Entity ID of the player for position tracking
             world: ECS World instance for component access
             networking: Whether networking is enabled
+            hot_config: Optional HotConfig instance for settings
         """
         self.base = base
         self.player_entity_id = player_entity_id
         self.world = world
         self.networking = networking
+        self.hot_config = hot_config
+        
+        # Settings Overlay
+        if self.hot_config:
+            self.settings = SettingsOverlay(base, self.hot_config)
+            self.settings.hide()
+        else:
+            self.settings = None
         
         # Crosshair (center of screen)
         self.crosshair = OnscreenText(
@@ -211,6 +221,17 @@ class HUD:
         else:
             self.loading_text.hide()
     
+    def toggle_settings(self):
+        """Toggle settings overlay visibility."""
+        if self.settings:
+            # Hide controls when settings are open
+            if not self.settings.visible:
+                self.settings.show()
+                self.hide_controls()
+            else:
+                self.settings.hide()
+                self.show_controls()
+
     def toggle_debug(self):
         """Toggle debug information visibility (position, etc.)."""
         self.debug_visible = not self.debug_visible
@@ -262,3 +283,5 @@ class HUD:
         self.connection_text.destroy()
         self.player_count_text.destroy()
         self.loading_text.destroy()
+        if self.settings:
+            self.settings.frame.destroy()

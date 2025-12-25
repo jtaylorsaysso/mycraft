@@ -13,7 +13,6 @@ class InputMechanic(PlayerMechanic):
     def __init__(self, base):
         self.base = base
         self.input_manager = None
-        self.esc_cooldown = 0.0  # Prevent ESC spam
         
     def setup(self, base):
         """Called by coordinator during initialize phase."""
@@ -21,8 +20,9 @@ class InputMechanic(PlayerMechanic):
     
     def initialize(self, player_id, world):
         """Called when player is ready - setup for mouse locking."""
-        # Don't auto-lock - wait for user to click (like old system)
-        print("🖱️ Click in window to lock mouse and start playing")
+        # Cursor management is now handled by GameState
+        # Initial lock happens when game enters PLAYING state
+        print("🎮 Game starting - cursor will lock automatically")
         
     def can_handle(self, ctx: PlayerContext) -> bool:
         return True  # Always run
@@ -33,21 +33,6 @@ class InputMechanic(PlayerMechanic):
             
         # Update input manager
         self.input_manager.update()
-        
-        # Update ESC cooldown
-        self.esc_cooldown = max(0, self.esc_cooldown - ctx.dt)
-        
-        # Handle mouse locking/unlocking
-        # Lock on mouse click if not locked
-        if not self.input_manager.mouse_locked and self.input_manager.is_key_down('mouse1'):
-            self.input_manager.lock_mouse()
-            print("🖱️ Mouse locked - use ESC to unlock")
-        
-        # Unlock on ESC (with cooldown to prevent spam)
-        if self.input_manager.mouse_locked and self.input_manager.is_key_down('escape') and self.esc_cooldown <= 0:
-            self.input_manager.unlock_mouse()
-            self.esc_cooldown = 0.5  # 500ms cooldown
-            print("🖱️ Mouse unlocked - click to relock")
         
         # Populate context.input
         ctx.input = InputState(

@@ -22,6 +22,12 @@ During controls polishing audit, found test files still using Ursina (Y-up) inst
 - [x] ~~World generation is currently a placeholder~~ - Now uses proper sine-wave based height function with greedy meshing
 - [ ] World generation uses simple sine waves - should be enhanced with proper noise (Perlin/Simplex) for more varied terrain
 - [x] ~~Only generates 3x3 chunk grid - needs dynamic chunk loading/unloading for larger worlds~~ - Implemented with configurable radius and throttling
+
+### Deferred UI/UX Features
+
+- [ ] **Host-Only Debug Panel**: Network monitoring (ping, packet loss), Entity inspector, Performance profiler. Deferred from UI Enhancement task.
+- [ ] **In-Game Console**: Log viewer and command input overlay.
+
 - [x] ~~UV coordinates are basic (0,0 to 1,1 per quad) - textures stretch across merged quads from greedy meshing~~ - Resolved by disabling greedy meshing for top faces (now 1:1 mapping)
 - [x] ~~Texture atlas system needed for varied block types~~ - Implemented with 16x16 grid (terrain.png) and per-face UV mapping
 - [ ] Texture indexing appears incorrect - verify TileRegistry indices against actual atlas layout

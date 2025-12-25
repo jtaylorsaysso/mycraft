@@ -60,6 +60,19 @@ def test_launcher_instantiation():
         assert hasattr(app, '_handle_launch_error')
         assert hasattr(app, '_enable_close_button')
         
+        # Check new UI components
+        assert hasattr(app, 'dev_mode_var')
+        assert hasattr(app, 'sens_var')
+        assert hasattr(app, 'fov_var')
+        assert hasattr(app, 'advanced_visible')
+        assert hasattr(app, 'toggle_advanced')
+        assert hasattr(app, 'update_preset_desc')
+        assert hasattr(app, 'open_server_config')
+        
+        # Test basic toggles (logic only, no GUI update check)
+        app.toggle_advanced()
+        assert app.advanced_visible is not None
+        
         root.destroy()
         print("✓ Launcher instantiation successful")
         return True

@@ -337,10 +337,7 @@ class PlayerControlSystem(System):
         if self.camera_mode == 'first_person':
             cam_offset = LVector3f(0, 0, 1.8)
             self.base.cam.setPos(transform.position + cam_offset)
-        
-        # Debug toggle
-        if self.input.is_key_down('escape'):
-            self.input.unlock_mouse()
+
     
     def cleanup(self):
         """Clean up resources when system is removed."""

@@ -83,7 +83,7 @@ class MyCraftLauncher:
     def __init__(self, root):
         self.root = root
         self.root.title("MyCraft Launcher")
-        self.root.geometry("700x650")
+        self.root.geometry("750x700")  # Slightly larger for new controls
         self.root.resizable(True, True)
         
         # Settings file path
@@ -92,6 +92,7 @@ class MyCraftLauncher:
         
         # Internal state
         self.discovered_servers = []
+        self.advanced_visible = False
         
         # Style
         style = ttk.Style()
@@ -100,12 +101,17 @@ class MyCraftLauncher:
         style.configure("Action.TButton", font=("Helvetica", 12, "bold"))
         style.configure("Host.TButton", font=("Helvetica", 12, "bold"), foreground="white", background="#27ae60")
         style.map("Host.TButton", background=[('active', '#2ecc71')])
+        style.configure("Small.TButton", font=("Helvetica", 9))
         
         # Header
-        header_frame = tk.Frame(root, bg="#2c3e50", height=80)
+        header_frame = tk.Frame(root, bg="#2c3e50", height=90)
         header_frame.pack(fill="x")
-        title_label = tk.Label(header_frame, text="MyCraft Playtest", font=("Helvetica", 28, "bold"), bg="#2c3e50", fg="white")
-        title_label.pack(pady=(15, 5))
+        
+        title_frame = tk.Frame(header_frame, bg="#2c3e50")
+        title_frame.pack(pady=(15, 5))
+        
+        tk.Label(title_frame, text="MyCraft Playtest", font=("Helvetica", 28, "bold"), bg="#2c3e50", fg="white").pack(side=tk.LEFT)
+        tk.Label(title_frame, text=" v0.5", font=("Helvetica", 14), bg="#2c3e50", fg="#95a5a6").pack(side=tk.LEFT, pady=(10, 0))
         
         # Show Local IP
         self.local_ip = self._get_local_ip()
@@ -130,7 +136,7 @@ class MyCraftLauncher:
         ttk.Label(left_col, text="Run the server on this machine\nso others on your WiFi can join.", 
                   justify=tk.CENTER, foreground="#7f8c8d").pack(pady=(0, 20))
         
-        self.server_btn = ttk.Button(left_col, text="🚀 LAUNCH SERVER", command=self.launch_server)
+        self.server_btn = ttk.Button(left_col, text="🚀 LAUNCH SERVER", command=self.launch_server, style="Host.TButton")
         self.server_btn.pack(fill="x", pady=10, ipady=15)
         
         status_frame = ttk.Frame(left_col)
@@ -138,6 +144,15 @@ class MyCraftLauncher:
         ttk.Label(status_frame, text="Server Status: ").pack(side=tk.LEFT)
         self.server_status_label = tk.Label(status_frame, text="Checking...", font=("Helvetica", 10, "bold"))
         self.server_status_label.pack(side=tk.LEFT)
+        
+        # Host Options
+        host_opts = ttk.LabelFrame(left_col, text=" Host Options ", padding="10")
+        host_opts.pack(fill="x", pady=20)
+        
+        self.dev_mode_var = tk.BooleanVar(value=self.settings.get("dev_mode", False))
+        ttk.Checkbutton(host_opts, text="Developer Mode\n(Enable debug logs)", variable=self.dev_mode_var).pack(anchor="w")
+        
+        ttk.Button(host_opts, text="📂 Open Server Config", command=self.open_server_config, style="Small.TButton").pack(fill="x", pady=(10, 0))
         
         ttk.Label(left_col, text="Tip: Keep the server window open\nwhile others are playing.", 
                   justify=tk.CENTER, font=("Helvetica", 9, "italic"), foreground="#95a5a6").pack(side=tk.BOTTOM, pady=10)
@@ -154,30 +169,56 @@ class MyCraftLauncher:
         self.preset_var = tk.StringVar(value=self.settings.get("preset", "creative"))
         preset_combo = ttk.Combobox(right_col, textvariable=self.preset_var, state="readonly")
         preset_combo['values'] = ('creative', 'testing', 'performance')
-        preset_combo.pack(fill="x", pady=(0, 10))
+        preset_combo.pack(fill="x", pady=(0, 5))
+        preset_combo.bind('<<ComboboxSelected>>', self.update_preset_desc)
+        
+        self.preset_desc = tk.Label(right_col, text="", font=("Helvetica", 9), fg="#7f8c8d", anchor="w", justify=tk.LEFT)
+        self.preset_desc.pack(fill="x", pady=(0, 15))
+        self.update_preset_desc()
         
         # Server IP
         ttk.Label(right_col, text="Server Address:").pack(anchor="w", pady=(0, 2))
         self.host_entry = ttk.Entry(right_col, width=30)
         self.host_entry.insert(0, self.settings.get("server_host", "localhost"))
-        self.host_entry.pack(fill="x", pady=(0, 20))
+        self.host_entry.pack(fill="x", pady=(0, 5))
         
         # Action Buttons
-        self.single_btn = ttk.Button(right_col, text="🎮 PLAY SINGLE PLAYER", command=self.launch_single_player)
-        self.single_btn.pack(fill="x", pady=5, ipady=8)
+        self.single_btn = ttk.Button(right_col, text="🎮 PLAY SINGLE PLAYER", command=self.launch_single_player, style="Action.TButton")
+        self.single_btn.pack(fill="x", pady=5, ipady=5)
         
-        self.join_btn = ttk.Button(right_col, text="🌐 JOIN LAN SERVER", command=self.launch_multiplayer)
-        self.join_btn.pack(fill="x", pady=5, ipady=8)
+        self.join_btn = ttk.Button(right_col, text="🌐 JOIN LAN SERVER", command=self.launch_multiplayer, style="Action.TButton")
+        self.join_btn.pack(fill="x", pady=5, ipady=5)
         
-        # Checkboxes
-        check_frame = ttk.Frame(right_col)
-        check_frame.pack(pady=10)
+        # Advanced Settings Toggler
+        self.adv_btn = ttk.Button(right_col, text="⚙️ Advanced Settings ▼", command=self.toggle_advanced, style="Small.TButton")
+        self.adv_btn.pack(fill="x", pady=(15, 0))
         
+        # Advanced Settings Frame (Hidden by default)
+        self.adv_frame = ttk.Frame(right_col)
+        
+        # Sensitivity
+        ttk.Label(self.adv_frame, text="Sensitivity:").pack(anchor="w", pady=(5, 0))
+        self.sens_var = tk.DoubleVar(value=self.settings.get("sensitivity", 40.0))
+        sens_scale = ttk.Scale(self.adv_frame, from_=10, to=100, variable=self.sens_var, command=lambda v: self.sens_label.config(text=f"{int(float(v))}"))
+        sens_scale.pack(fill="x")
+        self.sens_label = ttk.Label(self.adv_frame, text=f"{int(self.sens_var.get())}")
+        self.sens_label.pack(anchor="e")
+        
+        # FOV
+        ttk.Label(self.adv_frame, text="FOV:").pack(anchor="w", pady=(5, 0))
+        self.fov_var = tk.IntVar(value=self.settings.get("fov", 90))
+        fov_combo = ttk.Combobox(self.adv_frame, textvariable=self.fov_var, state="readonly", values=(60, 75, 90, 100, 110, 120))
+        fov_combo.pack(fill="x")
+        
+        # Checkboxes moved here
         self.use_config_var = tk.BooleanVar(value=self.settings.get("use_config", True))
-        ttk.Checkbutton(check_frame, text="Hot-Reload", variable=self.use_config_var).pack(side=tk.LEFT, padx=5)
+        ttk.Checkbutton(self.adv_frame, text="Hot-Reload Config", variable=self.use_config_var).pack(anchor="w", pady=(10, 2))
 
         self.record_var = tk.BooleanVar(value=self.settings.get("record_session", False))
-        ttk.Checkbutton(check_frame, text="Record", variable=self.record_var).pack(side=tk.LEFT, padx=5)
+        ttk.Checkbutton(self.adv_frame, text="Record Session", variable=self.record_var).pack(anchor="w", pady=2)
+        
+        if self.settings.get("advanced_open", False):
+            self.toggle_advanced()
         
         # --- Bottom: Server Discovery ---
         discovery_frame = ttk.Frame(main_container)
@@ -298,7 +339,11 @@ class MyCraftLauncher:
                 "server_host": self.host_entry.get().strip(),
                 "preset": self.preset_var.get(),
                 "use_config": self.use_config_var.get(),
-                "record_session": self.record_var.get()
+                "record_session": self.record_var.get(),
+                "dev_mode": self.dev_mode_var.get(),
+                "sensitivity": self.sens_var.get(),
+                "fov": self.fov_var.get(),
+                "advanced_open": self.advanced_visible
             }
             with open(self.settings_file, 'w') as f:
                 json.dump(settings, f, indent=2)
@@ -326,7 +371,12 @@ class MyCraftLauncher:
         
         self.save_settings()
         
-        cmd = [sys.executable, "run_client.py", "--preset", preset, "--name", player_name]
+        cmd = [sys.executable, "run_client.py", 
+               "--preset", preset, 
+               "--name", player_name,
+               "--sensitivity", str(self.sens_var.get()),
+               "--fov", str(self.fov_var.get())]
+        
         if use_config:
             cmd.extend(["--config", "config/playtest.json"])
         if record:
@@ -391,7 +441,13 @@ class MyCraftLauncher:
 
         self.save_settings()
         
-        cmd = [sys.executable, "run_client.py", "--host", host, "--preset", preset, "--name", player_name]
+        cmd = [sys.executable, "run_client.py", 
+               "--host", host, 
+               "--preset", preset, 
+               "--name", player_name,
+               "--sensitivity", str(self.sens_var.get()),
+               "--fov", str(self.fov_var.get())]
+        
         if use_config:
             cmd.extend(["--config", "config/playtest.json"])
         if record:
@@ -441,12 +497,12 @@ class MyCraftLauncher:
                     if term == "gnome-terminal":
                         subprocess.Popen([term, "--", sys.executable, "run_server.py"])
                     else:
-                        subprocess.Popen([term, "-e", f"{sys.executable} run_server.py"])
+                        subprocess.Popen([term, "-e", f"{sys.executable} run_server.py{' --debug' if self.dev_mode_var.get() else ''}"])
                     break
                 except FileNotFoundError:
                     continue
             else:
-                messagebox.showwarning("No Terminal", "Could not find a terminal emulator. Please run 'python3 run_server.py' manually.")
+                messagebox.showwarning("No Terminal", "Could not find a terminal emulator.")
         
         self.status_var.set("Server launch command sent!")
         # Brief delay then verify
@@ -499,6 +555,45 @@ class MyCraftLauncher:
             # User cancelled - keep launcher open
             self.status_var.set("Launch cancelled - ready to try again")
     
+    def update_preset_desc(self, event=None):
+        """Update description based on selected preset."""
+        preset = self.preset_var.get()
+        descs = {
+            'creative': "Fly (Space/Shift), God Mode, Debug Info",
+            'testing': "Standard survival feel + Debug Info",
+            'performance': "Standard feel, Debug OFF, Optimized"
+        }
+        self.preset_desc.config(text=descs.get(preset, ""))
+
+    def toggle_advanced(self):
+        """Toggle visibility of advanced settings."""
+        self.advanced_visible = not self.advanced_visible
+        if self.advanced_visible:
+            self.adv_frame.pack(fill="x", pady=10)
+            self.adv_btn.config(text="⚙️ Advanced Settings ▲")
+        else:
+            self.adv_frame.pack_forget()
+            self.adv_btn.config(text="⚙️ Advanced Settings ▼")
+    
+    def open_server_config(self):
+        """Open server_config.json in default editor."""
+        config_path = Path("config/server_config.json")
+        if not config_path.exists():
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            # Create default if missing
+            with open(config_path, 'w') as f:
+                json.dump({"broadcast_rate": 20, "max_players": 16, "debug": False, "port": 5420}, f, indent=4)
+        
+        try:
+            if sys.platform == "win32":
+                os.startfile(config_path)
+            elif sys.platform == "darwin":
+                subprocess.call(["open", config_path])
+            else:
+                subprocess.call(["xdg-open", config_path])
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open config file: {e}")
+
     def _enable_close_button(self):
         """Add a close button after successful launch."""
         if hasattr(self, '_close_button_added'):
@@ -514,6 +609,11 @@ class MyCraftLauncher:
 
 if __name__ == "__main__":
     try:
+        # Needed for xdg-open on some linux distros
+        if sys.platform == "linux":
+            import os
+            os.environ["TK_SILENCE_DEPRECATION"] = "1"
+            
         root = tk.Tk()
         app = MyCraftLauncher(root)
         root.mainloop()

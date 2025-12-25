@@ -54,6 +54,22 @@ class CameraMechanic(PlayerMechanic):
             ctx.camera_mode = self.camera_mode
             print(f"   → New mode: {self.camera_mode}, controller: {self.camera_controller}")
         
+        # Update settings from config if available
+        if hasattr(self.base, 'config_manager') and self.base.config_manager:
+            sensitivity = self.base.config_manager.get("mouse_sensitivity", 40.0)
+            fov = self.base.config_manager.get("fov", 90.0)
+            
+            # Apply FOV
+            self.base.camLens.setFov(fov)
+            
+            # Apply sensitivity (update controllers)
+            self.fps_camera.sensitivity = sensitivity
+            self.third_person_camera.sensitivity = sensitivity
+            
+            # Apply camera distance (third-person only)
+            cam_dist = self.base.config_manager.get("camera_distance", 4.0)
+            self.third_person_camera.set_distance(cam_dist)
+
         # Update active camera
         if self.camera_mode == 'third_person':
             self.camera_controller.update(

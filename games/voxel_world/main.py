@@ -9,9 +9,10 @@ from games.voxel_world.biomes.biomes import BiomeRegistry
 def run(**kwargs):
     # Extract config
     name = kwargs.get('name', "MyCraft Voxel World")
+    hot_config = kwargs.get('hot_config')
     
     # Create game instance
-    game = VoxelGame(name=name)
+    game = VoxelGame(name=name, config_manager=hot_config)
     
     # Register voxel_world's terrain system
     from games.voxel_world.systems.world_gen import TerrainSystem

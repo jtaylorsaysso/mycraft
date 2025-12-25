@@ -39,24 +39,53 @@ class GroundMovementMechanic(PlayerMechanic):
         if move_dir.length() > 0:
             move_dir.normalize()
         
-        # Apply horizontal acceleration
-        target_vel = move_dir * MOVE_SPEED
-        apply_horizontal_acceleration(
-            ctx.state,
-            (target_vel.x, target_vel.y),
-            ctx.dt,
-            ctx.state.grounded
-        )
+        # Get settings from config
+        speed = MOVE_SPEED
+        g = GRAVITY
+        jump_v = JUMP_VELOCITY
+        god_mode = False
+        fly_speed = 12.0
+        
+        if hasattr(ctx.world.base, 'config_manager') and ctx.world.base.config_manager:
+            speed = ctx.world.base.config_manager.get("movement_speed", speed)
+            g = ctx.world.base.config_manager.get("gravity", g)
+            god_mode = ctx.world.base.config_manager.get("god_mode", False)
+            fly_speed = ctx.world.base.config_manager.get("fly_speed", 12.0)
+            h = ctx.world.base.config_manager.get("jump_height", None)
+            if h is not None:
+                jump_v = math.sqrt(2 * abs(g) * h)
+        
+        if god_mode:
+            speed = fly_speed
+            g = 0
+            # Basic fly up/down
+            if ctx.input.jump: move_dir.z += 1
+            if ctx.input.keys_down.get('shift'): move_dir.z -= 1
+
+        # Apply horizontal acceleration (and vertical if in god_mode)
+        target_vel = move_dir * speed
+        
+        if god_mode:
+            # Direct velocity apply in god mode
+            ctx.state.velocity = target_vel
+        else:
+            apply_horizontal_acceleration(
+                ctx.state,
+                (target_vel.x, target_vel.y),
+                ctx.dt,
+                ctx.state.grounded
+            )
         
         # Vertical physics
-        if ctx.input.jump:
-            register_jump_press(ctx.state)
-        
-        apply_gravity(ctx.state, ctx.dt, gravity=GRAVITY)
-        apply_slope_forces(ctx.state, ctx.dt)
-        
-        if can_consume_jump(ctx.state):
-            perform_jump(ctx.state, JUMP_VELOCITY)
+        if not god_mode:
+            if ctx.input.jump:
+                register_jump_press(ctx.state)
+            
+            apply_gravity(ctx.state, ctx.dt, gravity=g)
+            apply_slope_forces(ctx.state, ctx.dt)
+            
+            if can_consume_jump(ctx.state):
+                perform_jump(ctx.state, jump_v)
             
         # Physics integration happens in the physics system or can be called here if needed.
         # Original code called integrate_movement in update loop.
@@ -107,13 +136,17 @@ class GroundMovementMechanic(PlayerMechanic):
             # Simplified wall check
             return False # Placeholder for MVP
             
-        integrate_movement(
-            entity_wrapper, 
-            ctx.state, 
-            ctx.dt, 
-            ground_check, 
-            wall_check
-        )
+        if god_mode:
+            # Direct position update (noclip)
+            ctx.transform.position += ctx.state.velocity * ctx.dt
+        else:
+            integrate_movement(
+                entity_wrapper, 
+                ctx.state, 
+                ctx.dt, 
+                ground_check, 
+                wall_check
+            )
         
         # Update physics timers (coyote time, jump buffer)
         from engine.physics import update_timers

@@ -2,6 +2,7 @@
 VoxelGame entry point.
 """
 from typing import Optional, Dict, Any, Type
+from enum import Enum, auto
 import sys
 
 # Engine imports
@@ -23,13 +24,27 @@ from panda3d.core import LVector3f, WindowProperties
 
 logger = get_logger(__name__)
 
+
+class GameState(Enum):
+    """Game state for pause/menu management.
+    
+    Controls cursor locking and physics updates:
+    - PLAYING: Cursor locked, physics active
+    - PAUSED: Cursor unlocked, physics frozen, menu visible
+    - MENU: Cursor unlocked, physics frozen, in menu screen
+    """
+    PLAYING = auto()
+    PAUSED = auto()
+    MENU = auto()
+
+
 class VoxelGame(ShowBase):
     """
     Panda3D entry point for voxel games.
     Wraps the ECS/Engine complexity.
     """
     
-    def __init__(self, name: str = "My Voxel Game"):
+    def __init__(self, name: str = "My Voxel Game", config_manager: Any = None):
         ShowBase.__init__(self)
         
         # Window setup
@@ -39,8 +54,13 @@ class VoxelGame(ShowBase):
         self.disableMouse() # Disable default camera controls
         
         self.name = name
+        self.config_manager = config_manager
         self.world = World()
         self.blocks: Dict[str, Block] = {}
+        
+        # Game state management
+        self._game_state = GameState.PLAYING
+        self._cursor_locked = False  # Track cursor state
         
         # Environment and Rendering
         from engine.rendering.environment import EnvironmentManager
@@ -50,7 +70,6 @@ class VoxelGame(ShowBase):
         self.texture_atlas = TextureAtlas("Spritesheets/terrain.png", self.loader)
         
         # Initialize default systems
-
         self._setup_default_systems()
         
         # Start game loop
@@ -59,8 +78,68 @@ class VoxelGame(ShowBase):
     def update_loop(self, task):
         """Main game loop."""
         dt = globalClock.getDt()
-        self.world.update(dt)
+        
+        # Only update world if not paused
+        if self._game_state == GameState.PLAYING:
+            self.world.update(dt)
+        
         return task.cont
+    
+    @property
+    def game_state(self) -> GameState:
+        """Get current game state."""
+        return self._game_state
+    
+    def set_game_state(self, new_state: GameState):
+        """Set game state and manage cursor automatically.
+        
+        Args:
+            new_state: The new game state
+        """
+        if new_state == self._game_state:
+            return
+        
+        old_state = self._game_state
+        self._game_state = new_state
+        
+        # Auto cursor management based on state
+        if new_state == GameState.PLAYING:
+            self._lock_cursor()
+            logger.debug("Game state: PLAYING (cursor locked, physics active)")
+        else:  # PAUSED or MENU
+            self._unlock_cursor()
+            logger.debug(f"Game state: {new_state.name} (cursor unlocked, physics frozen)")
+    
+    def toggle_pause(self):
+        """Toggle between PLAYING and PAUSED states."""
+        if self._game_state == GameState.PLAYING:
+            self.set_game_state(GameState.PAUSED)
+        elif self._game_state == GameState.PAUSED:
+            self.set_game_state(GameState.PLAYING)
+    
+    def _lock_cursor(self):
+        """Lock and hide cursor for gameplay."""
+        if self._cursor_locked:
+            return
+        
+        props = WindowProperties()
+        props.setCursorHidden(True)
+        props.setMouseMode(WindowProperties.M_relative)
+        self.win.requestProperties(props)
+        self._cursor_locked = True
+        logger.debug("Cursor locked")
+    
+    def _unlock_cursor(self):
+        """Unlock and show cursor for UI interaction."""
+        if not self._cursor_locked:
+            return
+        
+        props = WindowProperties()
+        props.setCursorHidden(False)
+        props.setMouseMode(WindowProperties.M_absolute)
+        self.win.requestProperties(props)
+        self._cursor_locked = False
+        logger.debug("Cursor unlocked")
 
     def _setup_default_systems(self):
         """Add core systems to the world."""
@@ -86,6 +165,10 @@ class VoxelGame(ShowBase):
         from engine.systems.water_physics import WaterPhysicsSystem
         self.world.add_system(WaterPhysicsSystem(self.world, self.world.event_bus))
         
+        # UI & HUD (Added Phase 2)
+        from engine.systems.ui_system import UISystem
+        self.world.add_system(UISystem(self.world, self.world.event_bus, self, self.config_manager))
+
         # Player Control System (Composition-based mechanics)
         from engine.systems.player_controller import PlayerControlSystem
         self.world.add_system(PlayerControlSystem(self.world, self.world.event_bus, self))
