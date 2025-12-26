@@ -197,6 +197,28 @@ class GameServer:
             self.player_manager.set_player_name(player_id, name)
             self.logger.info(f"Player {player_id} set name to '{name}'")
             
+        elif msg_type == "chat":
+            # Handle chat messages
+            chat_text = message.get("message", "").strip()
+            if not chat_text:
+                return
+            
+            # Check if it's a slash command
+            if chat_text.startswith("/"):
+                # Only host can execute commands
+                if player_id == self.host_player_id:
+                    lines = await self.command_processor.process_command(player_id, chat_text)
+                    await self.send_admin_response(player_id, lines)
+                else:
+                    # Send permission denied message
+                    await self.send_admin_response(player_id, ["Permission denied. Only the host can use commands."])
+            else:
+                # Regular chat message - broadcast to all players
+                player_state = self.player_manager.get_player_state(player_id)
+                player_name = player_state.get("name", "Unknown") if player_state else "Unknown"
+                
+                await self.broadcast_chat_message(player_id, player_name, chat_text)
+            
         elif msg_type == "admin_command":
             command = message.get("command", "")
             lines = await self.command_processor.process_command(player_id, command)
@@ -327,6 +349,26 @@ class GameServer:
             await writer.drain()
         except (ConnectionResetError, BrokenPipeError):
             await self.handle_disconnect(player_id)
+
+    async def broadcast_chat_message(self, player_id: str, player_name: str, message_text: str) -> None:
+        """Broadcast a chat message to all connected clients.
+        
+        Args:
+            player_id: ID of the player who sent the message
+            player_name: Display name of the player
+            message_text: The chat message content
+        """
+        message = json.dumps({
+            "type": "chat",
+            "player_id": player_id,
+            "name": player_name,
+            "message": message_text,
+            "timestamp": time.time()
+        }) + "\n"
+        
+        self.logger.info(f"Chat [{player_name}]: {message_text}")
+        await self.broadcast_to_all(message)
+
 
     # --- Admin / host utilities ---
 

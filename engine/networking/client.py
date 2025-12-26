@@ -53,6 +53,10 @@ class GameClient:
 
         # Admin console log (text lines)
         self._admin_log: List[str] = []
+        
+        # Chat message history
+        self._chat_history: List[Dict] = []  # List of {"player_id", "name", "message", "timestamp"}
+        self._max_chat_history = 50  # Keep last 50 messages
 
         # Telemetry
         self.logger = get_logger("net.client")
@@ -270,12 +274,27 @@ class GameClient:
     
     def _handle_chat_message(self, message: Dict):
         """Handle chat message."""
-        username = message.get("username", "Unknown")
-        text = message.get("message", "")
         player_id = message.get("player_id")
+        name = message.get("name", "Unknown")
+        text = message.get("message", "")
+        timestamp = message.get("timestamp", time.time())
         
+        # Store in chat history
+        chat_entry = {
+            "player_id": player_id,
+            "name": name,
+            "message": text,
+            "timestamp": timestamp
+        }
+        self._chat_history.append(chat_entry)
+        
+        # Trim history if too long
+        if len(self._chat_history) > self._max_chat_history:
+            self._chat_history = self._chat_history[-self._max_chat_history:]
+        
+        # Call callback if registered
         if self.on_chat_message:
-            self.on_chat_message(username, text)
+            self.on_chat_message(name, text)
             
     def _handle_block_update(self, message: Dict):
         """Handle block update message."""
@@ -384,9 +403,37 @@ class GameClient:
         }
         self.send_queue.put(message)
 
+    def send_chat_message(self, message_text: str) -> None:
+        """Send a chat message to the server.
+        
+        Args:
+            message_text: The chat message to send
+        """
+        if not self.connected:
+            return
+        message_text = (message_text or "").strip()
+        if not message_text:
+            return
+        message = {
+            "type": "chat",
+            "message": message_text,
+        }
+        self.send_queue.put(message)
+
     def get_admin_log(self) -> List[str]:
         """Get a copy of the current admin console log lines."""
         return list(self._admin_log)
+    
+    def get_recent_chat(self, count: int = 10) -> List[Dict]:
+        """Get recent chat messages.
+        
+        Args:
+            count: Number of recent messages to return (default: 10)
+            
+        Returns:
+            List of chat message dicts with keys: player_id, name, message, timestamp
+        """
+        return list(self._chat_history[-count:])
 
     
     def get_remote_players(self) -> Dict[str, Dict]:

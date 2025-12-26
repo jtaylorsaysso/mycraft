@@ -139,6 +139,10 @@ class MyCraftLauncher:
         self.server_btn = ttk.Button(left_col, text="🚀 LAUNCH SERVER", command=self.launch_server, style="Host.TButton")
         self.server_btn.pack(fill="x", pady=10, ipady=15)
         
+        # Join as Host button (for host to play on their own server)
+        self.join_host_btn = ttk.Button(left_col, text="🎮 Join as Host Player", command=self.join_as_host, style="Action.TButton")
+        self.join_host_btn.pack(fill="x", pady=5, ipady=8)
+        
         status_frame = ttk.Frame(left_col)
         status_frame.pack(pady=10)
         ttk.Label(status_frame, text="Server Status: ").pack(side=tk.LEFT)
@@ -154,7 +158,7 @@ class MyCraftLauncher:
         
         ttk.Button(host_opts, text="📂 Open Server Config", command=self.open_server_config, style="Small.TButton").pack(fill="x", pady=(10, 0))
         
-        ttk.Label(left_col, text="Tip: Keep the server window open\nwhile others are playing.", 
+        ttk.Label(left_col, text="Tip: Launch server first, then\nclick 'Join as Host Player' to play.", 
                   justify=tk.CENTER, font=("Helvetica", 9, "italic"), foreground="#95a5a6").pack(side=tk.BOTTOM, pady=10)
         
         # --- Right Column: Joining ---
@@ -507,6 +511,25 @@ class MyCraftLauncher:
         self.status_var.set("Server launch command sent!")
         # Brief delay then verify
         self.root.after(2000, lambda: self.status_var.set("Server active!" if self._check_server_active() else "Server starting..."))
+    
+    def join_as_host(self):
+        """Join the local server as a player (for host to play on their own server)."""
+        # Check if server is running
+        if not self._check_server_active():
+            response = messagebox.askyesno(
+                "Server Not Running",
+                "The server doesn't appear to be running.\n\nWould you like to launch it first?"
+            )
+            if response:
+                self.launch_server()
+                # Wait a moment for server to start, then try again
+                self.root.after(3000, self.join_as_host)
+            return
+        
+        # Set host to localhost and launch multiplayer
+        self.host_entry.delete(0, tk.END)
+        self.host_entry.insert(0, "127.0.0.1")
+        self.launch_multiplayer()
     
     def _handle_launch_error(self, mode, error_msg):
         """Handle game launch errors gracefully."""

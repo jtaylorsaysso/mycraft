@@ -1,27 +1,26 @@
 """
 Remote Player Manager System
 
-Manages visual representation of remote players using AnimatedMannequin.
-Creates, updates, and destroys mannequins based on network state.
+Manages visual representation of remote players using RemotePlayer.
+Creates, updates, and destroys remote players based on network state.
 """
 
 from engine.ecs.system import System
-from engine.animation.mannequin import AnimatedMannequin, AnimationController
+from engine.networking.remote_player import RemotePlayer
 from engine.networking.client import get_client
-from panda3d.core import LVector3f
 from typing import Dict, Optional
 
 
 class RemotePlayerManager(System):
-    """Manages remote player mannequins for multiplayer."""
+    """Manages remote player instances for multiplayer."""
     
     def __init__(self, world, event_bus, base):
         super().__init__(world, event_bus)
         self.base = base
         
-        # Track mannequins for each remote player
-        # player_id -> {"mannequin": AnimatedMannequin, "controller": AnimationController}
-        self.remote_mannequins: Dict[str, Dict] = {}
+        # Track RemotePlayer instances for each remote player
+        # player_id -> RemotePlayer instance
+        self.remote_players: Dict[str, RemotePlayer] = {}
     
     def get_dependencies(self) -> list:
         """RemotePlayerManager has no hard dependencies.
@@ -32,91 +31,87 @@ class RemotePlayerManager(System):
         return []
         
     def update(self, dt: float):
-        """Update remote player mannequins based on network state."""
+        """Update remote players based on network state."""
         client = get_client()
         if not client or not client.is_connected():
             return
         
         # Get current remote players from network client
-        remote_players = client.get_remote_players()
+        remote_players_data = client.get_remote_players()
         
-        # Remove mannequins for players who left
-        for player_id in list(self.remote_mannequins.keys()):
-            if player_id not in remote_players:
-                self._remove_mannequin(player_id)
+        # Remove players who left
+        for player_id in list(self.remote_players.keys()):
+            if player_id not in remote_players_data:
+                self._remove_player(player_id)
         
-        # Create or update mannequins for active players
-        for player_id, player_data in remote_players.items():
-            if player_id not in self.remote_mannequins:
-                self._create_mannequin(player_id, player_data)
+        # Create or update players
+        for player_id, player_data in remote_players_data.items():
+            if player_id not in self.remote_players:
+                self._create_player(player_id, player_data)
             else:
-                self._update_mannequin(player_id, player_data, dt)
+                self._update_player(player_id, player_data, dt)
     
-    def _create_mannequin(self, player_id: str, player_data: Dict):
-        """Create a new mannequin for a remote player."""
-        # Azure/blue color for remote players
-        mannequin = AnimatedMannequin(
-            self.base.render,
-            body_color=(0.2, 0.5, 1.0, 1.0)
+    def _create_player(self, player_id: str, player_data: Dict):
+        """Create a new remote player.
+        
+        Args:
+            player_id: Unique player identifier
+            player_data: Player state data from server
+        """
+        # Get player name from data
+        player_name = player_data.get("name", "Unknown")
+        
+        # Create RemotePlayer instance (includes mannequin and name tag)
+        remote_player = RemotePlayer(
+            parent_node=self.base.render,
+            player_id=player_id,
+            name=player_name
         )
         
-        # Set initial position
+        # Set initial position and rotation
         pos = player_data.get("pos", [0, 0, 0])
-        mannequin.root.setPos(LVector3f(*pos))
-        
-        # Set initial rotation
         rot_y = player_data.get("rot_y", 0)
-        mannequin.root.setH(rot_y)
+        remote_player.set_target(tuple(pos), rot_y)
         
-        # Create animation controller
-        controller = AnimationController(mannequin)
-        
-        self.remote_mannequins[player_id] = {
-            "mannequin": mannequin,
-            "controller": controller,
-            "last_pos": LVector3f(*pos)
-        }
-        
-        print(f"✨ Created mannequin for player {player_id}")
+        self.remote_players[player_id] = remote_player
+        print(f"✨ Created remote player {player_id} ({player_name})")
     
-    def _update_mannequin(self, player_id: str, player_data: Dict, dt: float):
-        """Update an existing mannequin's position and animation."""
-        mannequin_data = self.remote_mannequins[player_id]
-        mannequin = mannequin_data["mannequin"]
-        controller = mannequin_data["controller"]
+    def _update_player(self, player_id: str, player_data: Dict, dt: float):
+        """Update an existing remote player.
         
-        # Update position
+        Args:
+            player_id: Unique player identifier
+            player_data: Player state data from server
+            dt: Delta time since last update
+        """
+        remote_player = self.remote_players[player_id]
+        
+        # Update name if changed
+        player_name = player_data.get("name", "Unknown")
+        if remote_player.name != player_name:
+            remote_player.set_name(player_name)
+        
+        # Update position and rotation
         pos = player_data.get("pos", [0, 0, 0])
-        new_pos = LVector3f(*pos)
-        mannequin.root.setPos(new_pos)
-        
-        # Update rotation
         rot_y = player_data.get("rot_y", 0)
-        mannequin.root.setH(rot_y)
+        remote_player.set_target(tuple(pos), rot_y)
         
-        # Estimate velocity for animations (from position delta)
-        last_pos = mannequin_data.get("last_pos", new_pos)
-        if dt > 0:
-            velocity = (new_pos - last_pos) / dt
-        else:
-            velocity = LVector3f(0, 0, 0)
-        
-        mannequin_data["last_pos"] = LVector3f(new_pos)
-        
-        # Update animations
-        # Assume grounded for now (could be sent from server in future)
-        grounded = abs(velocity.z) < 0.5
-        controller.update(dt, velocity, grounded)
+        # Update animations and interpolation
+        remote_player.update(dt)
     
-    def _remove_mannequin(self, player_id: str):
-        """Remove a mannequin when player disconnects."""
-        if player_id in self.remote_mannequins:
-            mannequin_data = self.remote_mannequins[player_id]
-            mannequin_data["mannequin"].cleanup()
-            del self.remote_mannequins[player_id]
-            print(f"👋 Removed mannequin for player {player_id}")
+    def _remove_player(self, player_id: str):
+        """Remove a remote player when they disconnect.
+        
+        Args:
+            player_id: Unique player identifier
+        """
+        if player_id in self.remote_players:
+            remote_player = self.remote_players[player_id]
+            remote_player.cleanup()
+            del self.remote_players[player_id]
+            print(f"👋 Removed remote player {player_id}")
     
     def cleanup(self):
-        """Clean up all mannequins."""
-        for player_id in list(self.remote_mannequins.keys()):
-            self._remove_mannequin(player_id)
+        """Clean up all remote players."""
+        for player_id in list(self.remote_players.keys()):
+            self._remove_player(player_id)

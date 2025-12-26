@@ -58,7 +58,6 @@ class VoxelGame(ShowBase):
         self.name = name
         self.config_manager = config_manager
         self.world = World()
-        self.world = World()
         self.blocks: Dict[str, Block] = {}
         
         # Input Management (Centralized)
@@ -68,6 +67,10 @@ class VoxelGame(ShowBase):
         # Game state management
         self._game_state = GameState.PLAYING
         self._cursor_locked = False  # Track cursor state
+        
+        # Lock cursor for initial PLAYING state
+        # (set_game_state not called during init, so we lock manually)
+        self._lock_cursor()
         
         # Environment and Rendering
         from engine.rendering.environment import EnvironmentManager

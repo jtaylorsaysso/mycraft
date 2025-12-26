@@ -1,6 +1,7 @@
 from engine.ecs.system import System
 from engine.ui.hud import HUD
 from engine.ui.pause_overlay import PauseOverlay
+from engine.ui.chat_overlay import ChatOverlay
 from engine.core.logger import get_logger
 from engine.game import GameState
 
@@ -15,7 +16,9 @@ class UISystem(System):
         self.hot_config = hot_config
         self.hud = None
         self.pause_overlay = None
+        self.chat_overlay = None
         self.initialized = False
+        self.chat_input_active = False
         
     def initialize(self):
         """Called when system is added"""
@@ -30,12 +33,20 @@ class UISystem(System):
             on_quit=None  # TODO: Add quit to menu functionality
         )
         
+        # Initialize chat overlay
+        self.chat_overlay = ChatOverlay(
+            self.game,
+            on_chat_opened=self._on_chat_opened,
+            on_chat_closed=self._on_chat_closed
+        )
+        
         # Key bindings - use Panda3D's accept() directly for reliability
         self.game.accept("escape", self._on_escape)
         self.game.accept("p", self._on_escape)  # P key as fallback
         self.game.accept("f3", self.toggle_debug)
+        self.game.accept("t", self._on_chat_key)  # T key for chat
         
-        print("✅ UISystem: Escape and P keys bound via accept()")
+        print("✅ UISystem: Escape, P, F3, and T keys bound via accept()")
         logger.info("UISystem initialized")
         self.initialized = True
 
@@ -50,7 +61,33 @@ class UISystem(System):
 
     def _on_escape(self):
         """Handle escape key press - toggle pause."""
-        self.toggle_pause()
+        # Don't toggle pause if chat is open - close chat instead
+        if self.chat_input_active:
+            self.chat_overlay.close_input(send_message=False)
+        else:
+            self.toggle_pause()
+    
+    def _on_chat_key(self):
+        """Handle T key press - open chat."""
+        # Only open chat if not paused
+        if self.game.game_state == GameState.PLAYING and not self.chat_input_active:
+            self.chat_overlay.open_input()
+    
+    def _on_chat_opened(self):
+        """Called when chat input is opened."""
+        self.chat_input_active = True
+        # Disable player movement input while chat is open
+        if hasattr(self.game, 'input_manager') and self.game.input_manager:
+            self.game.input_manager.input_blocked = True
+        logger.debug("Chat input opened - player input blocked")
+    
+    def _on_chat_closed(self):
+        """Called when chat input is closed."""
+        self.chat_input_active = False
+        # Re-enable player movement input
+        if hasattr(self.game, 'input_manager') and self.game.input_manager:
+            self.game.input_manager.input_blocked = False
+        logger.debug("Chat input closed - player input restored")
 
     def update(self, dt):
         """Update UI elements."""
@@ -84,6 +121,10 @@ class UISystem(System):
                     self.hud.settings.hide()
                 
             self.hud.update(dt)
+        
+        # Update chat overlay
+        if self.chat_overlay:
+            self.chat_overlay.update(dt)
 
     def toggle_debug(self):
         if self.hot_config:
@@ -110,6 +151,9 @@ class UISystem(System):
             self.hud.cleanup()
         if self.pause_overlay:
             self.pause_overlay.cleanup()
+        if self.chat_overlay:
+            self.chat_overlay.cleanup()
         self.game.ignore("escape")
         self.game.ignore("p")
         self.game.ignore("f3")
+        self.game.ignore("t")

@@ -19,6 +19,7 @@ class InputManager:
         self.mouse_delta = (0.0, 0.0)
         self._last_mouse_pos = None
         self.key_bindings = key_bindings or KeyBindingManager()
+        self.input_blocked = False  # Set to True to disable player input (e.g., during chat)
         
         if self.base:
             self.setup(self.base)
@@ -128,6 +129,11 @@ class InputManager:
     
     def update(self):
         """Update mouse delta tracking."""
+        # Don't update mouse if input is blocked (e.g., chat is open)
+        if self.input_blocked:
+            self.mouse_delta = (0.0, 0.0)
+            return
+            
         if self.mouse_locked and self.base and self.base.mouseWatcherNode.hasMouse():
             # Manual centered locking: reliable across platforms
             # 1. Get window size and center
