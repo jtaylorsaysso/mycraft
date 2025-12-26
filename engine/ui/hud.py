@@ -184,7 +184,14 @@ class HUD:
             if transform:
                 pos = transform.position
                 x, y, z = int(pos.x), int(pos.y), int(pos.z)
-                self.pos_text.setText(f'Position: ({x}, {y}, {z})')
+                # Get current biome
+                try:
+                    from games.voxel_world.biomes.biomes import BiomeRegistry
+                    biome = BiomeRegistry.get_biome_at(x, y)  # y is depth in Panda3D
+                    biome_name = biome.display_name
+                except:
+                    biome_name = "Unknown"
+                self.pos_text.setText(f'Pos: ({x}, {y}, {z}) | Biome: {biome_name}')
         
         # Update welcome message fade timer
         if not self.welcome_message.isHidden():

@@ -20,6 +20,17 @@ class TerrainSystem(System):
         self.texture_atlas = texture_atlas
         self.chunks: Dict[Tuple[int, int], NodePath] = {}
         self.chunk_size = 16
+        
+        # Dynamic loading configuration
+        self.load_radius = 6  # Load chunks within 6 chunk radius (~96 blocks)
+        self.unload_radius = 8  # Unload chunks beyond 8 chunk radius (2-chunk buffer)
+        self.max_chunks_per_frame = 3  # Throttle loading for performance
+        
+        # Track last player position to optimize loading
+        self.last_player_chunk: Optional[Tuple[int, int]] = None
+        
+        # Water configuration
+        self.sea_level = 0  # Blocks below this height get water
 
         
     def get_height(self, x: float, z: float) -> float:
@@ -66,13 +77,36 @@ class TerrainSystem(System):
             self.get_height
         )
 
+        # Find water blocks (terrain below sea level)
+        water_blocks = []
+        for x in range(self.chunk_size):
+            for z in range(self.chunk_size):
+                terrain_height = heights[x][z]
+                # Place water from terrain surface up to sea level (exclusive)
+                # Water block at y has top face at y+1, so block at sea_level-1 has top at sea_level
+                if terrain_height < self.sea_level:
+                    for y in range(terrain_height, self.sea_level):
+                        water_blocks.append((x, y, z))
         
         # Create NodePath for chunk and attach to render
         chunk_np = self.base.render.attachNewNode(geom_node)
         
-        # Apply texture if available
+        # Apply texture if available (BEFORE adding water to prevent inheritance)
         if self.texture_atlas and self.texture_atlas.is_loaded():
             chunk_np.setTexture(self.texture_atlas.get_texture())
+        
+        # Add water mesh if there are water blocks
+        if water_blocks:
+            water_node = MeshBuilder.build_water_mesh(
+                water_blocks, chunk_x, chunk_z, self.chunk_size
+            )
+            if water_node:
+                water_np = chunk_np.attachNewNode(water_node)
+                # Enable transparency for water
+                from panda3d.core import TransparencyAttrib
+                water_np.setTransparency(TransparencyAttrib.MAlpha)
+                # Clear texture on water (prevent inheritance from parent)
+                water_np.clearTexture()
         
         # Add collision geometry
         self._add_collision_to_chunk(chunk_np, heights, chunk_x, chunk_z)
@@ -144,12 +178,72 @@ class TerrainSystem(System):
             del self.chunks[chunk_key]
     
     def update(self, dt: float):
-        """Update terrain system.
+        """Update terrain system with dynamic chunk loading/unloading.
         
-        TODO: Implement dynamic chunk loading/unloading based on player position.
-        For now, chunks are created manually via create_chunk().
+        Loads chunks in a radius around the player and unloads distant chunks
+        to support exploration while managing memory.
         
         Args:
             dt: Delta time since last update
         """
-        pass
+        # Get player entity
+        player_id = self.world.get_entity_by_tag("player")
+        if not player_id:
+            return  # No player spawned yet
+        
+        from engine.components.core import Transform
+        transform = self.world.get_component(player_id, Transform)
+        if not transform:
+            return
+        
+        # Calculate player's current chunk position
+        # Panda3D: X and Y are horizontal, Z is vertical
+        player_chunk_x = int(transform.position.x // self.chunk_size)
+        player_chunk_z = int(transform.position.y // self.chunk_size)  # Y is depth in Panda3D
+        player_chunk = (player_chunk_x, player_chunk_z)
+        
+        # Skip if player hasn't moved to a new chunk
+        if player_chunk == self.last_player_chunk:
+            return
+        
+        self.last_player_chunk = player_chunk
+        
+        # Determine chunks to load (circular radius around player)
+        chunks_to_load = []
+        for dx in range(-self.load_radius, self.load_radius + 1):
+            for dz in range(-self.load_radius, self.load_radius + 1):
+                # Circular radius check
+                distance_sq = dx * dx + dz * dz
+                if distance_sq <= self.load_radius * self.load_radius:
+                    chunk_pos = (player_chunk_x + dx, player_chunk_z + dz)
+                    
+                    # Only queue if not already loaded
+                    if chunk_pos not in self.chunks:
+                        chunks_to_load.append((chunk_pos, distance_sq))
+        
+        # Sort by distance (load nearest chunks first)
+        chunks_to_load.sort(key=lambda x: x[1])
+        
+        # Load chunks (throttled to prevent frame drops)
+        chunks_loaded = 0
+        for chunk_pos, _ in chunks_to_load:
+            if chunks_loaded >= self.max_chunks_per_frame:
+                break
+            
+            self.create_chunk(chunk_pos[0], chunk_pos[1])
+            chunks_loaded += 1
+        
+        # Unload distant chunks (circular radius)
+        chunks_to_unload = []
+        for chunk_pos in self.chunks.keys():
+            dx = chunk_pos[0] - player_chunk_x
+            dz = chunk_pos[1] - player_chunk_z
+            distance_sq = dx * dx + dz * dz
+            
+            # Unload if beyond unload radius
+            if distance_sq > self.unload_radius * self.unload_radius:
+                chunks_to_unload.append(chunk_pos)
+        
+        # Perform unloading
+        for chunk_pos in chunks_to_unload:
+            self.unload_chunk(chunk_pos[0], chunk_pos[1])

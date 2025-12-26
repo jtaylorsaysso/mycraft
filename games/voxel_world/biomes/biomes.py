@@ -142,8 +142,10 @@ class BiomeRegistry:
             return cls.get_biome("rocky")
         elif biome_value < 0.8:
             return cls.get_biome("plains")
-        elif biome_value < 1.5:
+        elif biome_value < 1.2:
             return cls.get_biome("forest")
+        elif biome_value < 1.8:
+            return cls.get_biome("foothill")  # Transition to mountains
         else:
             # High values = mountains (use secondary noise for variety)
             if secondary_noise > 0:
@@ -226,6 +228,33 @@ def desert_height(x: float, z: float) -> int:
     
     height = base_height + terrain
     height = max(-1, min(1, height))
+    
+    return int(round(height))
+
+
+def foothill_height(x: float, z: float) -> int:
+    """Foothill terrain: moderate elevation with rolling slopes.
+    
+    Features:
+    - Moderate amplitude (±5 blocks)
+    - Gentle rolling terrain (easier than rocky, harder than plains)
+    - Natural transition zone to mountains
+    - Occasional exposed rock formations
+    """
+    base_height = 1  # Slightly elevated baseline
+    
+    # Rolling hills with moderate frequency
+    terrain = get_noise(x, z, scale=0.035, octaves=4) * 3.5
+    
+    # Gentle mounds (not sharp plateaus like rocky)
+    mound_noise = get_noise(x + 800, z + 800, scale=0.02, octaves=3)
+    mounds = mound_noise * 2
+    
+    # Subtle detail for natural variation
+    detail = get_noise(x, z, scale=0.06, octaves=2) * 0.5
+    
+    height = base_height + terrain + mounds + detail
+    height = max(-4, min(6, height))
     
     return int(round(height))
 
@@ -357,7 +386,15 @@ BiomeRegistry.register(Biome(
     name="forest",
     display_name="Forest",
     height_function=forest_height,
-    surface_block="wood",  # Tree-like appearance
+    surface_block="grass",  # Use grass (known working texture)
+    subsurface_block="dirt"
+))
+
+BiomeRegistry.register(Biome(
+    name="foothill",
+    display_name="Foothills",
+    height_function=foothill_height,
+    surface_block="grass",  # Grass transitioning to stone at higher elevations
     subsurface_block="dirt"
 ))
 

@@ -33,70 +33,17 @@ def run(**kwargs):
         
     game.world.event_bus.subscribe("on_block_break", on_break)
     
-    # STEP 1: Generate initial chunks FIRST (before spawning player)
-    # Terrain system was registered above, retrieve it for chunk generation
-    if terrain_system:
-        print("🌍 Generating initial chunks...")
-        # Create 3x3 grid of chunks centered at origin
-        for cx in range(-1, 2):
-            for cz in range(-1, 2):
-                terrain_system.create_chunk(cx, cz)
-                print(f"  ✓ Chunk ({cx}, {cz}) created")
-        print("✅ Generated 9 chunks around spawn")
-    else:
-        print("❌ WARNING: TerrainSystem not found!")
-    
-    # STEP 2: Initialize SpawnManager for cooperative multiplayer
-    spawn_manager = SpawnManager(world_spawn=(0, 0, 10))
-    
-    # Get existing players (for late-join spawning)
-    existing_players = []
-    for entity_id in game.world.get_entities_with():
-        if game.world.get_entity_by_tag("player") and entity_id != game.world.get_entity_by_tag("player"):
-            from engine.components.core import Transform
-            transform = game.world.get_component(entity_id, Transform)
-            if transform:
-                existing_players.append(transform.position)
-    
-    # STEP 3: Calculate spawn position using SpawnManager
-    spawn_pos = kwargs.get('spawn_point')
-    
-    if not spawn_pos:
-        print("🎯 Calculating spawn position...")
-        # Use SpawnManager with cooperative player proximity
-        spawn_pos = spawn_manager.find_spawn_position(
-            terrain_system=terrain_system,
-            existing_players=existing_players if existing_players else None,
-            biome_registry=BiomeRegistry
-        )
-        print(f"✅ Calculated spawn position: {spawn_pos}")
-    else:
-        print(f"📍 Using override spawn position: {spawn_pos}")
-
-    # STEP 4: Delayed player spawn (5 second buffer for terrain loading)
-    print(f"⏳ Waiting 5 seconds for terrain to fully load...")
-    
-    def delayed_spawn(task):
-        """Spawn player after delay."""
-        print(f"👤 Spawning player at {spawn_pos}...")
-        game.spawn_player(position=spawn_pos)
-        print("✅ Player spawned")
-        
-        # STEP 5: Grant spawn protection
-        player_id = game.world.get_entity_by_tag("player")
-        if player_id:
-            # Add spawn protection component
-            from engine.components.core import Health
-            health = game.world.get_component(player_id, Health)
-            if health:
-                health.invulnerable = True
-                health.invuln_timer = 3.0  # 3 second protection
-                print(f"🛡️ Spawn protection active for 3 seconds")
-        
-        return task.done  # Task completes after running once
-    
-    # Schedule delayed spawn (5 seconds from now)
-    game.taskMgr.doMethodLater(5.0, delayed_spawn, 'delayed_player_spawn')
+    # Setup game spawn system - handles initialization and player spawning
+    from engine.systems.game_spawn import GameSpawnSystem
+    spawn_system = GameSpawnSystem(
+        game.world,
+        game.world.event_bus,
+        game,
+        terrain_system,
+        spawn_delay=1.5,  # Short delay to allow physics to stabilize
+        spawn_point=kwargs.get('spawn_point')
+    )
+    game.world.add_system(spawn_system)
     
     game.run()
 

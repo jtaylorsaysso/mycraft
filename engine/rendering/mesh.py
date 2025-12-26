@@ -374,11 +374,13 @@ class MeshBuilder:
         water_color = LVector3f(0.2, 0.5, 0.8)
         
         for (x, y, z) in water_blocks:
-            world_x = base_x + x
-            world_y = y
-            world_z = base_z + z
+            # water_blocks contains (chunk_x, height, chunk_z) coordinates
+            # Convert to world coordinates and Panda3D coordinate system
+            world_x = base_x + x  # X stays X
+            world_z = base_z + z  # chunk Z becomes world Y (depth)
+            height = y  # This is the actual height (Panda3D Z axis)
             
-            # Check neighbors for face culling
+            # Check neighbors for face culling (in chunk-local coords)
             neighbors = {
                 'top': (x, y + 1, z),
                 'bottom': (x, y - 1, z),
@@ -393,44 +395,44 @@ class MeshBuilder:
                 if neighbor_pos in water_set:
                     continue  # Skip face if neighbor is also water
                 
-                # Generate face vertices
+                # Generate face vertices in Panda3D coords (X, Y_depth, Z_height)
                 if face_name == 'top':
-                    v0 = LVector3f(world_x, world_z, world_y + 1)
-                    v1 = LVector3f(world_x + 1, world_z, world_y + 1)
-                    v2 = LVector3f(world_x + 1, world_z + 1, world_y + 1)
-                    v3 = LVector3f(world_x, world_z + 1, world_y + 1)
+                    v0 = LVector3f(world_x, world_z, height + 1)
+                    v1 = LVector3f(world_x + 1, world_z, height + 1)
+                    v2 = LVector3f(world_x + 1, world_z + 1, height + 1)
+                    v3 = LVector3f(world_x, world_z + 1, height + 1)
                 elif face_name == 'bottom':
-                    v0 = LVector3f(world_x, world_z + 1, world_y)
-                    v1 = LVector3f(world_x + 1, world_z + 1, world_y)
-                    v2 = LVector3f(world_x + 1, world_z, world_y)
-                    v3 = LVector3f(world_x, world_z, world_y)
+                    v0 = LVector3f(world_x, world_z + 1, height)
+                    v1 = LVector3f(world_x + 1, world_z + 1, height)
+                    v2 = LVector3f(world_x + 1, world_z, height)
+                    v3 = LVector3f(world_x, world_z, height)
                 elif face_name == 'north':
-                    v0 = LVector3f(world_x, world_z, world_y)
-                    v1 = LVector3f(world_x + 1, world_z, world_y)
-                    v2 = LVector3f(world_x + 1, world_z, world_y + 1)
-                    v3 = LVector3f(world_x, world_z, world_y + 1)
+                    v0 = LVector3f(world_x, world_z, height)
+                    v1 = LVector3f(world_x + 1, world_z, height)
+                    v2 = LVector3f(world_x + 1, world_z, height + 1)
+                    v3 = LVector3f(world_x, world_z, height + 1)
                 elif face_name == 'south':
-                    v0 = LVector3f(world_x + 1, world_z + 1, world_y)
-                    v1 = LVector3f(world_x, world_z + 1, world_y)
-                    v2 = LVector3f(world_x, world_z + 1, world_y + 1)
-                    v3 = LVector3f(world_x + 1, world_z + 1, world_y + 1)
+                    v0 = LVector3f(world_x + 1, world_z + 1, height)
+                    v1 = LVector3f(world_x, world_z + 1, height)
+                    v2 = LVector3f(world_x, world_z + 1, height + 1)
+                    v3 = LVector3f(world_x + 1, world_z + 1, height + 1)
                 elif face_name == 'east':
-                    v0 = LVector3f(world_x + 1, world_z, world_y)
-                    v1 = LVector3f(world_x + 1, world_z + 1, world_y)
-                    v2 = LVector3f(world_x + 1, world_z + 1, world_y + 1)
-                    v3 = LVector3f(world_x + 1, world_z, world_y + 1)
+                    v0 = LVector3f(world_x + 1, world_z, height)
+                    v1 = LVector3f(world_x + 1, world_z + 1, height)
+                    v2 = LVector3f(world_x + 1, world_z + 1, height + 1)
+                    v3 = LVector3f(world_x + 1, world_z, height + 1)
                 else:  # west
-                    v0 = LVector3f(world_x, world_z + 1, world_y)
-                    v1 = LVector3f(world_x, world_z, world_y)
-                    v2 = LVector3f(world_x, world_z, world_y + 1)
-                    v3 = LVector3f(world_x, world_z + 1, world_y + 1)
+                    v0 = LVector3f(world_x, world_z + 1, height)
+                    v1 = LVector3f(world_x, world_z, height)
+                    v2 = LVector3f(world_x, world_z, height + 1)
+                    v3 = LVector3f(world_x, world_z + 1, height + 1)
                 
                 # Add vertices
                 for v in [v0, v1, v2, v3]:
                     vertex.addData3(v)
                     color_writer.addData4(water_color.x, water_color.y, water_color.z, 0.7)
                     texcoord.addData2(LVector2f(0, 0))  # Dummy UVs
-                    block_id_writer.addData3(world_x, world_y, world_z)
+                    block_id_writer.addData3(world_x, height, world_z)
                 
                 # Add triangles
                 tris.addVertices(index, index + 1, index + 2)

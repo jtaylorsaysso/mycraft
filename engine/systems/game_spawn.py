@@ -60,19 +60,20 @@ class GameSpawnSystem(System):
         self.calculated_spawn_pos = None
         
     def _generate_initial_chunks(self):
-        """Generate initial 3x3 grid of chunks around origin."""
+        """Generate initial 7x7 grid of chunks around origin for better visibility."""
         if self.chunks_generated:
             return
             
         logger.info("🌍 Generating initial chunks...")
         
-        # Generate 3x3 grid centered at origin
-        for cx in range(-1, 2):
-            for cz in range(-1, 2):
+        # Generate 7x7 grid centered at origin (better exploration visibility)
+        # Covers ~112x112 blocks, allowing players to see multiple biomes
+        for cx in range(-3, 4):
+            for cz in range(-3, 4):
                 self.terrain_system.create_chunk(cx, cz)
                 logger.debug(f"  ✓ Chunk ({cx}, {cz}) created")
         
-        logger.info("✅ Generated 9 chunks around spawn")
+        logger.info("✅ Generated 49 chunks around spawn")
         self.chunks_generated = True
     
     def _calculate_spawn_position(self) -> Tuple[float, float, float]:
