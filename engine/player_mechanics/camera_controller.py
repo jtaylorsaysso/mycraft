@@ -1,8 +1,7 @@
-"""Camera control mechanic."""
-
 from engine.player_mechanics.base import PlayerMechanic
 from engine.player_mechanics.context import PlayerContext
 from engine.rendering.camera import FPSCamera, ThirdPersonCamera
+from engine.input.keybindings import InputAction
 
 class CameraMechanic(PlayerMechanic):
     """Handles camera mode switching and updates."""
@@ -42,11 +41,11 @@ class CameraMechanic(PlayerMechanic):
         # Handle toggle
         self.toggle_cooldown = max(0, self.toggle_cooldown - ctx.dt)
         
-        # Debug V key detection
-        if ctx.input.is_key_down('v'):
-            print(f"🔍 V key detected! cooldown={self.toggle_cooldown:.2f}, mode={self.camera_mode}")
+        # Debug Camera Toggle detection via Action
+        if ctx.input.is_action_active(InputAction.CAMERA_TOGGLE_MODE):
+            print(f"🔍 Camera Toggle action active! cooldown={self.toggle_cooldown:.2f}, mode={self.camera_mode}")
         
-        if ctx.input.is_key_down('v') and self.toggle_cooldown <= 0:
+        if ctx.input.is_action_active(InputAction.CAMERA_TOGGLE_MODE) and self.toggle_cooldown <= 0:
             print(f"🔄 Toggling camera mode from {self.camera_mode}")
             self._toggle_camera_mode()
             self.toggle_cooldown = 0.3

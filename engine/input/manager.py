@@ -1,29 +1,31 @@
-"""Panda3D Input Manager for keyboard and mouse handling."""
-
 from typing import Dict, Set, Callable, Optional
 from panda3d.core import WindowProperties, ModifierButtons
+from engine.input.keybindings import InputAction, KeyBindingManager
 
 
 class InputManager:
     """Manages keyboard and mouse input for Panda3D applications."""
     
-    def __init__(self, base=None):
+    def __init__(self, base=None, key_bindings=None):
         """Initialize the input manager.
         
         Args:
             base: ShowBase instance (optional, can be passed later to setup)
+            key_bindings: Optional KeyBindingManager instance
         """
         self.base = base
         self.keys_down: Set[str] = set()
         self.mouse_locked = False
         self.mouse_delta = (0.0, 0.0)
         self._last_mouse_pos = None
+        self.key_bindings = key_bindings or KeyBindingManager()
         
         if self.base:
             self.setup(self.base)
             
     def setup(self, base):
         """Setup event listeners on the ShowBase instance."""
+        print(f"🔌 InputManager.setup called with base: {base}")
         self.base = base
         # Accept all key events
         self.base.buttonThrowers[0].node().setKeystrokeEvent('keystroke')
@@ -63,18 +65,50 @@ class InputManager:
         # Fallback: Poll Panda3D directly (more robust)
         if self.base and self.base.mouseWatcherNode.hasMouse():
             from panda3d.core import KeyboardButton
+            # DEBUG: Check specifically for escape
+            if key == 'escape':
+                try:
+                    state = self.base.mouseWatcherNode.is_button_down(KeyboardButton.escape())
+                    print(f"DEBUG: Poll escape state: {state}")
+                    return state
+                except:
+                    return False
+                    
             try:
                 # Handle single characters
                 if len(key) == 1:
                     p3d_key = KeyboardButton.ascii_key(key.lower())
                     return self.base.mouseWatcherNode.is_button_down(p3d_key)
                 
-                # Handle special keys if needed (space, etc - tricky map)
-                # For now just trust w,a,s,d come through as ascii
+                # Handle special keys
+                if key == 'escape':
+                    return self.base.mouseWatcherNode.is_button_down(KeyboardButton.escape())
+                elif key == 'space':
+                    return self.base.mouseWatcherNode.is_button_down(KeyboardButton.space())
+                elif key == 'shift':
+                    return self.base.mouseWatcherNode.is_button_down(KeyboardButton.shift())
+                elif key == 'control':
+                    return self.base.mouseWatcherNode.is_button_down(KeyboardButton.control())
+                elif key == 'enter':
+                    return self.base.mouseWatcherNode.is_button_down(KeyboardButton.enter())
             except Exception:
                 pass
                 
         return False
+
+    def is_action_active(self, action: InputAction) -> bool:
+        """Check if an action is currently active (key held down).
+        
+        Args:
+            action: The InputAction to check
+            
+        Returns:
+            True if the bound key is pressed
+        """
+        key = self.key_bindings.get_key(action)
+        if not key:
+            return False
+        return self.is_key_down(key)
     
     def lock_mouse(self):
         if not self.base: return

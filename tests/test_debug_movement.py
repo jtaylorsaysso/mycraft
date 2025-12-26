@@ -1,3 +1,4 @@
+"""Debug script for testing movement with the composition-based PlayerControlSystem."""
 
 import sys
 import os
@@ -7,7 +8,7 @@ sys.path.append(os.getcwd())
 
 from panda3d.core import LVector3f, CollisionTraverser, CollisionHandlerQueue
 from engine.physics.kinematic import KinematicState
-from engine.systems.input import PlayerControlSystem
+from engine.systems.player_controller import PlayerControlSystem
 from engine.components.core import Transform
 
 # Mock World and Components
@@ -16,6 +17,7 @@ class MockWorld:
         self.components = {}
         self.entities = {}
         self._systems = []
+        self.collision_traverser = CollisionTraverser()
 
     def get_component(self, entity_id, component_type):
         return self.components.get((entity_id, component_type))
@@ -26,74 +28,84 @@ class MockWorld:
     def get_system_by_type(self, name):
         return None  # No other systems for isolation
 
-# Mock Input
-class MockInput:
-    def __init__(self):
-        self.keys = {}
-        self.mouse_delta = (0, 0)
-        
-    def is_key_down(self, key):
-        return self.keys.get(key, False)
-        
-    def update(self): pass
-    def lock_mouse(self): pass
 
-# Run Test
 def test_run_debug():
+    """Debug test for PlayerControlSystem with mechanics."""
     print("--- Starting Movement Debug ---")
     
     # Setup
     world = MockWorld()
     base = MagicMock()
     base.cam.getH.return_value = 0.0  # Facing Y+
-    base.render = MagicMock() # Mock render node
+    base.render = MagicMock()  # Mock render node
+    base.camLens = MagicMock()  # Mock camera lens for FOV
     event_bus = MagicMock()
-    input_mgr = MockInput()
     
-    # Correct signature: world, event_bus, base
+    # Create system (composition-based)
     system = PlayerControlSystem(world, event_bus, base)
     
-    # Manually inject input manager (usually created in initialize)
-    system.input = input_mgr
+    # Mock config_manager to return sensible defaults
+    base.config_manager = MagicMock()
+    base.config_manager.get = lambda key, default=None: {
+        'mouse_sensitivity': 40.0,
+        'fov': 90.0,
+        'camera_distance': 4.0,
+        'movement_speed': 7.0,
+        'gravity': -20.0,
+        'god_mode': False,
+        'debug_overlay': False,
+    }.get(key, default)
     
-    system.collision_traverser = CollisionTraverser() # Use real traverser (empty)
-    
-    # Configure CollisionHandlerQueue mock if it's a mock
-    # This handles the case where Panda3D is mocked globally in conftest.py
-    if isinstance(CollisionHandlerQueue, MagicMock) or hasattr(CollisionHandlerQueue, 'return_value'):
-        # Configure any new instance created to return 0 hits by default
-        CollisionHandlerQueue.return_value.getNumEntries.return_value = 0
+    # Initialize mechanics (this sets up InputMechanic, etc.)
+    system.initialize()
     
     # Setup Player
     player_id = "player_1"
     world.entities["player"] = player_id
-    transform = Transform(position=LVector3f(0, 0, 10)) # Start high up
+    transform = Transform(position=LVector3f(0, 0, 10))  # Start high up
     world.components[(player_id, Transform)] = transform
     
-    # Init System
+    # Store base on world for mechanics access
+    world.base = base
+    
+    # Call on_ready (sets up cameras, initializes mechanics)
     system.on_ready()
     
-    # Run one update to initialize physics state
+    # Run initial update to populate physics state
     system.update(0.0)
     
-    # Access State
+    # Access physics State
     state = system.physics_states[player_id]
     print(f"Initial Pos: {transform.position}")
     print(f"Initial Vel: {state.velocity_x}, {state.velocity_y}, {state.velocity_z}")
     
-    # Test 1: Press 'W' (Forward/Y+)
-    print("\n--- Pressing 'W' (Forward) ---")
-    input_mgr.keys['w'] = True
+    # Find the InputMechanic to simulate key presses
+    input_mechanic = None
+    for mech in system.mechanics:
+        if mech.__class__.__name__ == 'InputMechanic':
+            input_mechanic = mech
+            break
     
-    dt = 0.016
-    for i in range(10):
-        system.update(dt)
-        print(f"Frame {i+1}: Pos={transform.position}, Vel=({state.velocity_x:.3f}, {state.velocity_y:.3f}, {state.velocity_z:.3f})")
+    if input_mechanic and input_mechanic.input_manager:
+        # Test 1: Simulate 'W' press (Forward/Y+)
+        print("\n--- Simulating 'W' Forward Movement ---")
+        input_mechanic.input_manager.keys_down.add('w')
         
-    input_mgr.keys['w'] = False
-    
-    # Test 2: Gravity only
-    print("\n--- Gravity Fall ---")
-    for i in range(10):
-        system.update(dt)
-        print(f"Frame {i+1}: Pos={transform.position}, Vel=({state.velocity_x:.3f}, {state.velocity_y:.3f}, {state.velocity_z:.3f})")
+        dt = 0.016
+        for i in range(10):
+            system.update(dt)
+            print(f"Frame {i+1}: Pos={transform.position}, Vel=({state.velocity_x:.3f}, {state.velocity_y:.3f}, {state.velocity_z:.3f})")
+        
+        input_mechanic.input_manager.keys_down.discard('w')
+        
+        # Test 2: Gravity only
+        print("\n--- Gravity Fall ---")
+        for i in range(10):
+            system.update(dt)
+            print(f"Frame {i+1}: Pos={transform.position}, Vel=({state.velocity_x:.3f}, {state.velocity_y:.3f}, {state.velocity_z:.3f})")
+    else:
+        print("Could not find InputMechanic with input_manager")
+
+
+if __name__ == '__main__':
+    test_run_debug()

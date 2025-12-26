@@ -60,7 +60,7 @@ class GroundMovementMechanic(PlayerMechanic):
             g = 0
             # Basic fly up/down
             if ctx.input.jump: move_dir.z += 1
-            if ctx.input.keys_down.get('shift'): move_dir.z -= 1
+            if ctx.input.crouch: move_dir.z -= 1
 
         # Apply horizontal acceleration (and vertical if in god_mode)
         target_vel = move_dir * speed

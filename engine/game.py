@@ -17,6 +17,8 @@ from engine.systems.interaction import InventorySystem, TriggerSystem
 from engine.systems.logic import PathfindingSystem, TimerSystem
 from engine.systems.network import SyncSystem
 from engine.voxel.block import Block
+from engine.input.manager import InputManager
+from engine.input.keybindings import KeyBindingManager
 
 # Panda3D imports
 from direct.showbase.ShowBase import ShowBase
@@ -56,7 +58,12 @@ class VoxelGame(ShowBase):
         self.name = name
         self.config_manager = config_manager
         self.world = World()
+        self.world = World()
         self.blocks: Dict[str, Block] = {}
+        
+        # Input Management (Centralized)
+        self.key_binding_manager = KeyBindingManager()
+        self.input_manager = InputManager(self, self.key_binding_manager)
         
         # Game state management
         self._game_state = GameState.PLAYING
@@ -77,11 +84,21 @@ class VoxelGame(ShowBase):
         
     def update_loop(self, task):
         """Main game loop."""
+        # print(f"DEBUG: update_loop called, game_state={self._game_state.name}")  # Too spammy
         dt = globalClock.getDt()
         
-        # Only update world if not paused
-        if self._game_state == GameState.PLAYING:
-            self.world.update(dt)
+        # Always update UI systems (they need to handle pause menu, etc)
+        # Only update gameplay systems when PLAYING
+        for system in self.world._systems:
+            if not system.enabled or not system.ready:
+                continue
+                
+            # UI systems always update
+            if system.__class__.__name__ in ['UISystem', 'FeedbackSystem']:
+                system.update(dt)
+            # Gameplay systems only update when PLAYING
+            elif self._game_state == GameState.PLAYING:
+                system.update(dt)
         
         return task.cont
     

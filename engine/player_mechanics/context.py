@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from typing import Set, List, Optional, TYPE_CHECKING
 from panda3d.core import LVector3f
+from engine.input.keybindings import InputAction
 
 if TYPE_CHECKING:
     from engine.ecs.world import World
@@ -14,34 +15,40 @@ class InputState:
     """Snapshot of input state for a frame."""
     mouse_delta: tuple[float, float] = (0.0, 0.0)
     keys_down: Set[str] = field(default_factory=set)
+    actions: Set[InputAction] = field(default_factory=set)
     
     def is_key_down(self, key: str) -> bool:
         return key.lower() in self.keys_down
     
+    def is_action_active(self, action: InputAction) -> bool:
+        return action in self.actions
+    
     # Convenience properties
     @property
     def forward(self) -> bool:
-        return self.is_key_down('w')
+        return self.is_action_active(InputAction.MOVE_FORWARD)
     
     @property
     def back(self) -> bool:
-        return self.is_key_down('s')
+        return self.is_action_active(InputAction.MOVE_BACK)
     
     @property
     def left(self) -> bool:
-        return self.is_key_down('a')
+        return self.is_action_active(InputAction.MOVE_LEFT)
     
     @property
     def right(self) -> bool:
-        return self.is_key_down('d')
+        return self.is_action_active(InputAction.MOVE_RIGHT)
     
     @property
     def jump(self) -> bool:
-        return self.is_key_down('space')
+        return self.is_action_active(InputAction.JUMP)
     
     @property
     def crouch(self) -> bool:
-        return self.is_key_down('shift')
+        # Context sensitive: Slide or Crouch
+        return (self.is_action_active(InputAction.SLIDE) or 
+                self.is_action_active(InputAction.DODGE))
 
 
 @dataclass
