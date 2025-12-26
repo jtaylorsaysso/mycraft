@@ -21,7 +21,8 @@ engine/
 ├── animation/    # Panda3D-based procedural animation system
 ├── core/         # Core utilities (logging, config, time)
 ├── ecs/          # The Entity Component System
-├── input/        # Input management (keyboard, mouse)
+├── input/        # Input management (InputManager, keybindings, action system)
+├── player_mechanics/ # Player control mechanics (composable behaviors)
 ├── networking/   # Client/Server state synchronization + remote players
 ├── physics/      # Kinematic physics and collision
 ├── rendering/    # Rendering utilities (camera, texture atlas, environment)
@@ -55,11 +56,31 @@ Kinematic physics engine focusing on:
 - Gravity and friction simulation
 - Water physics (buoyancy, drag, swimming)
 
+### Player Mechanics
+
+Priority-based mechanic system for player control:
+
+- **Mechanic Pattern**: Composable, priority-ordered behaviors
+- **PlayerContext**: Shared state container (input, transform, camera mode)
+- **Built-in Mechanics**: Input polling, camera control, ground movement, animation
+- **Coordinator**: `PlayerControlSystem` manages mechanic lifecycle and update order
+
+See [Player Mechanics Documentation](player_mechanics.md) for details.
+
+### Input Management
+
+Action-based input abstraction:
+
+- **InputManager**: Central polling system with mouse delta calculation
+- **InputAction Enum**: Abstract actions (MOVE_FORWARD, CAMERA_TOGGLE_MODE, etc.)
+- **InputMechanic**: High-priority mechanic (priority=1000) that populates PlayerContext
+- **Keybindings**: Configurable key-to-action mapping
+
 ### Rendering
 
 Panda3D-based rendering with:
 
-- **Camera**: FPS camera with smoothing and collision
+- **Camera**: Dual-mode system (FPS and third-person) with smoothing, collision detection, and HotConfig integration. Default is third-person with V-key toggle.
 - **Texture Atlas**: 16x16 tile grid system
 - **Environment**: Lighting and atmosphere management
 - **HUD**: OnscreenText-based UI

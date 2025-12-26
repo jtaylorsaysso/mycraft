@@ -4,8 +4,8 @@
     "fly_speed": 12.0,
     "jump_height": 3.5,
     "gravity": -12.0,
-    "air_control": 0.5,
-    "air_friction": 0.2,
+    "air_control": 0.3,
+    "air_friction": 0.3,
     "_comment_collision": "Collision & Raycast Tuning",
     "raycast_max_distance": 5.0,
     "raycast_origin_offset": 2.0,
@@ -26,7 +26,7 @@
     "walk_amplitude_legs": 30.0,
     "idle_bob_speed": 2.0,
     "idle_bob_amount": 0.01,
-    "chunk_load_radius": 3,
-    "chunk_unload_radius": 5,
+    "chunk_load_radius": 6,
+    "chunk_unload_radius": 8,
     "max_chunks_per_frame": 1
 }

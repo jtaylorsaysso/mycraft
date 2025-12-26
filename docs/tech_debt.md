@@ -79,7 +79,7 @@ During controls polishing audit, found test files still using Ursina (Y-up) inst
 - [x] ~~Camera collision detection~~ - Raycasts to prevent clipping through terrain
 - [x] ~~Camera smoothing/damping for less jerky movement~~ - Lerp-based smoothing with 0.15 factor (hot-config)
 - [ ] Camera bob/sway for more organic feel when walking/running
-- [ ] Adjustable camera distance (zoom in/out)
+- [x] ~~Adjustable camera distance (zoom in/out)~~ - Configurable via HotConfig (`camera_distance` parameter)
 - [ ] Camera occlusion handling when blocked by objects (fade out or move closer)
 
 ## Visual Polish
@@ -120,41 +120,7 @@ During controls polishing audit, found test files still using Ursina (Y-up) inst
 - [ ] `tests/benchmarks/test_chunk_generation.py`: Refactor for better benchmarking (TODO)
 - [ ] Evaluate need for `shared/` directory (removed as it was empty)
 
-## Ursina Migration Progress (Dec 2024)
-
-### ✅ Completed - Migration 100% Done
-
-- [x] Engine layer fully migrated to Panda3D (config_loader.py)
-- [x] All engine tests use Panda3D vectors
-- [x] Unified input system (PlayerControlSystem + GameplayInputSystem)
-- [x] Legacy InputHandler deprecated
-- [x] Inventory drop functionality via ECS events
-- [x] **Animation system migrated** (AnimatedMannequin → Panda3D NodePath)
-- [x] **HUD system migrated** (Ursina Text/Entity → Panda3D OnscreenText)
-- [x] **Remote player rendering migrated** (Ursina Entity → Panda3D NodePath)
-- [x] **Removed Ursina from requirements.txt**
-- [x] **Deprecated files removed** (entities/, components/, ui/, systems/ from games/voxel_world/)
-
-### 📊 Final Status
-
-**Zero active Ursina imports in project code!**
-
-All deprecated code has been removed. The codebase is now 100% Panda3D native.
-
-### 🎯 Next Steps (Sprint 4: System Completeness) ✅ COMPLETE
-
-- [x] **Server replication** - Component sync system with 20Hz broadcast
-- [x] **Inventory stacking** - Smart stacking with (item_type, count) tuples
-- [x] **Noise-based terrain generation** - Perlin noise for all biomes
-- [x] **Player name labels** - 3D billboarded TextNode tags
-
-### 📋 Sprint 5: Polish & UX (Next)
-
-**Physics Improvements:**
-
-- [x] ~~Horizontal acceleration and deceleration for smoother movement~~ - Completed with unified physics model
-- [x] ~~Slope handling and surface normal projection~~ - Fully integrated with sliding and jump boosts
-- [x] ~~Liquid detection for proper water physics integration~~ - Water physics now uses shared KinematicState and constants
+## Current Sprint (Sprint 5: Polish & UX)
 
 **Camera Enhancements:**
 
@@ -173,3 +139,32 @@ All deprecated code has been removed. The codebase is now 100% Panda3D native.
 - [ ] Particle system foundation
 - [ ] Block break particles
 - [ ] Water splash effects
+
+---
+
+## Completed Archive
+
+### Sprint 4: System Completeness (Completed)
+
+- [x] **Server replication** - Component sync system with 20Hz broadcast
+- [x] **Inventory stacking** - Smart stacking with (item_type, count) tuples
+- [x] **Noise-based terrain generation** - Perlin noise for all biomes
+- [x] **Player name labels** - 3D billboarded TextNode tags
+- [x] **Horizontal acceleration and deceleration for smoother movement** - Completed with unified physics model
+- [x] **Slope handling and surface normal projection** - Fully integrated with sliding and jump boosts
+- [x] **Liquid detection for proper water physics integration** - Water physics now uses shared KinematicState and constants
+
+### Ursina Migration (Dec 2024 - Completed)
+
+**Status**: Migration 100% complete. Zero active Ursina imports in project code.
+
+- [x] Engine layer fully migrated to Panda3D (config_loader.py)
+- [x] All engine tests use Panda3D vectors
+- [x] Unified input system (PlayerControlSystem + GameplayInputSystem)
+- [x] Legacy InputHandler deprecated
+- [x] Inventory drop functionality via ECS events
+- [x] Animation system migrated (AnimatedMannequin → Panda3D NodePath)
+- [x] HUD system migrated (Ursina Text/Entity → Panda3D OnscreenText)
+- [x] Remote player rendering migrated (Ursina Entity → Panda3D NodePath)
+- [x] Removed Ursina from requirements.txt
+- [x] Deprecated files removed (entities/, components/, ui/, systems/ from games/voxel_world/)

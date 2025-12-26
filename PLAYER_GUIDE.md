@@ -41,17 +41,17 @@ The game window will open, and you'll spawn into the world.
 | **Interact / Build** | `Left Click` / `Right Click` |
 | **Menu / Unlock Mouse** | `Escape` |
 
+> **Note**: Your mouse will be locked to the game window when playing. Press **Escape** at any time to unlock your cursor and access the menu.
+
 ### 📷 Camera Modes
 
 - **Third-Person (Default)**: See your character from behind. Great for exploring and seeing your animations.
 - **First-Person**: Classic FPS view. Press `V` to toggle between modes.
 
-### 🦸 God Mode Controls
+### 🦸 God Mode (Creative Mode)
 
-*(Creative Mode Only)*
-
-- **Toggle God Mode**: `/god` (in chat) or key `G`
-- **Fly Faster**: Hold `W` while flying.
+- **Toggle God Mode**: Edit `config/playtest.json` and set `"god_mode": true`, or use in-game settings menu
+- **Fly Faster**: Hold `W` while flying
 
 ---
 
