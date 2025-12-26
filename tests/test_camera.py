@@ -18,16 +18,18 @@ class TestCamera(unittest.TestCase):
         self.assertEqual(cam.pitch, -15.0)
         
         # Simulated Input: Move mouse right (positive DX)
+        # Note: mouse_delta from InputManager is already normalized per-frame,
+        # so we don't multiply by dt (it's framerate-independent already)
         dt = 0.016
-        dx = 10.0 # significant movement
+        dx = 0.01  # Small normalized delta (like from InputManager)
         dy = 0.0
         
         cam.update(dx, dy, dt, LVector3f(0, 0, 0))
         
         # Check Yaw Update
-        # yaw += dx * sensitivity * dt
-        expected_yaw = 0.0 + (10.0 * 40.0 * 0.016)
-        self.assertAlmostEqual(cam.yaw, expected_yaw)
+        # yaw += dx * sensitivity (no dt multiplication)
+        expected_yaw = 0.0 + (0.01 * 40.0)
+        self.assertAlmostEqual(cam.yaw, expected_yaw, places=4)
         self.assertTrue(cam.yaw > 0)
         
         # Check Node Update

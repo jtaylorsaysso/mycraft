@@ -160,6 +160,7 @@ class InputManager:
             self.mouse_delta = (0.0, 0.0)
 
 
+
 class KeyBindings:
     FORWARD = 'w'
     BACK = 's'

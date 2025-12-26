@@ -144,6 +144,11 @@ class VoxelGame(ShowBase):
         props.setMouseMode(WindowProperties.M_relative)
         self.win.requestProperties(props)
         self._cursor_locked = True
+        
+        # Synchronize InputManager's mouse_locked flag
+        if hasattr(self, 'input_manager') and self.input_manager:
+            self.input_manager.mouse_locked = True
+        
         logger.debug("Cursor locked")
     
     def _unlock_cursor(self):
@@ -156,6 +161,11 @@ class VoxelGame(ShowBase):
         props.setMouseMode(WindowProperties.M_absolute)
         self.win.requestProperties(props)
         self._cursor_locked = False
+        
+        # Synchronize InputManager's mouse_locked flag
+        if hasattr(self, 'input_manager') and self.input_manager:
+            self.input_manager.mouse_locked = False
+        
         logger.debug("Cursor unlocked")
 
     def _setup_default_systems(self):
