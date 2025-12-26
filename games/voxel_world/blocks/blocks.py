@@ -198,6 +198,15 @@ BlockRegistry.register(Block(
     display_name="Wood"
 ))
 
+BlockRegistry.register(Block(
+    name="leaves",
+    color=(0.2, 0.6, 0.2),  # Forest green (fallback)
+    tile_top=TileRegistry.LEAVES,
+    tile_side=TileRegistry.LEAVES,
+    tile_bottom=TileRegistry.LEAVES,
+    display_name="Leaves"
+))
+
 # Natural terrain variations for diverse biomes
 BlockRegistry.register(Block(
     name="cobblestone_mossy",
