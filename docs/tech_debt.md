@@ -1,12 +1,31 @@
 # Tech Debt Register
 
-**Last Updated:** 2025-12-27
+**Last Updated:** 2025-12-28
 
 This register tracks technical debt, bugs, and future enhancements. Items are organized by priority and aligned with the project's current development direction.
 
 ---
 
 ## 🔥 High Priority
+
+### Combat Animation Integration
+
+**Priority:** High | **Effort:** ~2-3 days remaining
+
+Phase 1 (Attack Animations) complete. Remaining work:
+
+- [ ] **Phase 2: Dodge Movement** - Implement `DodgeSystem._apply_dodge_movement()` using root motion applicator
+- [ ] **Phase 2: Directional Dodge** - Apply calculated dodge direction to root motion curve (currently always forward)
+- [ ] **Phase 3: Parry Timing** - Wire timing quality detection to animation selection (success/fail)
+- [ ] **Phase 3: Parry Testing** - Verify parry stance and recovery animations work correctly
+
+**Technical Debt from Phase 1:**
+
+- [ ] **Skeleton/Visual Retargeting** - Currently ignoring skeleton positions, only using rotations. Skeleton bone lengths don't match visual mannequin proportions. Future: Implement proper retargeting or rebuild mannequin to match skeleton.
+- [ ] **Procedural Locomotion Enhancement** - Walk/idle implemented as simple Transform returns. Could be enhanced with run, sprint, jump animations.
+- [ ] **Hit Window Callbacks** - Wire `on_hit` callback from animation to combat system for frame-perfect hit detection (currently using timing-based approach).
+
+**Reference:** Implementation plan and walkthrough in artifacts directory
 
 ### Camera System Issues
 
@@ -125,7 +144,30 @@ Remaining items from state management cleanup:
 
 ---
 
+## ✅ Recently Completed (2025-12-28)
+
+### Combat Animation Integration - Phase 1
+
+- [x] **Layered Animation System** - Upgraded `AnimationMechanic` from basic `AnimationController` to `LayeredAnimator` with bone masking
+- [x] **Combat Animation Clips** - Created procedural attack, dodge, and parry animation clips with keyframes
+- [x] **CombatState Integration** - Wired `CombatState` component to trigger animations on state transitions
+- [x] **Root Motion Support** - Implemented `RootMotionApplicator` for attack lunge (1.2 units forward)
+- [x] **Bone Name Standardization** - Fixed bone naming mismatch between animation clips and `HumanoidSkeleton`
+- [x] **Transform Application** - Implemented skeleton-to-mannequin transform application with rotational retargeting
+- [x] **Procedural Locomotion** - Converted walk/idle to Transform-based system for proper layering
+- [x] **Cancel Windows** - Verified attack→dodge canceling works after 0.35s window
+
+**Tests:** All animation layer tests (17/17) and combat system tests (8/8) passing
+
 ## ✅ Recently Completed (2025-12-27)
+
+### Combat System Planning
+
+- [x] **Combat Design Document** - Defined timing-based combat, stamina mechanics, dodge/parry systems
+- [x] **Combat Systems Implementation** - `CombatSystem`, `DodgeSystem`, `ParrySystem`, `StaminaSystem`
+- [x] **Combat Components** - `CombatState`, `Stamina` ECS components
+- [x] **Combat Mechanics** - `AttackMechanic`, `DodgeMechanic`, `ParryMechanic` for input handling
+- [x] **Combat Tests** - Unit tests for all combat systems (8/8 passing)
 
 ### State Management Cleanup
 
@@ -168,6 +210,7 @@ Remaining items from state management cleanup:
 
 - [x] Procedural animations with AnimatedMannequin and AnimationController
 - [x] Remote players use 5-part mannequin model matching local player
+- [x] Layered animation system with combat support
 
 ### Networking
 
@@ -189,6 +232,8 @@ Remaining items from state management cleanup:
 - [x] Basic physics tests
 - [x] Server admin tests
 - [x] Automated integration tests for multiplayer scenarios
+- [x] Animation layer tests (17/17 passing)
+- [x] Combat system tests (8/8 passing)
 
 ---
 
@@ -223,7 +268,7 @@ Remaining items from state management cleanup:
 
 Based on recent work and project direction, focus areas are:
 
-1. **Combat System Planning** - New feature area, requires design and planning
+1. **Combat Animation Integration** - Phase 1 complete, Phases 2-3 ready to implement
 2. **Camera System Polish** - Fix zoom bug, consider ground-height constraints refinement
 3. **Test Coverage** - Fix coordinate system issues in physics tests
 4. **State Management** - Complete remaining architecture improvements
@@ -231,6 +276,7 @@ Based on recent work and project direction, focus areas are:
 
 **Next Steps:**
 
-- Move forward with combat system design (per recent planning conversation)
-- Address high-priority camera and test issues
+- Complete Phase 2 (Dodge) and Phase 3 (Parry) of combat animation integration
+- Address skeleton/visual retargeting technical debt
+- Fix high-priority camera and test issues
 - Continue ECS architecture refinements as needed for new features

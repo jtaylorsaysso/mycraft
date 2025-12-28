@@ -192,32 +192,32 @@ def create_sword_slash() -> CombatClip:
         Keyframe(
             time=0.0,
             transforms={
-                'right_arm': Transform(rotation=LVector3f(0, -90, 0)),
-                'torso': Transform(rotation=LVector3f(0, -20, 0)),
+                'upper_arm_right': Transform(rotation=LVector3f(0, -90, 0)),
+                'chest': Transform(rotation=LVector3f(0, -20, 0)),
             }
         ),
         # Strike
         Keyframe(
             time=0.15,
             transforms={
-                'right_arm': Transform(rotation=LVector3f(0, 90, 0)),
-                'torso': Transform(rotation=LVector3f(0, 20, 0)),
+                'upper_arm_right': Transform(rotation=LVector3f(0, 90, 0)),
+                'chest': Transform(rotation=LVector3f(0, 20, 0)),
             }
         ),
         # Follow-through
         Keyframe(
             time=0.3,
             transforms={
-                'right_arm': Transform(rotation=LVector3f(0, 45, 0)),
-                'torso': Transform(rotation=LVector3f(0, 10, 0)),
+                'upper_arm_right': Transform(rotation=LVector3f(0, 45, 0)),
+                'chest': Transform(rotation=LVector3f(0, 10, 0)),
             }
         ),
         # Recovery
         Keyframe(
             time=0.5,
             transforms={
-                'right_arm': Transform(rotation=LVector3f(0, 0, 0)),
-                'torso': Transform(rotation=LVector3f(0, 0, 0)),
+                'upper_arm_right': Transform(rotation=LVector3f(0, 0, 0)),
+                'chest': Transform(rotation=LVector3f(0, 0, 0)),
             }
         ),
     ]

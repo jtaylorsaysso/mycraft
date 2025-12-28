@@ -44,19 +44,60 @@ class ProceduralAnimationSource:
         
         Args:
             dt: Delta time
-            skeleton: Skeleton (not used by procedural system currently)
+            skeleton: Skeleton to animate
             
         Returns:
-            Bone transforms (currently empty - controller modifies nodes directly)
+            Bone transforms for procedural walk/idle
         """
-        # Update the controller's state machine and procedural animations
-        self.controller.update(dt, self._velocity, self._grounded)
+        import math
         
-        # Note: AnimationController currently modifies NodePaths directly
-        # rather than returning transforms. In a future refactor, we could
-        # extract transforms from the mannequin's bone nodes here.
-        # For now, return empty dict since controller handles its own application.
-        return {}
+        # Calculate horizontal speed
+        horizontal_speed = math.sqrt(self._velocity.x ** 2 + self._velocity.y ** 2)
+        
+        # Determine if walking or idle
+        is_walking = horizontal_speed > 0.5
+        
+        transforms = {}
+        
+        if is_walking:
+            # Walking animation - procedural arm and leg swing
+            # Advance walk phase
+            if not hasattr(self, '_walk_phase'):
+                self._walk_phase = 0.0
+            
+            speed_factor = min(horizontal_speed / 6.0, 1.5)
+            self._walk_phase += dt * 10.0 * speed_factor  # 10.0 is walk frequency
+            
+            # Calculate swing angles
+            phase = self._walk_phase
+            arm_swing = math.sin(phase) * 35.0  # degrees
+            leg_swing = math.sin(phase) * 30.0  # degrees
+            
+            # Arms swing opposite to legs
+            transforms['upper_arm_right'] = Transform(rotation=LVector3f(0, arm_swing, 0))
+            transforms['upper_arm_left'] = Transform(rotation=LVector3f(0, -arm_swing, 0))
+            
+            # Legs swing
+            transforms['thigh_right'] = Transform(rotation=LVector3f(0, -leg_swing, 0))
+            transforms['thigh_left'] = Transform(rotation=LVector3f(0, leg_swing, 0))
+            
+        else:
+            # Idle animation - subtle breathing
+            if not hasattr(self, '_idle_time'):
+                self._idle_time = 0.0
+            
+            self._idle_time += dt
+            
+            # Very subtle arm sway
+            sway = math.sin(self._idle_time * 1.5) * 2.0  # degrees
+            transforms['upper_arm_right'] = Transform(rotation=LVector3f(0, sway, 0))
+            transforms['upper_arm_left'] = Transform(rotation=LVector3f(0, sway, 0))
+            
+            # Legs at neutral position (explicitly set to ensure visibility)
+            transforms['thigh_right'] = Transform(rotation=LVector3f(0, 0, 0))
+            transforms['thigh_left'] = Transform(rotation=LVector3f(0, 0, 0))
+        
+        return transforms
 
 
 class KeyframeAnimationSource:
