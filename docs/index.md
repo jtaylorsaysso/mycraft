@@ -103,7 +103,7 @@ Want to go deeper? These docs cover the technical details.
 - Getting Started Guide (text-only walkthrough)
 - CONTRIBUTING.md (developer and playtester guidelines)
 - ECS API quick references (World, Systems, Events)
-- Test coverage report (147 tests documented)
+- Test coverage report (294 tests documented)
 - Performance baseline framework
 - Physics and networking guides (for advanced users)
 
@@ -143,5 +143,5 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for details *(Coming Soon)*.
 
 ---
 
-*Last Updated: 2025-12-20*  
+*Last Updated: 2025-12-28*  
 *Version: 2.0 - Beginner-First*

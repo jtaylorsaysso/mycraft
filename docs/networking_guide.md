@@ -162,7 +162,9 @@ Server broadcasts all player states:
 ```
 
 #### player_join / player_leave
+
 Connection notifications:
+
 ```json
 {
   "type": "player_join",
@@ -180,8 +182,8 @@ Connection notifications:
 
 ## Player Representation
 
-- **Local player**: Brown mannequin (3 stacked cubes)
-- **Remote players**: Azure cubes (simple representation)
+- **Local player**: 5-part Voxel Avatar with procedural animations
+- **Remote players**: 5-part Voxel Avatar (synced appearance)
 - **Position sync**: Real-time at 20 Hz
 - **Rotation sync**: Y-axis rotation only
 
@@ -247,5 +249,5 @@ Connection notifications:
 
 ---
 
-*Last Updated: 2025-11-22*
+*Last Updated: 2025-12-28*
 *Version: 1.0*

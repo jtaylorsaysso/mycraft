@@ -1,8 +1,8 @@
 # Test Coverage Report
 
-**Generated**: 2025-12-21  
-**Test Suite**: 147 tests  
-**Status**: All tests passing ✅
+**Generated**: 2025-12-28  
+**Test Suite**: 294 tests  
+**Status**: 257/294 tests passing (87%) ⚠️
 
 ---
 
@@ -14,7 +14,7 @@
 pytest tests/ -v --collect-only
 ```
 
-**Total**: 147 tests collected
+**Total**: 294 tests collected
 
 **Test Files**:
 
@@ -128,7 +128,7 @@ Areas that need more test coverage:
 pytest tests/ -v
 ```
 
-**Expected**: All 147 tests pass  
+**Expected**: 294 tests collected  
 **Duration**: ~10-15 seconds
 
 ### Specific Module
@@ -210,7 +210,7 @@ When refactoring:
 
 ### Short-Term (Milestone 1)
 
-- ✅ Establish test count baseline (147 tests)
+- ✅ Establish test count baseline (294 tests)
 - [ ] Install pytest-cov in development environment
 - [ ] Generate initial coverage report
 - [ ] Document coverage percentage by module
@@ -233,7 +233,7 @@ When refactoring:
 
 ## Notes
 
-**Current Status**: Test suite is healthy with 147 passing tests covering core engine functionality. Detailed coverage metrics require `pytest-cov` installation.
+**Current Status**: Test suite has grown to 294 tests with 87% pass rate. Detailed coverage metrics require `pytest-cov` installation.
 
 **Next Steps**:
 
@@ -244,5 +244,5 @@ When refactoring:
 
 ---
 
-*Last Updated: 2025-12-21*  
-*Test Count: 147 passing*
+*Last Updated: 2025-12-28*  
+*Test Count: 294 collected*

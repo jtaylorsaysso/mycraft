@@ -169,3 +169,6 @@ Press function keys for utilities:
 | `/sensitivity <val>` | Change mouse sensitivity |
 | `/list` | List connected players |
 | `/kick <player>` | Remove a player |
+
+
+*Last Updated: 2025-12-28*

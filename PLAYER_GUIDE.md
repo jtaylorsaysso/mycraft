@@ -40,13 +40,14 @@ The game window will open, and you'll spawn into the world.
 | **Jump** | `Space` |
 | **Crouch / Dodge** | `Shift` (context-sensitive) |
 | **Toggle Camera View** | `V` |
+| **Zoom** | Scroll Wheel |
 
 ### Combat
 
 | Action | Key |
 | :--- | :--- |
 | **Attack** | `Left Click` (Mouse 1) |
-| **Parry** | `Right Click` (Mouse 2) |
+| **Parry** | `Right Click` (Mouse 3) |
 
 ### UI & Utilities
 
