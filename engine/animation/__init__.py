@@ -35,6 +35,16 @@ from engine.animation.root_motion import (
     add_root_motion_to_attack
 )
 
+from engine.animation.ik import (
+    IKTarget,
+    FABRIKSolver,
+    IKLayer
+)
+
+from engine.animation.foot_ik import (
+    FootIKController
+)
+
 from engine.animation.combat import (
     HitWindow,
     CombatClip,
@@ -77,6 +87,11 @@ __all__ = [
     'RootMotionClip',
     'RootMotionApplicator',
     'add_root_motion_to_attack',
+    # IK
+    'IKTarget',
+    'FABRIKSolver',
+    'IKLayer',
+    'FootIKController',
     # Combat
     'HitWindow',
     'CombatClip',
