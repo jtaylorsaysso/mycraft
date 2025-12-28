@@ -71,6 +71,9 @@ class VoxelGame(ShowBase):
         # (set_game_state not called during init, so we lock manually)
         self.input_manager.lock_mouse()
         
+        # Core key bindings
+        self.accept('f9', self.take_screenshot)
+        
         # Environment and Rendering
         from engine.rendering.environment import EnvironmentManager
         from engine.rendering.texture_atlas import TextureAtlas
@@ -143,6 +146,15 @@ class VoxelGame(ShowBase):
     def _unlock_cursor(self):
         """Unlock and show cursor for UI interaction."""
         self.input_manager.unlock_mouse()
+    
+    def take_screenshot(self):
+        """Capture and save screenshot."""
+        # Use Panda3D's automatic screenshot naming
+        success = self.screenshot()
+        if success:
+            print("📸 Screenshot saved to game directory")
+        else:
+            print("❌ Screenshot failed - check console for errors")
 
     def _setup_default_systems(self):
         """Add core systems to the world."""

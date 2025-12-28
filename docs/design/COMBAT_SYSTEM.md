@@ -1,7 +1,7 @@
 # Combat System Design
 
-**Status**: Planned (Milestone 2)  
-**Last Updated**: 2025-12-27
+**Status**: In Progress (Milestone 2)  
+**Last Updated**: 2025-12-28
 
 This document outlines the design and architecture for the **voxel_world** combat system, focusing on timing, momentum, and stamina management.
 

@@ -1,5 +1,8 @@
 # MyCraft Roadmap
 
+**Last Updated**: 2025-12-28
+**Current Version**: 1.1 - Combat & Animation Focus
+
 ## Overview
 
 This roadmap outlines the high-level milestones for MyCraft's development. Sprint-level details and task tracking are managed in [`docs/tech_debt.md`](docs/tech_debt.md).
@@ -21,7 +24,7 @@ This roadmap outlines the high-level milestones for MyCraft's development. Sprin
 - **Animation**: Procedural character animations
 - **Testing**: Unit and integration test framework
 
-### In Progress 🚧
+### Milestone 1: In Progress 🚧
 
 - **Documentation**: API references and developer guides
 - **Onboarding Docs**: Getting Started Guide, Player Guide polish, troubleshooting FAQ
@@ -45,8 +48,14 @@ This roadmap outlines the high-level milestones for MyCraft's development. Sprin
 
 ## Milestone 2: voxel_world Alpha
 
- **Status**: Planned  
+ **Status**: In Progress
  **Goal**: First playable version with core combat and exploration loop
+
+### Milestone 2: In Progress 🚧
+
+- **Combat Animation**: Layered animation system with attacks, dodge, and parry
+- **Combat Mechanics**: Stamina system, damage calculation, and enemy AI framework
+- **Camera Polish**: Third-person camera with collision and improved feel
 
 ### Planned Features
 
@@ -170,12 +179,12 @@ Have ideas for MyCraft's future? We welcome:
 
 See [`docs/tech_debt.md`](docs/tech_debt.md) for:
 
-- Active sprint goals (currently Sprint 5: Polish & UX)
+- Active sprint goals (currently Sprint 6: Combat Polish & Animation)
 - Detailed task breakdown
 - Technical debt tracking
 - Completed features and next steps
 
 ---
 
-*Last Updated: 2025-12-20*  
-*Version: 1.0*
+*Last Updated: 2025-12-28*  
+*Version: 1.1*

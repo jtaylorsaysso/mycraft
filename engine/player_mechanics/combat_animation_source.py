@@ -265,7 +265,45 @@ class CombatAnimationSource:
             return {}
         
         # Get pose at current time
-        return clip.get_pose(self.current_time)
+        pose = clip.get_pose(self.current_time)
+        
+        # Patch pose with skeletal constraints (prevent limb collapse)
+        # We assume clips define rotations (absolute) and hip adjustments (delta)
+        # but don't define structural bone lengths.
+        final_pose = {}
+        for bone_name, transform in pose.items():
+            bone = skeleton.get_bone(bone_name)
+            if not bone:
+                continue
+                
+            rest_pos = bone.rest_transform.position
+            rest_rot = bone.rest_transform.rotation
+            
+            # Rotation: ADD clip rotation offset to rest rotation
+            # Clip provides animation offset (e.g., arm swing), not absolute orientation
+            final_rot = LVector3f(
+                rest_rot.x + transform.rotation.x,
+                rest_rot.y + transform.rotation.y,
+                rest_rot.z + transform.rotation.z
+            )
+            
+            # Create new transform to avoid mutating cached keyframe data
+            new_transform = Transform(
+                rotation=final_rot,
+                scale=transform.scale
+            )
+            
+            if bone_name == 'hips':
+                # For hips, treat animating position as DELTA from rest height
+                # dodge used Z=-0.1, so we want 2.1 + (-0.1) = 2.0
+                new_transform.position = rest_pos + transform.position
+            else:
+                # For all other bones, enforce fixed bone length (rest position)
+                new_transform.position = rest_pos
+                
+            final_pose[bone_name] = new_transform
+            
+        return final_pose
     
     def get_current_clip(self) -> Optional[CombatClip]:
         """Get currently playing clip.

@@ -10,9 +10,9 @@ This register tracks technical debt, bugs, and future enhancements. Items are or
 
 ### Combat Animation Integration
 
-**Priority:** High | **Effort:** ~2-3 days remaining
+**Priority:** Critical | **Effort:** ~2-3 days remaining
 
-Phase 1 (Attack Animations) complete. Remaining work:
+Phase 1 (Attack Animations & Layered System) complete. Focus shifting to Phase 2 (Dodge) and Phase 3 (Parry) to complete the Combat Prototype.
 
 - [ ] **Phase 2: Dodge Movement** - Implement `DodgeSystem._apply_dodge_movement()` using root motion applicator
 - [ ] **Phase 2: Directional Dodge** - Apply calculated dodge direction to root motion curve (currently always forward)
@@ -21,7 +21,7 @@ Phase 1 (Attack Animations) complete. Remaining work:
 
 **Technical Debt from Phase 1:**
 
-- [ ] **Skeleton/Visual Retargeting** - Currently ignoring skeleton positions, only using rotations. Skeleton bone lengths don't match visual mannequin proportions. Future: Implement proper retargeting or rebuild mannequin to match skeleton.
+- [x] **Skeleton/Visual Retargeting** - Fixed by implementing correct `rest_transform` logic in Skeleton and Animation Sources. Avatar now respects bone lengths and skeletal structure.
 - [ ] **Procedural Locomotion Enhancement** - Walk/idle implemented as simple Transform returns. Could be enhanced with run, sprint, jump animations.
 - [ ] **Hit Window Callbacks** - Wire `on_hit` callback from animation to combat system for frame-perfect hit detection (currently using timing-based approach).
 
@@ -158,6 +158,14 @@ Remaining items from state management cleanup:
 - [x] **Cancel Windows** - Verified attack→dodge canceling works after 0.35s window
 
 **Tests:** All animation layer tests (17/17) and combat system tests (8/8) passing
+
+### Avatar & Animation Fixes (2025-12-28)
+
+- [x] **"Avatar Collapse" Fix** - Implemented `rest_transform` logic to preserve bone lengths during animation (preventing limbs collapsing to origin)
+- [x] **Orientation Fix** - Corrected Panda3D pitch direction assumptions (Spine +90 Up, Thighs -90 Down)
+- [x] **Scale Adjustment** - Rescaled avatar from ~3.5m to standard ~1.8m height
+- [x] **Screenshot Tool** - Added F9 screenshot functionality for easier visual debugging
+- [x] **Feedback System Fix** - Resolved crash in FeedbackSystem overlay
 
 ## ✅ Recently Completed (2025-12-27)
 

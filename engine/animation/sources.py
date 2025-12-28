@@ -59,6 +59,27 @@ class ProceduralAnimationSource:
         
         transforms = {}
         
+        # Helper to create transform that ADDS rotation to rest pose
+        # Animation provides rotation OFFSET, not absolute orientation
+        def make_transform(bone_name, rotation_offset):
+            bone = skeleton.get_bone(bone_name)
+            if not bone:
+                return Transform(rotation=rotation_offset)
+            
+            # Position: always use rest position (bone length)
+            pos = bone.rest_transform.position
+            
+            # Rotation: ADD offset to rest rotation
+            # Rest rotation defines bone direction (e.g., thigh pitch=90 to point down)
+            # Animation offset modifies that (e.g., leg swing of ±30 degrees)
+            rest_rot = bone.rest_transform.rotation
+            final_rot = LVector3f(
+                rest_rot.x + rotation_offset.x,
+                rest_rot.y + rotation_offset.y,
+                rest_rot.z + rotation_offset.z
+            )
+            return Transform(position=pos, rotation=final_rot)
+
         if is_walking:
             # Walking animation - procedural arm and leg swing
             # Advance walk phase
@@ -74,12 +95,12 @@ class ProceduralAnimationSource:
             leg_swing = math.sin(phase) * 30.0  # degrees
             
             # Arms swing opposite to legs
-            transforms['upper_arm_right'] = Transform(rotation=LVector3f(0, arm_swing, 0))
-            transforms['upper_arm_left'] = Transform(rotation=LVector3f(0, -arm_swing, 0))
+            transforms['upper_arm_right'] = make_transform('upper_arm_right', LVector3f(0, arm_swing, 0))
+            transforms['upper_arm_left'] = make_transform('upper_arm_left', LVector3f(0, -arm_swing, 0))
             
             # Legs swing
-            transforms['thigh_right'] = Transform(rotation=LVector3f(0, -leg_swing, 0))
-            transforms['thigh_left'] = Transform(rotation=LVector3f(0, leg_swing, 0))
+            transforms['thigh_right'] = make_transform('thigh_right', LVector3f(0, -leg_swing, 0))
+            transforms['thigh_left'] = make_transform('thigh_left', LVector3f(0, leg_swing, 0))
             
         else:
             # Idle animation - subtle breathing
@@ -90,12 +111,12 @@ class ProceduralAnimationSource:
             
             # Very subtle arm sway
             sway = math.sin(self._idle_time * 1.5) * 2.0  # degrees
-            transforms['upper_arm_right'] = Transform(rotation=LVector3f(0, sway, 0))
-            transforms['upper_arm_left'] = Transform(rotation=LVector3f(0, sway, 0))
+            transforms['upper_arm_right'] = make_transform('upper_arm_right', LVector3f(0, sway, 0))
+            transforms['upper_arm_left'] = make_transform('upper_arm_left', LVector3f(0, sway, 0))
             
             # Legs at neutral position (explicitly set to ensure visibility)
-            transforms['thigh_right'] = Transform(rotation=LVector3f(0, 0, 0))
-            transforms['thigh_left'] = Transform(rotation=LVector3f(0, 0, 0))
+            transforms['thigh_right'] = make_transform('thigh_right', LVector3f(0, 0, 0))
+            transforms['thigh_left'] = make_transform('thigh_left', LVector3f(0, 0, 0))
         
         return transforms
 

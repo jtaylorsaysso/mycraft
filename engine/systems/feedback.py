@@ -8,6 +8,7 @@ from pathlib import Path
 from engine.ecs.system import System
 from engine.ui.feedback_overlay import FeedbackOverlay
 from engine.core.logger import get_logger
+from panda3d.core import WindowProperties
 
 logger = get_logger("systems.feedback")
 
@@ -41,9 +42,10 @@ class FeedbackSystem(System):
         self.overlay_visible = True
         
         # Unlock mouse so user can interact with UI
-        props = self.game.win.getProperties()
-        props.setCursorHidden(False)
-        self.game.win.requestProperties(props)
+        # Create new properties to update
+        new_props = WindowProperties()
+        new_props.setCursorHidden(False)
+        base.win.requestProperties(new_props)
         
     def hide_overlay(self):
         if self.overlay:

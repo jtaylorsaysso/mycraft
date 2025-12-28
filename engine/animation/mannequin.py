@@ -35,6 +35,8 @@ class AnimatedMannequin:
     
     Backward compatible API: Properties like `right_arm`, `left_leg`, etc.
     still work but now reference skeleton bones.
+    
+    DEPRECATED: Use VoxelAvatar instead.
     """
     
     def __init__(self, parent_node: NodePath, body_color=(0.6, 0.5, 0.4, 1.0)):
