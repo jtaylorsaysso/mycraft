@@ -7,17 +7,19 @@ from unittest.mock import MagicMock
 sys.path.append(os.getcwd())
 
 from panda3d.core import LVector3f, CollisionTraverser, CollisionHandlerQueue
+from tests.test_utils.mock_panda import MockNodePath, MockVector3
 from engine.physics.kinematic import KinematicState
 from engine.systems.player_controller import PlayerControlSystem
 from engine.components.core import Transform
 
 # Mock World and Components
 class MockWorld:
-    def __init__(self):
+    def __init__(self, event_bus=None):
         self.components = {}
         self.entities = {}
         self._systems = []
         self.collision_traverser = CollisionTraverser()
+        self.event_bus = event_bus or MagicMock()
 
     def get_component(self, entity_id, component_type):
         return self.components.get((entity_id, component_type))
@@ -25,6 +27,9 @@ class MockWorld:
     def get_entity_by_tag(self, tag):
         return self.entities.get(tag)
         
+    def add_component(self, entity_id, component):
+        self.components[(entity_id, type(component))] = component
+    
     def get_system_by_type(self, name):
         return None  # No other systems for isolation
 
@@ -34,27 +39,40 @@ def test_run_debug():
     print("--- Starting Movement Debug ---")
     
     # Setup
-    world = MockWorld()
-    base = MagicMock()
-    base.cam.getH.return_value = 0.0  # Facing Y+
-    base.render = MagicMock()  # Mock render node
-    base.camLens = MagicMock()  # Mock camera lens for FOV
     event_bus = MagicMock()
+    world = MockWorld(event_bus=event_bus)
+    base = MagicMock()
+    base.input_manager = None
+    # Use real MockNodePath for camera so it has proper pos/hpr tracking
+    base.cam = MockNodePath("camera")
+    base.cam.setH(0.0)  # Facing Y+
+    base.render = MockNodePath("render")  # Mock render node
+    base.camLens = MagicMock()  # Mock camera lens for FOV
+    
+    # Mechanics will be initialized later
     
     # Create system (composition-based)
     system = PlayerControlSystem(world, event_bus, base)
     
+    # Mock MouseWatcher
+    base.mouseWatcherNode = MagicMock()
+    base.mouseWatcherNode.hasMouse.return_value = False
+    base.win.getXSize.return_value = 800
+    base.win.getYSize.return_value = 600
+    
     # Mock config_manager to return sensible defaults
     base.config_manager = MagicMock()
-    base.config_manager.get = lambda key, default=None: {
+    config_values = {
         'mouse_sensitivity': 40.0,
         'fov': 90.0,
         'camera_distance': 4.0,
+        'camera_side_offset': 1.0,
         'movement_speed': 7.0,
         'gravity': -20.0,
         'god_mode': False,
         'debug_overlay': False,
-    }.get(key, default)
+    }
+    base.config_manager.get.side_effect = lambda key, default=None: config_values.get(key, default)
     
     # Initialize mechanics (this sets up InputMechanic, etc.)
     system.initialize()

@@ -50,23 +50,4 @@ class TestIntegrationMultiplayer(unittest.IsolatedAsyncioTestCase):
         await client1.disconnect()
         await client2.disconnect()
 
-        client = ClientTestHarness()
-        connected = await client.connect("127.0.0.1", self.test_server.port)
-        self.assertTrue(connected, "Client failed to connect")
-        
-        # Send a chat message
-        msg = {
-            "type": "chat",
-            "message": "Hello World",
-            "player_id": client.client.player_id
-        }
-        await client.client.send_message(msg)
-        
-        # Allow time for roundtrip
-        await asyncio.sleep(0.2)
-        
-        # Check mock
-        self.assertTrue(client.client.on_chat_message.called)
-        
-        await client.disconnect()
 

@@ -9,54 +9,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Mock panda3d
 from unittest.mock import MagicMock
+from tests.test_utils.mock_panda import MockVector3, MockNodePath
 
 mock_panda = MagicMock()
 mock_core = MagicMock()
-
-class MockVector3:
-    def __init__(self, x=0, y=0, z=0):
-        self.x = float(x)
-        self.y = float(y)
-        self.z = float(z)
-    
-    def __add__(self, other):
-        return MockVector3(self.x + other.x, self.y + other.y, self.z + other.z)
-    
-    def __sub__(self, other):
-        return MockVector3(self.x - other.x, self.y - other.y, self.z - other.z)
-    
-    def __mul__(self, other):
-        if isinstance(other, (int, float)):
-            return MockVector3(self.x * other, self.y * other, self.z * other)
-        return MockVector3(self.x * other.x, self.y * other.y, self.z * other.z)
-    
-    def __repr__(self):
-        return f"MockVector3({self.x}, {self.y}, {self.z})"
-
-class MockNodePath:
-    def __init__(self, name="node"):
-        self.name = name
-        self.pos = MockVector3(0, 0, 0)
-        self.hpr = MockVector3(0, 0, 0)
-        self.scale = MockVector3(1, 1, 1)
-    
-    def setPos(self, *args):
-        if len(args) == 1:
-            self.pos = args[0]
-        elif len(args) == 3:
-            self.pos = MockVector3(*args)
-    
-    def setHpr(self, *args):
-        if len(args) == 1:
-            self.hpr = args[0]
-        elif len(args) == 3:
-            self.hpr = MockVector3(*args)
-    
-    def setScale(self, *args):
-        if len(args) == 1:
-            self.scale = args[0]
-        elif len(args) == 3:
-            self.scale = MockVector3(*args)
 
 mock_core.NodePath = MockNodePath
 mock_core.LVector3f = MockVector3

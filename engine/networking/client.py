@@ -47,6 +47,9 @@ class GameClient:
         self.on_connection_failed: Optional[Callable[[Exception], None]] = None
         self.on_block_update: Optional[Callable[[Dict], None]] = None
         self.on_chat_message: Optional[Callable[[str, str], None]] = None
+        self.on_player_joined: Optional[Callable[[str], None]] = None
+        self.on_player_left: Optional[Callable[[str], None]] = None
+        self.on_state_update: Optional[Callable[[Dict], None]] = None
         
         # Current state of remote players
         self.remote_players: Dict[str, Dict] = {}
@@ -244,9 +247,9 @@ class GameClient:
                     # Handle immediate callbacks
                     msg_type = message.get("type")
                     if msg_type in self.callbacks:
-                        await self.loop.run_in_executor(
-                            None, self.callbacks[msg_type], message
-                        )
+                        # Call callback directly in event loop context
+                        # (callbacks may need to set Futures or interact with asyncio)
+                        self.callbacks[msg_type](message)
                         
                 except json.JSONDecodeError:
                     self.logger.warning("Invalid JSON from server")
@@ -345,11 +348,16 @@ class GameClient:
             )
             self._received_snapshots = 0
             self._last_stats_time = now
+            
+        if self.on_state_update:
+            self.on_state_update(message)
     
     def _handle_player_join(self, message: Dict):
         """Handle player join notification."""
         player_id = message.get("player_id")
         print(f"Player {player_id} joined the game")
+        if self.on_player_joined:
+            self.on_player_joined(player_id)
     
     def _handle_player_leave(self, message: Dict):
         """Handle player leave notification."""
@@ -357,6 +365,8 @@ class GameClient:
         if player_id in self.remote_players:
             del self.remote_players[player_id]
         print(f"Player {player_id} left the game")
+        if self.on_player_left:
+            self.on_player_left(player_id)
     
     def _handle_admin_response(self, message: Dict):
         """Handle admin console output from server."""

@@ -15,87 +15,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Mock panda3d before importing anything else
 import sys
 from unittest.mock import MagicMock
+from tests.test_utils.mock_panda import MockVector3, MockNodePath
 
 mock_panda = MagicMock()
 mock_core = MagicMock()
-
-class MockVector3:
-    def __init__(self, x=0, y=0, z=0):
-        self.x = float(x)
-        self.y = float(y)
-        self.z = float(z)
-    
-    def __add__(self, other):
-        return MockVector3(self.x + other.x, self.y + other.y, self.z + other.z)
-    
-    def __sub__(self, other):
-        return MockVector3(self.x - other.x, self.y - other.y, self.z - other.z)
-    
-    def __mul__(self, other):
-        if isinstance(other, (int, float)):
-            return MockVector3(self.x * other, self.y * other, self.z * other)
-        return MockVector3(self.x * other.x, self.y * other.y, self.z * other.z)
-    
-    def __truediv__(self, other):
-        if isinstance(other, (int, float)):
-            return MockVector3(self.x / other, self.y / other, self.z / other)
-        return NotImplemented
-    
-    def length(self):
-        import math
-        return math.sqrt(self.x**2 + self.y**2 + self.z**2)
-
-class MockNodePath:
-    def __init__(self, name="node"):
-        self.name = name
-        self.pos = MockVector3(0, 0, 0)
-        self.hpr = MockVector3(0, 0, 0)
-        self.scale = MockVector3(1, 1, 1)
-        self.children = []
-        self.parent = None
-
-    def attachNewNode(self, name):
-        node = MockNodePath(name)
-        node.parent = self
-        self.children.append(node)
-        return node
-    
-    def setPos(self, *args):
-        if len(args) == 1: self.pos = MockVector3(*args[0])
-        else: self.pos = MockVector3(*args)
-    
-    def getPos(self): return self.pos
-    def setZ(self, z): self.pos.z = z
-    def setX(self, x): self.pos.x = x
-    def setY(self, y): self.pos.y = y
-    
-    def setHpr(self, *args):
-        if len(args) == 1: self.hpr = MockVector3(*args[0])
-        else: self.hpr = MockVector3(*args)
-    
-    def getH(self): return self.hpr.x
-    def getP(self): return self.hpr.y
-    def getR(self): return self.hpr.z
-    def setH(self, h): self.hpr.x = h
-    def setP(self, p): self.hpr.y = p
-    def setR(self, r): self.hpr.z = r
-    
-    def setScale(self, *args):
-        if len(args) == 1: self.scale = MockVector3(*args[0])
-        else: self.scale = MockVector3(*args)
-    
-    def setColorScale(self, *args):
-        pass  # Ignore color for tests
-
-    def removeNode(self):
-        if self.parent:
-            self.parent.children.remove(self)
-    
-    def getNumChildren(self):
-        return len(self.children)
-    
-    def getChild(self, index):
-        return self.children[index] if 0 <= index < len(self.children) else None
 
 # Mock CardMaker for cube generation
 class MockCardMaker:

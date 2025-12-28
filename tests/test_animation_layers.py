@@ -8,34 +8,16 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Mock panda3d
+# Mock panda3d
 from unittest.mock import MagicMock
+from tests.test_utils.mock_panda import MockVector3, MockNodePath
 
 mock_panda = MagicMock()
 mock_core = MagicMock()
 
-class MockVector3:
-    def __init__(self, x=0, y=0, z=0):
-        self.x = float(x)
-        self.y = float(y)
-        self.z = float(z)
-    
-    def __add__(self, other):
-        return MockVector3(self.x + other.x, self.y + other.y, self.z + other.z)
-    
-    def __sub__(self, other):
-        return MockVector3(self.x - other.x, self.y - other.y, self.z - other.z)
-    
-    def __mul__(self, other):
-        if isinstance(other, (int, float)):
-            return MockVector3(self.x * other, self.y * other, self.z * other)
-        return MockVector3(self.x * other.x, self.y * other.y, self.z * other.z)
-    
-    def __repr__(self):
-        return f"MockVector3({self.x}, {self.y}, {self.z})"
-
 mock_core.LVector3f = MockVector3
 mock_core.LQuaternionf = MagicMock
-mock_core.NodePath = MagicMock
+mock_core.NodePath = MockNodePath
 sys.modules['panda3d'] = mock_panda
 sys.modules['panda3d.core'] = mock_core
 

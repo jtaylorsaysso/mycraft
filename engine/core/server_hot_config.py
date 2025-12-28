@@ -46,6 +46,7 @@ class ServerHotConfig:
         # Callbacks receive (key, value)
         self._callbacks: List[Callable[[str, Any], None]] = []
         
+        self.running = True
         self.logger = get_logger("ServerHotConfig")
         
         # Load initial config
@@ -103,15 +104,21 @@ class ServerHotConfig:
         Async task to periodically check for config file changes.
         Run this as a background task in the server.
         """
-        while True:
+        while self.running:
             await asyncio.sleep(self._check_interval)
             try:
                 if self._check_needed():
                     # We run blocking I/O in executor to avoid blocking event loop
                     # though stat() is fast, it's good practice
                     await asyncio.get_running_loop().run_in_executor(None, self.load_config)
+            except asyncio.CancelledError:
+                break
             except Exception as e:
                 self.logger.error(f"Error in config update loop: {e}")
+                
+    def stop(self):
+        """Stop the config update loop."""
+        self.running = False
 
     def _check_needed(self) -> bool:
         """Check if file might have changed based on simple interval."""

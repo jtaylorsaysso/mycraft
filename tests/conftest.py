@@ -7,47 +7,18 @@ from unittest.mock import MagicMock
 # and we want to allow test collection even if Panda3D is not installed in the environment.
 
 if 'panda3d' not in sys.modules:
+    from tests.test_utils.mock_panda import (
+        MockVector3, MockVector2, MockNodePath,
+        MockCollisionHandlerQueue, MockCollisionTraverser
+    )
     mock_panda = MagicMock()
     mock_core = MagicMock()
     
-    # Simple MockVector3 that behaves like LVector3f
-    class MockVector3:
-        def __init__(self, x=0, y=0, z=0):
-            self.x = float(x)
-            self.y = float(y)
-            self.z = float(z)
-        def __add__(self, other): return MockVector3(self.x + other.x, self.y + other.y, self.z + other.z)
-        def __sub__(self, other): return MockVector3(self.x - other.x, self.y - other.y, self.z - other.z)
-        def __mul__(self, other):
-            if isinstance(other, (int, float)): return MockVector3(self.x * other, self.y * other, self.z * other)
-            return MockVector3(self.x * other.x, self.y * other.y, self.z * other.z)
-        def length(self):
-            import math
-            return math.sqrt(self.x**2 + self.y**2 + self.z**2)
-        def normalize(self):
-            l = self.length()
-            if l > 0:
-                self.x /= l
-                self.y /= l
-                self.z /= l
-            return True
-        def __repr__(self): return f"Vec3({self.x}, {self.y}, {self.z})"
-
-    # Simple MockVector2 that behaves like LVector2f
-    class MockVector2:
-        def __init__(self, x=0, y=0):
-            self.x = float(x)
-            self.y = float(y)
-        def __add__(self, other): return MockVector2(self.x + other.x, self.y + other.y)
-        def __sub__(self, other): return MockVector2(self.x - other.x, self.y - other.y)
-        def __mul__(self, other):
-            if isinstance(other, (int, float)): return MockVector2(self.x * other, self.y * other)
-            return MockVector2(self.x * other.x, self.y * other.y)
-        def __repr__(self): return f"Vec2({self.x}, {self.y})"
-
     mock_core.LVector3f = MockVector3
     mock_core.LVector2f = MockVector2
-    mock_core.NodePath = MagicMock
+    mock_core.NodePath = MockNodePath
+    mock_core.CollisionHandlerQueue = MockCollisionHandlerQueue
+    mock_core.CollisionTraverser = MockCollisionTraverser
     mock_core.WindowProperties = MagicMock
     mock_core.ModifierButtons = MagicMock
     mock_panda.core = mock_core

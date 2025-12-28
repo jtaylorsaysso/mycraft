@@ -8,43 +8,15 @@ import sys
 from unittest.mock import MagicMock, patch
 
 # Mock panda3d before importing anything else
+import sys
+from unittest.mock import MagicMock
+from tests.test_utils.mock_panda import MockVector3, MockNodePath
+
 mock_panda = MagicMock()
 mock_core = MagicMock()
 
-
-# Setup LVector3f mock that behaves like a vector
-class MockVector3:
-    def __init__(self, x=0, y=0, z=0):
-        self.x = x
-        self.y = y
-        self.z = z
-        
-    def __repr__(self):
-        return f"Vec3({self.x}, {self.y}, {self.z})"
-    
-    def __add__(self, other):
-        return MockVector3(self.x + other.x, self.y + other.y, self.z + other.z)
-        
-    def __sub__(self, other):
-        return MockVector3(self.x - other.x, self.y - other.y, self.z - other.z)
-        
-    def __mul__(self, other):
-        if isinstance(other, (int, float)):
-            return MockVector3(self.x * other, self.y * other, self.z * other)
-        return MockVector3(self.x * other.x, self.y * other.y, self.z * other.z)
-        
-    def length(self):
-        return (self.x**2 + self.y**2 + self.z**2)**0.5
-        
-    def normalize(self):
-        l = self.length()
-        if l > 0:
-            self.x /= l
-            self.y /= l
-            self.z /= l
-
-
 mock_core.LVector3f = MockVector3
+mock_core.NodePath = MockNodePath
 mock_core.WindowProperties = MagicMock()
 mock_core.ModifierButtons = MagicMock()
 mock_core.CollisionHandlerQueue.return_value.getNumEntries.return_value = 0

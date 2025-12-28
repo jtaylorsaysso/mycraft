@@ -10,41 +10,14 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Mock panda3d
 from unittest.mock import MagicMock
+from tests.test_utils.mock_panda import MockVector3, MockNodePath
 
 mock_panda = MagicMock()
 mock_core = MagicMock()
 
-class MockVector3:
-    def __init__(self, x=0, y=0, z=0):
-        self.x = float(x)
-        self.y = float(y)
-        self.z = float(z)
-    
-    def __add__(self, other):
-        return MockVector3(self.x + other.x, self.y + other.y, self.z + other.z)
-    
-    def __sub__(self, other):
-        return MockVector3(self.x - other.x, self.y - other.y, self.z - other.z)
-    
-    def __mul__(self, other):
-        if isinstance(other, (int, float)):
-            return MockVector3(self.x * other, self.y * other, self.z * other)
-        return MockVector3(self.x * other.x, self.y * other.y, self.z * other.z)
-    
-    def __truediv__(self, other):
-        if isinstance(other, (int, float)):
-            return MockVector3(self.x / other, self.y / other, self.z / other)
-        return MockVector3(self.x / other.x, self.y / other.y, self.z / other.z)
-    
-    def length(self):
-        return math.sqrt(self.x ** 2 + self.y ** 2 + self.z ** 2)
-    
-    def __repr__(self):
-        return f"MockVector3({self.x}, {self.y}, {self.z})"
-
 mock_core.LVector3f = MockVector3
 mock_core.LQuaternionf = MagicMock
-mock_core.NodePath = MagicMock
+mock_core.NodePath = MockNodePath
 sys.modules['panda3d'] = mock_panda
 sys.modules['panda3d.core'] = mock_core
 
@@ -236,7 +209,7 @@ class TestRootMotionApplicator(unittest.TestCase):
     
     def test_scale_affects_motion(self):
         """Scale should multiply motion delta."""
-        curve = RootMotionCurve.linear(MockVector3(0, 10, 0), duration=1.0, samples=10)
+        curve = RootMotionCurve.linear(MockVector3(0, 10, 0), duration=1.0, samples=100)
         clip = RootMotionClip(
             name="test",
             duration=1.0,
@@ -260,9 +233,10 @@ class TestRootMotionApplicator(unittest.TestCase):
             character_rotation=0.0
         )
         
-        # Motion should be scaled (half speed means less distance)
-        # With 0.5 scale, should move approximately 0.5 units instead of 1.0
-        self.assertLess(kinematic.position.y, 0.9)  # Less than full speed
+        # Scale delta
+        # With 100 samples, dt=0.1 includes ~11 samples (0.0 to 0.1 at 0.01 intervals)
+        # Total delta = 1.1 units. With scale 0.5, result = 0.55 units.
+        self.assertLess(kinematic.position.y, 0.9)  # Less than original 1.1 units
 
 
 class TestRootMotionHelpers(unittest.TestCase):

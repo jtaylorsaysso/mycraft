@@ -42,12 +42,8 @@ class ServerTestHarness:
                 
     async def stop(self):
         """Stop the server."""
-        self.server.running = False
-        if self.server.server:
-            self.server.server.close()
-            await self.server.server.wait_closed()
+        await self.server.stop()
         if self.task:
-            self.task.cancel()
             try:
                 await self.task
             except asyncio.CancelledError:
@@ -87,4 +83,4 @@ class ClientTestHarness:
             self.receive_task = None
             
         if self.client:
-            self.client.disconnect()
+            self.client.stop()

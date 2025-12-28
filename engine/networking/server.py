@@ -52,6 +52,7 @@ class GameServer:
         self.client_last_activity: Dict[str, float] = {}
         
         self.logger = get_logger("net.server")
+        self._tasks: List[asyncio.Task] = []
         
         if self.debug_mode:
             self.logger.setLevel(logging.DEBUG)
@@ -93,24 +94,52 @@ class GameServer:
         self.logger.info(f"Other players can connect to your LAN IP at port {addr[1]}")
         self.logger.info(f"Config: rate={self.broadcast_rate}Hz, max_players={self.max_players}, debug={self.debug_mode}")
         
-        # Start the broadcast task
-        asyncio.create_task(self.broadcast_state_loop())
+        # Start background tasks and track them
+        self._tasks.append(asyncio.create_task(self.broadcast_state_loop()))
+        self._tasks.append(asyncio.create_task(self.config.update_loop()))
+        self._tasks.append(asyncio.create_task(self._monitor_client_timeouts()))
         
-        # Start the config update task
-        asyncio.create_task(self.config.update_loop())
-        
-
         # Start discovery broadcasting
         self.discovery.start(lambda: len(self.clients))
         self.logger.info("LAN Discovery broadcasting started")
         
-        # Start client timeout monitor
-        asyncio.create_task(self._monitor_client_timeouts())
-        
         async with self.server:
-
             await self.server.serve_forever()
             
+    async def stop(self):
+        """Stop the server and all background tasks."""
+        self.logger.info("Server stopping...")
+        self.running = False
+        
+        # Stop discovery
+        self.discovery.stop()
+        
+        # Cancel all background tasks
+        for task in self._tasks:
+            if not task.done():
+                task.cancel()
+        
+        if self._tasks:
+            await asyncio.gather(*self._tasks, return_exceptions=True)
+            self._tasks.clear()
+            
+        # Close all client connections
+        for player_id, writer in list(self.clients.items()):
+            try:
+                writer.close()
+                # we don't await drain here to avoid hangs
+            except:
+                pass
+        self.clients.clear()
+        
+        # Stop the TCP server
+        if self.server:
+            self.server.close()
+            await self.server.wait_closed()
+            self.server = None
+        
+        self.logger.info("Server stopped.")
+
     async def _monitor_client_timeouts(self):
         """Periodically check for inactive clients."""
         while self.running:
