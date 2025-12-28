@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Callable, Optional, Protocol, Any, Tuple
 from panda3d.core import LVector3f, CollisionRay, CollisionNode, CollisionTraverser, CollisionHandlerQueue, BitMask32
+from engine.ecs.component import Component
 
 
 class SupportsY(Protocol):
@@ -14,7 +15,7 @@ class SupportsY(Protocol):
 
 
 @dataclass
-class KinematicState:
+class KinematicState(Component):
     """Shared physics state for kinematic entities.
 
     Uses Panda3D coordinate system: X-right, Y-forward, Z-up.

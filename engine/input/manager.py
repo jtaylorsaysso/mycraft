@@ -18,8 +18,9 @@ class InputManager:
         self.mouse_locked = False
         self.mouse_delta = (0.0, 0.0)
         self._last_mouse_pos = None
+        self.scroll_delta = 0.0  # Scroll wheel delta (positive = scroll up, negative = scroll down)
         self.key_bindings = key_bindings or KeyBindingManager()
-        self.input_blocked = False  # Set to True to disable player input (e.g., during chat)
+        self._blocking_reasons: list[str] = []  # Stack of reasons why input is blocked
         
         if self.base:
             self.setup(self.base)
@@ -31,6 +32,10 @@ class InputManager:
         # Accept all key events
         self.base.buttonThrowers[0].node().setKeystrokeEvent('keystroke')
         self.base.accept('keystroke', self._on_keystroke)
+        
+        # Scroll wheel events
+        self.base.accept('wheel_up', self._on_scroll_up)
+        self.base.accept('wheel_down', self._on_scroll_down)
         
         # Also accept specific common keys for down/up tracking
         common_keys = [
@@ -51,6 +56,14 @@ class InputManager:
     def _on_keystroke(self, key):
         """Handle arbitrary keystrokes."""
         pass # Optional logging
+    
+    def _on_scroll_up(self):
+        """Handle scroll wheel up event."""
+        self.scroll_delta += 1.0
+    
+    def _on_scroll_down(self):
+        """Handle scroll wheel down event."""
+        self.scroll_delta -= 1.0
 
     def _on_key_down(self, key: str):
         self.keys_down.add(key)
@@ -113,25 +126,71 @@ class InputManager:
     
     def lock_mouse(self):
         if not self.base: return
+        if self.mouse_locked:
+            return
         props = WindowProperties()
         props.setCursorHidden(True)
         props.setMouseMode(WindowProperties.M_relative)
         self.base.win.requestProperties(props)
         self.mouse_locked = True
+        from engine.core.logger import get_logger
+        logger = get_logger(__name__)
+        logger.debug("Cursor locked")
     
     def unlock_mouse(self):
         if not self.base: return
+        if not self.mouse_locked:
+            return
         props = WindowProperties()
         props.setCursorHidden(False)
         props.setMouseMode(WindowProperties.M_absolute)
         self.base.win.requestProperties(props)
         self.mouse_locked = False
+        from engine.core.logger import get_logger
+        logger = get_logger(__name__)
+        logger.debug("Cursor unlocked")
+    
+    def block_input(self, reason: str) -> None:
+        """Block input for a specific reason.
+        
+        Multiple blockers can stack. Input remains blocked until all reasons are removed.
+        
+        Args:
+            reason: String identifier for why input is blocked (e.g., 'chat', 'dialogue')
+        """
+        if reason not in self._blocking_reasons:
+            self._blocking_reasons.append(reason)
+            from engine.core.logger import get_logger
+            logger = get_logger(__name__)
+            logger.debug(f"Input blocked: {reason} (total blockers: {len(self._blocking_reasons)})")
+    
+    def unblock_input(self, reason: str) -> None:
+        """Unblock input for a specific reason.
+        
+        Args:
+            reason: String identifier to remove from blocking stack
+        """
+        if reason in self._blocking_reasons:
+            self._blocking_reasons.remove(reason)
+            from engine.core.logger import get_logger
+            logger = get_logger(__name__)
+            logger.debug(f"Input unblocked: {reason} (remaining blockers: {len(self._blocking_reasons)})")
+    
+    @property
+    def is_input_blocked(self) -> bool:
+        """Check if input is currently blocked by any reason.
+        
+        Returns:
+            True if at least one blocking reason exists
+        """
+        return len(self._blocking_reasons) > 0
     
     def update(self):
         """Update mouse delta tracking."""
         # Don't update mouse if input is blocked (e.g., chat is open)
-        if self.input_blocked:
+        if self.is_input_blocked:
             self.mouse_delta = (0.0, 0.0)
+            self.scroll_delta = 0.0
             return
             
         if self.mouse_locked and self.base and self.base.mouseWatcherNode.hasMouse():
@@ -164,6 +223,16 @@ class InputManager:
                 
         else:
             self.mouse_delta = (0.0, 0.0)
+    
+    def get_scroll_delta(self) -> float:
+        """Get scroll wheel delta and reset it.
+        
+        Returns:
+            Scroll delta (positive = scroll up, negative = scroll down)
+        """
+        delta = self.scroll_delta
+        self.scroll_delta = 0.0
+        return delta
 
 
 

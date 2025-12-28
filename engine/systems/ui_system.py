@@ -78,7 +78,7 @@ class UISystem(System):
         self.chat_input_active = True
         # Disable player movement input while chat is open
         if hasattr(self.game, 'input_manager') and self.game.input_manager:
-            self.game.input_manager.input_blocked = True
+            self.game.input_manager.block_input("chat")
         logger.debug("Chat input opened - player input blocked")
     
     def _on_chat_closed(self):
@@ -86,7 +86,7 @@ class UISystem(System):
         self.chat_input_active = False
         # Re-enable player movement input
         if hasattr(self.game, 'input_manager') and self.game.input_manager:
-            self.game.input_manager.input_blocked = False
+            self.game.input_manager.unblock_input("chat")
         logger.debug("Chat input closed - player input restored")
 
     def update(self, dt):

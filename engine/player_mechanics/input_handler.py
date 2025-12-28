@@ -48,6 +48,7 @@ class InputMechanic(PlayerMechanic):
         # Populate context.input
         ctx.input = InputState(
             mouse_delta=self.input_manager.mouse_delta,
+            scroll_delta=self.input_manager.get_scroll_delta(),
             keys_down=self.input_manager.keys_down.copy(),
             actions=active_actions
         )

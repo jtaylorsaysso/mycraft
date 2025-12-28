@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 class InputState:
     """Snapshot of input state for a frame."""
     mouse_delta: tuple[float, float] = (0.0, 0.0)
+    scroll_delta: float = 0.0
     keys_down: Set[str] = field(default_factory=set)
     actions: Set[InputAction] = field(default_factory=set)
     
@@ -69,9 +70,6 @@ class PlayerContext:
     terrain_system: Optional[object] = None
     water_system: Optional[object] = None
     
-    # Shared state between mechanics
-    camera_mode: str = 'third_person'
-    
     # Transition requests
     _mechanic_requests: List[str] = field(default_factory=list)
     
@@ -87,3 +85,15 @@ class PlayerContext:
     def clear_requests(self) -> None:
         """Clear mechanic requests (called by coordinator)."""
         self._mechanic_requests.clear()
+    
+    def update_refs(self, transform: 'Transform', state: 'KinematicState', dt: float) -> None:
+        """Update core references in-place without reallocating.
+        
+        Args:
+            transform: Updated Transform component
+            state: Updated KinematicState component
+            dt: Delta time for this frame
+        """
+        self.transform = transform
+        self.state = state
+        self.dt = dt

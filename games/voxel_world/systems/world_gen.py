@@ -123,11 +123,20 @@ class TerrainSystem(System):
         heights: list, 
         chunk_x: int, 
         chunk_z: int
-    ):
+    ) -> None:
         """Add collision polygons to chunk mesh.
         
-        Creates collision geometry for the top faces of terrain blocks.
-        This allows raycasting to detect ground height and surface normals.
+        Creates collision geometry for both top and side faces of terrain blocks.
+        This allows raycasting to detect ground height, surface normals, and walls.
+        
+        Collision Layer System:
+        - BitMask32.bit(1): Terrain collision layer
+        - setFromCollideMask: What this node can collide WITH (for active colliders like rays)
+        - setIntoCollideMask: What can collide INTO this node (terrain is passive, can be hit)
+        
+        Performance Note:
+        - Side faces use non-greedy meshing (one polygon per block face)
+        - Future optimization: Greedy meshing could merge adjacent vertical faces
         
         Args:
             chunk_np: NodePath to attach collision to
@@ -161,8 +170,103 @@ class TerrainSystem(System):
                 cnode.addSolid(CollisionPolygon(v0, v1, v2))
                 cnode.addSolid(CollisionPolygon(v0, v2, v3))
         
+        # Create collision polygons for side faces
+        # Only generate faces that are exposed (neighbor height is lower)
+        for x in range(self.chunk_size):
+            for z in range(self.chunk_size):
+                h = heights[x][z]
+                world_x = base_x + x
+                world_z = base_z + z
+                
+                # Get neighbor heights (with bounds checking)
+                # East neighbor (+X)
+                if x + 1 < self.chunk_size:
+                    h_east = heights[x + 1][z]
+                else:
+                    h_east = int(self.get_height(world_x + 1, world_z))
+                
+                # West neighbor (-X)
+                if x - 1 >= 0:
+                    h_west = heights[x - 1][z]
+                else:
+                    h_west = int(self.get_height(world_x - 1, world_z))
+                
+                # South neighbor (+Z)
+                if z + 1 < self.chunk_size:
+                    h_south = heights[x][z + 1]
+                else:
+                    h_south = int(self.get_height(world_x, world_z + 1))
+                
+                # North neighbor (-Z)
+                if z - 1 >= 0:
+                    h_north = heights[x][z - 1]
+                else:
+                    h_north = int(self.get_height(world_x, world_z - 1))
+                
+                # --- East side (+X) ---
+                if h_east < h:
+                    # Generate collision for each vertical layer
+                    for y0 in range(h_east + 1, h + 1):
+                        y_bottom = y0 - 1
+                        y_top = y0
+                        
+                        # Vertices for east-facing quad (counter-clockwise from outside)
+                        sv0 = LVector3f(world_x + 1, world_z, y_bottom)
+                        sv1 = LVector3f(world_x + 1, world_z + 1, y_bottom)
+                        sv2 = LVector3f(world_x + 1, world_z + 1, y_top)
+                        sv3 = LVector3f(world_x + 1, world_z, y_top)
+                        
+                        cnode.addSolid(CollisionPolygon(sv0, sv1, sv2))
+                        cnode.addSolid(CollisionPolygon(sv0, sv2, sv3))
+                
+                # --- West side (-X) ---
+                if h_west < h:
+                    for y0 in range(h_west + 1, h + 1):
+                        y_bottom = y0 - 1
+                        y_top = y0
+                        
+                        # Vertices for west-facing quad (counter-clockwise from outside)
+                        sv0 = LVector3f(world_x, world_z + 1, y_bottom)
+                        sv1 = LVector3f(world_x, world_z, y_bottom)
+                        sv2 = LVector3f(world_x, world_z, y_top)
+                        sv3 = LVector3f(world_x, world_z + 1, y_top)
+                        
+                        cnode.addSolid(CollisionPolygon(sv0, sv1, sv2))
+                        cnode.addSolid(CollisionPolygon(sv0, sv2, sv3))
+                
+                # --- South side (+Z) ---
+                if h_south < h:
+                    for y0 in range(h_south + 1, h + 1):
+                        y_bottom = y0 - 1
+                        y_top = y0
+                        
+                        # Vertices for south-facing quad (counter-clockwise from outside)
+                        sv0 = LVector3f(world_x + 1, world_z + 1, y_bottom)
+                        sv1 = LVector3f(world_x, world_z + 1, y_bottom)
+                        sv2 = LVector3f(world_x, world_z + 1, y_top)
+                        sv3 = LVector3f(world_x + 1, world_z + 1, y_top)
+                        
+                        cnode.addSolid(CollisionPolygon(sv0, sv1, sv2))
+                        cnode.addSolid(CollisionPolygon(sv0, sv2, sv3))
+                
+                # --- North side (-Z) ---
+                if h_north < h:
+                    for y0 in range(h_north + 1, h + 1):
+                        y_bottom = y0 - 1
+                        y_top = y0
+                        
+                        # Vertices for north-facing quad (counter-clockwise from outside)
+                        sv0 = LVector3f(world_x, world_z, y_bottom)
+                        sv1 = LVector3f(world_x + 1, world_z, y_bottom)
+                        sv2 = LVector3f(world_x + 1, world_z, y_top)
+                        sv3 = LVector3f(world_x, world_z, y_top)
+                        
+                        cnode.addSolid(CollisionPolygon(sv0, sv1, sv2))
+                        cnode.addSolid(CollisionPolygon(sv0, sv2, sv3))
+        
         # Attach collision node to chunk
         chunk_np.attachNewNode(cnode)
+
     
     def unload_chunk(self, chunk_x: int, chunk_z: int):
         """Remove a chunk from the world.

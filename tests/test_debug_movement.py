@@ -65,6 +65,10 @@ def test_run_debug():
     transform = Transform(position=LVector3f(0, 0, 10))  # Start high up
     world.components[(player_id, Transform)] = transform
     
+    # Add KinematicState component (now required as component, not dict)
+    state = KinematicState()
+    world.components[(player_id, KinematicState)] = state
+    
     # Store base on world for mechanics access
     world.base = base
     
@@ -74,8 +78,7 @@ def test_run_debug():
     # Run initial update to populate physics state
     system.update(0.0)
     
-    # Access physics State
-    state = system.physics_states[player_id]
+    # Access physics state from component (not system.physics_states)
     print(f"Initial Pos: {transform.position}")
     print(f"Initial Vel: {state.velocity_x}, {state.velocity_y}, {state.velocity_z}")
     

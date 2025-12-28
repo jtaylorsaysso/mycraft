@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Any, Tuple
 from engine.ecs.component import Component, register_component
 from panda3d.core import LVector3f as Vec3
+from engine.physics.kinematic import KinematicState
+from engine.components.camera_state import CameraState, CameraMode
 
 @register_component
 @dataclass

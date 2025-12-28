@@ -85,7 +85,11 @@ games/voxel_world/
 ### Planned 📋
 
 - **Advanced Movement**: Wall mechanics, gliding
-- **Combat Depth**: Parry, combos, boss encounters
+- **Combat System**:
+  - Momentum-based damage (velocity increases power)
+  - Stamina management for dodge and parry
+  - Skeleton enemy with telegraph-based AI
+  - See [COMBAT_SYSTEM.md](../../docs/design/COMBAT_SYSTEM.md) for details
 - **Points of Interest**: Procedural ruins and camps
 - **Progression**: Unlockable abilities
 

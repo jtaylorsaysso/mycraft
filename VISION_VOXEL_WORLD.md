@@ -41,6 +41,7 @@ Movement should feel like a skill to master:
 - **Environmental puzzle**: Terrain is an obstacle and a tool
 
 **Movement Verbs:**
+<!-- TODO: Tie these to Stamina costs (Sprint ~10/s, Climb ~15/s, Vault ~10 flat) -->
 
 - Sprint, slide, vault, climb, grab
 - Walljump, wall-run (future)
@@ -142,6 +143,7 @@ Designed from the ground up for coop:
 
 - **World Generation**: 9 biomes with Perlin noise terrain
 - **Movement**: Acceleration-based with slope physics
+<!-- TODO: Integrate Stamina drain for sprints and climbs -->
 - **Physics**: Jumping with coyote time, water swimming
 - **Multiplayer**: LAN coop with real-time sync
 - **Camera**: Third-person with first-person toggle

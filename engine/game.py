@@ -66,11 +66,10 @@ class VoxelGame(ShowBase):
         
         # Game state management
         self._game_state = GameState.PLAYING
-        self._cursor_locked = False  # Track cursor state
         
         # Lock cursor for initial PLAYING state
         # (set_game_state not called during init, so we lock manually)
-        self._lock_cursor()
+        self.input_manager.lock_mouse()
         
         # Environment and Rendering
         from engine.rendering.environment import EnvironmentManager
@@ -139,37 +138,11 @@ class VoxelGame(ShowBase):
     
     def _lock_cursor(self):
         """Lock and hide cursor for gameplay."""
-        if self._cursor_locked:
-            return
-        
-        props = WindowProperties()
-        props.setCursorHidden(True)
-        props.setMouseMode(WindowProperties.M_relative)
-        self.win.requestProperties(props)
-        self._cursor_locked = True
-        
-        # Synchronize InputManager's mouse_locked flag
-        if hasattr(self, 'input_manager') and self.input_manager:
-            self.input_manager.mouse_locked = True
-        
-        logger.debug("Cursor locked")
+        self.input_manager.lock_mouse()
     
     def _unlock_cursor(self):
         """Unlock and show cursor for UI interaction."""
-        if not self._cursor_locked:
-            return
-        
-        props = WindowProperties()
-        props.setCursorHidden(False)
-        props.setMouseMode(WindowProperties.M_absolute)
-        self.win.requestProperties(props)
-        self._cursor_locked = False
-        
-        # Synchronize InputManager's mouse_locked flag
-        if hasattr(self, 'input_manager') and self.input_manager:
-            self.input_manager.mouse_locked = False
-        
-        logger.debug("Cursor unlocked")
+        self.input_manager.unlock_mouse()
 
     def _setup_default_systems(self):
         """Add core systems to the world."""
@@ -237,7 +210,7 @@ class VoxelGame(ShowBase):
 
     def spawn_player(self, position: tuple = (0, 10, 0)):
         """Spawn the player character."""
-        from engine.components.core import Transform, Health, Inventory
+        from engine.components.core import Transform, Health, Inventory, KinematicState, CameraState, CameraMode
         
         # Create entity WITHOUT tag first to prevent early system wakeup
         entity_id = self.world.create_entity() # tag="player" removed
@@ -248,6 +221,14 @@ class VoxelGame(ShowBase):
         self.world.add_component(entity_id, Transform(position=pos))
         self.world.add_component(entity_id, Health(current=100, max_hp=100))
         self.world.add_component(entity_id, Inventory(slots=[None]*9))
+        self.world.add_component(entity_id, KinematicState())  # Add physics state
+        self.world.add_component(entity_id, CameraState(  # Add camera state
+            mode=CameraMode.THIRD_PERSON,
+            yaw=0.0,
+            pitch=-15.0,
+            distance=5.0,
+            current_distance=5.0
+        ))
         
         # Now register tag to wake up systems (PlayerControlSystem)
         self.world.register_tag(entity_id, "player")

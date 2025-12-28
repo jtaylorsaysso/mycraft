@@ -44,7 +44,11 @@ class AnimationMechanic(PlayerMechanic):
             return
             
         # 1. Handle Visibility based on Camera Mode
-        if ctx.camera_mode == 'first_person':
+        # Get camera state from ECS
+        from engine.components.camera_state import CameraState, CameraMode
+        camera_state = ctx.world.get_component(ctx.player_id, CameraState)
+        
+        if camera_state and camera_state.mode == CameraMode.FIRST_PERSON:
             if self.local_mannequin.root.isHidden() == False:
                 print(f"👻 Hiding mannequin (first-person mode)")
             self.local_mannequin.root.hide()
