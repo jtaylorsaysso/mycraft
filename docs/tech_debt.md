@@ -10,20 +10,21 @@ This register tracks technical debt, bugs, and future enhancements. Items are or
 
 ### Combat Animation Integration
 
-**Priority:** Critical | **Effort:** ~2-3 days remaining
+**Priority:** Critical | **Effort:** Complete ✅
 
-Phase 1 (Attack Animations & Layered System) complete. Focus shifting to Phase 2 (Dodge) and Phase 3 (Parry) to complete the Combat Prototype.
+All phases of combat animation integration complete. Combat prototype fully functional.
 
-- [ ] **Phase 2: Dodge Movement** - Implement `DodgeSystem._apply_dodge_movement()` using root motion applicator
-- [ ] **Phase 2: Directional Dodge** - Apply calculated dodge direction to root motion curve (currently always forward)
-- [ ] **Phase 3: Parry Timing** - Wire timing quality detection to animation selection (success/fail)
-- [ ] **Phase 3: Parry Testing** - Verify parry stance and recovery animations work correctly
+- [x] **Phase 2: Dodge Movement** - Implemented directional dodge using root motion applicator with input-based direction
+- [x] **Phase 2: Directional Dodge** - Applied calculated dodge direction to root motion curve (WASD-based)
+- [x] **Phase 3: Parry Timing** - Wired timing quality detection to animation selection (success/fail)
+- [x] **Phase 3: Parry Testing** - Verified parry stance and recovery animations work correctly
 
 **Technical Debt from Phase 1:**
 
 - [x] **Skeleton/Visual Retargeting** - Fixed by implementing correct `rest_transform` logic in Skeleton and Animation Sources. Avatar now respects bone lengths and skeletal structure.
-- [ ] **Procedural Locomotion Enhancement** - Walk/idle implemented as simple Transform returns. Could be enhanced with run, sprint, jump animations.
-- [ ] **Hit Window Callbacks** - Wire `on_hit` callback from animation to combat system for frame-perfect hit detection (currently using timing-based approach).
+- [x] **Procedural Locomotion Enhancement** - Implemented run/sprint/jump/fall animations with speed-based tiers and torso lean
+- [x] **Transition Blending** - Added 200ms blend transitions between idle/walk/run/sprint states
+- [ ] **Hit Window Callbacks** - Wire `on_hit` callback from animation to combat system for frame-perfect hit detection (currently using timing-based approach). *Deferred - current timing approach works well*
 
 **Reference:** Implementation plan and walkthrough in artifacts directory
 

@@ -34,6 +34,7 @@ class AnimationMechanic(PlayerMechanic):
     
     def initialize(self, player_id, world):
         """Called when player is ready."""
+        self._player_id = player_id  # Store for event filtering
         try:
             from engine.animation.voxel_avatar import VoxelAvatar
             from engine.animation.mannequin import AnimationController
@@ -141,6 +142,9 @@ class AnimationMechanic(PlayerMechanic):
             # Create root motion applicator
             self.root_motion_applicator = RootMotionApplicator()
             
+            # Subscribe to parry success event for animation transitions
+            world.event_bus.subscribe("parry_success", self._on_parry_success)
+            
             print("✅ AnimationMechanic: VoxelAvatar & Layered animation initialized")
             
         except ImportError as e:
@@ -237,14 +241,19 @@ class AnimationMechanic(PlayerMechanic):
     
     def _on_combat_state_changed(self, new_state: str, ctx: PlayerContext):
         """Handle combat state transition."""
+        from engine.components.core import CombatState
+        
         if new_state == "attacking":
             # print("⚔️ Playing attack animation")
             self.combat_source.play("sword_slash")
             
         elif new_state == "dodging":
             # print("🏃 Playing dodge animation")
+            # Calculate and store dodge direction in CombatState
             self.dodge_direction = self._calculate_dodge_direction(ctx)
-            # Future: Apply dodge direction
+            combat_state = ctx.world.get_component(ctx.player_id, CombatState)
+            if combat_state:
+                combat_state.dodge_direction = self.dodge_direction
             self.combat_source.play("dodge")
             
         elif new_state == "parrying":
@@ -300,7 +309,22 @@ class AnimationMechanic(PlayerMechanic):
             direction.normalize()
         
         return direction
-            
+    
+    def _on_parry_success(self, event):
+        """
+        # Only handle events for this player
+        if not hasattr(event, 'entity_id') or event.entity_id != getattr(self, '_player_id', None):
+            return
+        
+        timing_quality = getattr(event, 'timing_quality', 'failed')
+        
+        # Transition to appropriate animation based on timing
+        if timing_quality in ['perfect', 'good']:
+            self.combat_source.play('parry_success')
+        else:
+            self.combat_source.play('parry_fail')
+        """
+        
     def cleanup(self) -> None:
         """Clean up resources."""
         if self.avatar:

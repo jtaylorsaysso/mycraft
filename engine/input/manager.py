@@ -78,17 +78,17 @@ class InputManager:
             
         # Fallback: Poll Panda3D directly (more robust)
         if self.base and self.base.mouseWatcherNode.hasMouse():
-            from panda3d.core import KeyboardButton
-            # DEBUG: Check specifically for escape
-            if key == 'escape':
-                try:
-                    state = self.base.mouseWatcherNode.is_button_down(KeyboardButton.escape())
-                    print(f"DEBUG: Poll escape state: {state}")
-                    return state
-                except:
-                    return False
-                    
+            from panda3d.core import KeyboardButton, MouseButton
+            
             try:
+                # Handle mouse buttons
+                if key == 'mouse1':
+                    return self.base.mouseWatcherNode.is_button_down(MouseButton.one())
+                elif key == 'mouse2':
+                    return self.base.mouseWatcherNode.is_button_down(MouseButton.two())
+                elif key == 'mouse3':
+                    return self.base.mouseWatcherNode.is_button_down(MouseButton.three())
+                
                 # Handle single characters
                 if len(key) == 1:
                     p3d_key = KeyboardButton.ascii_key(key.lower())

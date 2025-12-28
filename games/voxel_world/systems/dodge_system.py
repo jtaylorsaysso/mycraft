@@ -158,14 +158,39 @@ class DodgeSystem(System):
         }.get(quality, self.FAILED_COST)
     
     def _apply_dodge_movement(self, entity_id: str):
-        """Apply directional dodge roll movement.
+        """Apply directional dodge roll movement using direct position impulse.
         
-        TODO: Integrate with movement system to apply velocity-based roll.
-        For now, this is a placeholder.
+        Instead of setting velocity (which gets overridden), we apply
+        a direct position offset in the dodge direction.
         
         Args:
             entity_id: Entity performing dodge
         """
-        # Placeholder - movement integration needed
-        # This will be implemented when we wire up input direction
-        pass
+        from engine.components.core import CombatState, Transform
+        from panda3d.core import LVector3f
+        
+        # Get combat state for dodge direction
+        combat_state = self.world.get_component(entity_id, CombatState)
+        if not combat_state:
+            return
+        
+        # Get dodge direction (set by AnimationMechanic)
+        direction = combat_state.dodge_direction
+        
+        # Get transform for position application
+        transform = self.world.get_component(entity_id, Transform)
+        if not transform:
+            return
+        
+        # Apply immediate position offset (dodge distance in direction)
+        # This gives instant movement that won't be overridden by movement system
+        dodge_offset = direction * self.DODGE_DISTANCE
+        transform.position += dodge_offset
+        
+        print(f"🏃 Dodge: moved {self.DODGE_DISTANCE} units in direction {direction}")
+        
+        # Publish dodge movement event for animation system
+        self.event_bus.publish("dodge_movement_applied",
+                              entity_id=entity_id,
+                              direction=direction,
+                              distance=self.DODGE_DISTANCE)

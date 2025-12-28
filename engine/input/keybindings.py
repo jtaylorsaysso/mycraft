@@ -81,9 +81,9 @@ DEFAULT_BINDINGS: Dict[InputAction, str] = {
     
     # Combat
     InputAction.ATTACK_PRIMARY: 'mouse1',  # Left click
-    InputAction.ATTACK_HEAVY: 'mouse2',  # Right click (hold for charge)
+    # InputAction.ATTACK_HEAVY: 'mouse3',  # Disabled - conflicts with parry
     InputAction.DODGE: 'shift',  # Context: dodge in combat
-    InputAction.PARRY: 'mouse2',  # Future: timing-based parry
+    InputAction.PARRY: 'mouse3',  # Right click for parry
     
     # Camera
     InputAction.CAMERA_TOGGLE_MODE: 'v',

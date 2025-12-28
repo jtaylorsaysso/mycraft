@@ -31,15 +31,30 @@ The game window will open, and you'll spawn into the world.
 
 ## 🕹️ Controls
 
+### Movement & Camera
+
 | Action | Key |
 | :--- | :--- |
 | **Move** | `W` `A` `S` `D` |
 | **Look** | Mouse |
-| **Jump / Fly Up** | `Space` |
-| **Crouch / Fly Down** | `Shift` |
+| **Jump** | `Space` |
+| **Crouch / Dodge** | `Shift` (context-sensitive) |
 | **Toggle Camera View** | `V` |
-| **Interact / Build** | `Left Click` / `Right Click` |
-| **Menu / Unlock Mouse** | `Escape` |
+
+### Combat
+
+| Action | Key |
+| :--- | :--- |
+| **Attack** | `Left Click` (Mouse 1) |
+| **Parry** | `Right Click` (Mouse 2) |
+
+### UI & Utilities
+
+| Action | Key |
+| :--- | :--- |
+| **Pause Menu / Unlock Mouse** | `Escape` |
+| **Toggle Debug Info** | `F3` |
+| **Screenshot** | `F9` |
 
 > **Note**: Your mouse will be locked to the game window when playing. Press **Escape** at any time to unlock your cursor and access the menu.
 
@@ -51,6 +66,8 @@ The game window will open, and you'll spawn into the world.
 ### 🦸 God Mode (Creative Mode)
 
 - **Toggle God Mode**: Edit `config/playtest.json` and set `"god_mode": true`, or use in-game settings menu
+- **Fly Up**: `Space`
+- **Fly Down**: `Shift`
 - **Fly Faster**: Hold `W` while flying
 
 ---

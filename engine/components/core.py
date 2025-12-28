@@ -70,3 +70,7 @@ class CombatState(Component):
     can_attack: bool = True  # Can start new attack
     can_dodge: bool = True
     can_parry: bool = True
+    
+    # Dodge direction (set by input mechanic, used by dodge system)
+    dodge_direction: Vec3 = field(default_factory=lambda: Vec3(0, 1, 0))  # Default forward
+

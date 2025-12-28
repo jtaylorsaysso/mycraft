@@ -80,9 +80,16 @@ class HUD:
             "W/A/S/D - Move",
             "Mouse - Look Around",
             "Space - Jump",
-            "Esc - Toggle Cursor",
-            "E - Inventory",
-            "Q - Drop Item",
+            "Shift - Dodge (combat) / Crouch",
+            "V - Toggle Camera",
+            "",
+            "Combat:",
+            "Mouse 1 - Attack",
+            "Mouse 2 - Parry",
+            "",
+            "Esc - Pause Menu",
+            "F3 - Debug Info",
+            "F9 - Screenshot",
         ]
         
         if networking:

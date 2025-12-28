@@ -80,19 +80,87 @@ class ProceduralAnimationSource:
             )
             return Transform(position=pos, rotation=final_rot)
 
-        if is_walking:
-            # Walking animation - procedural arm and leg swing
+        # Determine current animation state
+        is_walking = horizontal_speed > 0.5
+        
+        # Transition blending
+        if not hasattr(self, '_blend_state'):
+            self._blend_state = 'idle'
+            self._blend_timer = 0.0
+            self._blend_duration = 0.2  # 200ms blend time
+        
+        target_state = 'walk' if is_walking else 'idle'
+        
+        # Update blend if state changed
+        if target_state != self._blend_state:
+            self._blend_timer = 0.0
+            self._prev_state = self._blend_state
+            self._blend_state = target_state
+        
+        # Advance blend timer
+        if self._blend_timer < self._blend_duration:
+            self._blend_timer = min(self._blend_timer + dt, self._blend_duration)
+        
+        # Calculate blend factor (0 = prev state, 1 = current state)
+        blend_factor = self._blend_timer / self._blend_duration if self._blend_duration > 0 else 1.0
+
+        # Determine speed tier
+        # idle: < 0.5, walk: 0.5-6.0, run: 6.0-12.0, sprint: > 12.0
+        if horizontal_speed < 0.5:
+            speed_tier = 'idle'
+        elif horizontal_speed < 6.0:
+            speed_tier = 'walk'
+        elif horizontal_speed < 12.0:
+            speed_tier = 'run'
+        else:
+            speed_tier = 'sprint'
+        
+        # Check if in air (not grounded)
+        is_airborne = not self._grounded
+        
+        if is_airborne:
+            # Jump/Fall animations
+            # Check vertical velocity to distinguish jump from fall
+            # (We don't have direct access to velocity_z here, so use grounded state)
+            # For now, use a simple airborne pose
+            
+            # Jump pose: arms up, legs tucked
+            transforms['upper_arm_right'] = make_transform('upper_arm_right', LVector3f(0, -45, 0))
+            transforms['upper_arm_left'] = make_transform('upper_arm_left', LVector3f(0, -45, 0))
+            transforms['thigh_right'] = make_transform('thigh_right', LVector3f(0, 30, 0))
+            transforms['thigh_left'] = make_transform('thigh_left', LVector3f(0, 30, 0))
+            transforms['chest'] = make_transform('chest', LVector3f(0, 0, 0))
+            
+        elif speed_tier in ['walk', 'run', 'sprint']:
+            # Movement animations with speed-based parameters
             # Advance walk phase
             if not hasattr(self, '_walk_phase'):
                 self._walk_phase = 0.0
             
+            # Speed-based parameters
+            if speed_tier == 'walk':
+                arm_amplitude = 35.0
+                leg_amplitude = 30.0
+                frequency_mult = 1.0
+                torso_lean = 0.0
+            elif speed_tier == 'run':
+                arm_amplitude = 50.0
+                leg_amplitude = 45.0
+                frequency_mult = 1.3
+                torso_lean = 10.0  # Lean forward
+            else:  # sprint
+                arm_amplitude = 60.0
+                leg_amplitude = 55.0
+                frequency_mult = 1.6
+                torso_lean = 20.0  # Aggressive lean
+            
             speed_factor = min(horizontal_speed / 6.0, 1.5)
-            self._walk_phase += dt * 10.0 * speed_factor  # 10.0 is walk frequency
+            self._walk_phase += dt * 10.0 * speed_factor * frequency_mult
             
             # Calculate swing angles
             phase = self._walk_phase
-            arm_swing = math.sin(phase) * 35.0  # degrees
-            leg_swing = math.sin(phase) * 30.0  # degrees
+            arm_swing = math.sin(phase) * arm_amplitude * blend_factor
+            leg_swing = math.sin(phase) * leg_amplitude * blend_factor
             
             # Arms swing opposite to legs
             transforms['upper_arm_right'] = make_transform('upper_arm_right', LVector3f(0, arm_swing, 0))
@@ -102,7 +170,11 @@ class ProceduralAnimationSource:
             transforms['thigh_right'] = make_transform('thigh_right', LVector3f(0, -leg_swing, 0))
             transforms['thigh_left'] = make_transform('thigh_left', LVector3f(0, leg_swing, 0))
             
-        else:
+            # Torso lean for run/sprint
+            if torso_lean > 0:
+                transforms['chest'] = make_transform('chest', LVector3f(0, torso_lean, 0))
+            
+        else:  # idle
             # Idle animation - subtle breathing
             if not hasattr(self, '_idle_time'):
                 self._idle_time = 0.0
@@ -110,11 +182,11 @@ class ProceduralAnimationSource:
             self._idle_time += dt
             
             # Very subtle arm sway
-            sway = math.sin(self._idle_time * 1.5) * 2.0  # degrees
+            sway = math.sin(self._idle_time * 1.5) * 2.0 * blend_factor
             transforms['upper_arm_right'] = make_transform('upper_arm_right', LVector3f(0, sway, 0))
             transforms['upper_arm_left'] = make_transform('upper_arm_left', LVector3f(0, sway, 0))
             
-            # Legs at neutral position (explicitly set to ensure visibility)
+            # Legs at neutral position
             transforms['thigh_right'] = make_transform('thigh_right', LVector3f(0, 0, 0))
             transforms['thigh_left'] = make_transform('thigh_left', LVector3f(0, 0, 0))
         

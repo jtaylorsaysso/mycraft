@@ -86,6 +86,7 @@ python run_client.py --config config/playtest.json --debug
 ```
 
 Then edit `config/playtest.json` to change:
+
 * `mouse_sensitivity` (default: 40.0)
 * `movement_speed` (default: 6.0)
 * `fly_speed` (default: 12.0)
@@ -118,6 +119,7 @@ python run_client.py --replay recordings/my_test_session.json
 ### Quick Commands (Debug Mode)
 
 Press number keys 1-6 for quick playtest commands:
+
 * **1**: `/help` - Show all commands
 * **2**: `/info` - Current position/stats
 * **3**: `/god` - Toggle god mode
@@ -125,16 +127,24 @@ Press number keys 1-6 for quick playtest commands:
 * **5**: `/speed 2` - Double speed
 * **6**: `/speed 1` - Normal speed
 
+Press function keys for utilities:
+
+* **F3**: Toggle debug overlay (position, biome, collision)
+* **F9**: Take screenshot (saved to project root)
+
 ## 🛠️ Troubleshooting
 
 **"Connection Refused"**
+
 * The server isn't running. Check your server terminal.
 * Ensure you used `--host localhost` (or the correct LAN IP if testing across machines).
 
 **"Mouse is stuck"**
+
 * Press **Escape** to unlock your mouse cursor.
 
 **"Lag / Stuttering"**
+
 * The server might be overloaded. Try `run_client.py` with `--preset performance`.
 * Check `logs/` for error messages.
 
