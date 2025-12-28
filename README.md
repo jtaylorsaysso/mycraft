@@ -1,6 +1,6 @@
-# MyCraft – Create Voxel Worlds Together
+# MyCraft – Action-RPG Voxel Engine
 
-**A beginner-friendly voxel game engine** for building action-RPG adventures. No coding required - just creativity!
+**A beginner-friendly voxel game engine** for creating exploration-driven action adventures. Build worlds with visual tools, then play them with friends—no coding required.
 
 ## Status
 
@@ -59,18 +59,20 @@ Open terminal in this folder and run:
 
 ## 🎨 What's Inside
 
-MyCraft comes with a complete voxel world to explore:
+MyCraft comes with **voxel_world**, an action-adventure game to explore:
 
-- **8 Unique Biomes**: Plains, forests, mountains, deserts, canyons, rivers, beaches, and swamps
-- **Multiplayer**: Play with friends on your local network
-- **Customization**: Change textures, colors, and more *(more tools coming soon!)*
-- **Action-RPG Gameplay**: Explore, jump, swim, and adventure
+- **9 Diverse Biomes**: Plains, forests, mountains, deserts, canyons, rivers, beaches, swamps, and rocky terrain
+- **Movement-First Gameplay**: Sprint, climb, vault, and master momentum-based traversal
+- **Timing-Based Combat**: Dodge, parry, and counterattack with skill-focused mechanics
+- **Cooperative Multiplayer**: Adventure with friends on your local network
+- **Customization**: Change textures, colors, and more *(visual tools coming soon!)*
 
 ### Coming Soon
 
-- **Visual Map Editor** (Milestone 3): Build worlds with friends in real-time
-- **Character Customization** (Milestone 4): Create unique looks without coding
-- **More Biomes & Content**: Expanding the world
+- **Visual Map Editor** (Milestone 3): Design and build custom worlds
+- **Character Customization** (Milestone 4): Skins, models, and rigging tools
+- **Points of Interest**: Challenge shrines, dungeons, and epic boss encounters
+- **Advanced Traversal**: Wall-running, grappling, and gliding mechanics
 
 ---
 
