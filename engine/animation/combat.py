@@ -1,9 +1,8 @@
-"""Combat-specific animation extensions with momentum and hit detection."""
-
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Callable
 from panda3d.core import LVector3f
 from engine.animation.core import AnimationClip, VoxelAnimator, Transform
+from engine.animation.root_motion import RootMotionClip
 
 
 @dataclass
@@ -15,8 +14,8 @@ class HitWindow:
     
 
 @dataclass
-class CombatClip(AnimationClip):
-    """Animation clip with combat metadata."""
+class CombatClip(RootMotionClip):
+    """Animation clip with combat metadata and root motion."""
     hit_windows: List[HitWindow] = field(default_factory=list)
     can_cancel_after: float = 0.0  # Time when player can cancel into another action
     momentum_influence: float = 0.3  # How much movement affects the animation (0-1)
@@ -180,12 +179,13 @@ def create_walk_cycle(duration: float = 1.0) -> AnimationClip:
 
 
 def create_sword_slash() -> CombatClip:
-    """Create a basic sword slash attack.
+    """Create a basic sword slash attack with root motion.
     
     Returns:
-        Sword slash CombatClip
+        Sword slash CombatClip with forward lunge
     """
     from engine.animation.core import Keyframe
+    from engine.animation.root_motion import RootMotionCurve
     
     keyframes = [
         # Windup
@@ -222,6 +222,12 @@ def create_sword_slash() -> CombatClip:
         ),
     ]
     
+    # Create root motion curve - lunge forward 1.2 units during attack
+    root_motion = RootMotionCurve.attack_lunge(
+        forward_distance=1.2,  # Move forward 1.2 voxel units
+        duration=0.5
+    )
+    
     return CombatClip(
         name='sword_slash',
         duration=0.5,
@@ -230,5 +236,6 @@ def create_sword_slash() -> CombatClip:
         hit_windows=[HitWindow(start_time=0.12, end_time=0.18, damage_multiplier=1.0)],
         can_cancel_after=0.35,
         momentum_influence=0.4,
-        recovery_time=0.15
+        recovery_time=0.15,
+        root_motion=root_motion
     )

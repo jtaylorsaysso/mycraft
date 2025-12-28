@@ -16,6 +16,25 @@ from engine.animation.skeleton import (
     BoneConstraints
 )
 
+from engine.animation.layers import (
+    BoneMask,
+    AnimationLayer,
+    LayeredAnimator,
+    AnimationSource
+)
+
+from engine.animation.sources import (
+    ProceduralAnimationSource,
+    KeyframeAnimationSource
+)
+
+from engine.animation.root_motion import (
+    RootMotionCurve,
+    RootMotionClip,
+    RootMotionApplicator,
+    add_root_motion_to_attack
+)
+
 from engine.animation.combat import (
     HitWindow,
     CombatClip,
@@ -45,6 +64,19 @@ __all__ = [
     'Skeleton',
     'HumanoidSkeleton',
     'BoneConstraints',
+    # Layers
+    'BoneMask',
+    'AnimationLayer',
+    'LayeredAnimator',
+    'AnimationSource',
+    # Sources
+    'ProceduralAnimationSource',
+    'KeyframeAnimationSource',
+    # Root Motion
+    'RootMotionCurve',
+    'RootMotionClip',
+    'RootMotionApplicator',
+    'add_root_motion_to_attack',
     # Combat
     'HitWindow',
     'CombatClip',
