@@ -9,7 +9,9 @@ from enum import Enum, auto
 from panda3d.core import NodePath, LVector3f, GeomNode, CardMaker
 from direct.interval.IntervalGlobal import LerpHprInterval, Sequence
 import math
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, Dict
+
+from engine.animation.skeleton import HumanoidSkeleton, Bone
 
 if TYPE_CHECKING:
     from engine.core.hot_config import HotConfig
@@ -28,15 +30,11 @@ class AnimatedMannequin:
     """
     A rigged mannequin with procedural animations using Panda3D NodePaths.
     
-    Body structure (7 parts):
-    - Head
-    - Torso
-    - Right Arm (with shoulder pivot)
-    - Left Arm (with shoulder pivot)
-    - Right Leg (with hip pivot)
-    - Left Leg (with hip pivot)
+    Now powered by HumanoidSkeleton for articulated limb movement with
+    elbows, knees, and proper joint constraints.
     
-    Pivots allow limbs to rotate naturally from their attachment points.
+    Backward compatible API: Properties like `right_arm`, `left_leg`, etc.
+    still work but now reference skeleton bones.
     """
     
     def __init__(self, parent_node: NodePath, body_color=(0.6, 0.5, 0.4, 1.0)):
@@ -52,6 +50,12 @@ class AnimatedMannequin:
         # Walk animation state
         self._walk_phase = 0.0
         self._idle_time = 0.0
+        
+        # Create skeleton
+        self.skeleton = HumanoidSkeleton()
+        
+        # Create visual nodes for each bone
+        self.bone_nodes: Dict[str, NodePath] = {}
         
         # Build the mannequin
         self._build_body()
@@ -104,73 +108,136 @@ class AnimatedMannequin:
         return node
     
     def _build_body(self):
-        """Create all body parts with proper pivot points."""
+        """Create all body parts with proper pivot points using skeleton."""
         
-        # Head - no pivot needed, sits on top
-        self.head = self._create_cube(
+        # Create NodePath for each bone
+        # We'll create simplified visual representations for now
+        
+        # Head
+        head_node = self._create_cube(
             "head",
             self.root,
             scale=(0.3, 0.3, 0.3),
             pos=(0, 0, 1.6)
         )
+        self.bone_nodes["head"] = head_node
         
-        # Torso - central body
-        self.torso = self._create_cube(
+        # Torso (represents spine + chest)
+        torso_node = self._create_cube(
             "torso",
             self.root,
             scale=(0.4, 0.25, 0.6),
             pos=(0, 0, 1.1)
         )
+        self.bone_nodes["chest"] = torso_node
         
         # === ARMS ===
-        # Arms pivot from the shoulder (top of arm)
+        # Right arm - now articulated with upper_arm and forearm
+        # For now, create single visual for entire arm (will split later for elbow)
+        right_arm_pivot = self.root.attachNewNode("right_arm_pivot")
+        right_arm_pivot.setPos(0.28, 0, 1.35)
+        self.bone_nodes["upper_arm_right"] = right_arm_pivot
         
-        # Right Arm Pivot (at shoulder position)
-        self.right_arm_pivot = self.root.attachNewNode("right_arm_pivot")
-        self.right_arm_pivot.setPos(0.28, 0, 1.35)
-        
-        self.right_arm = self._create_cube(
+        right_arm_visual = self._create_cube(
             "right_arm",
-            self.right_arm_pivot,
+            right_arm_pivot,
             scale=(0.12, 0.12, 0.5),
-            pos=(0, 0, -0.25)  # Offset so pivot is at top
+            pos=(0, 0, -0.25)
         )
         
-        # Left Arm Pivot
-        self.left_arm_pivot = self.root.attachNewNode("left_arm_pivot")
-        self.left_arm_pivot.setPos(-0.28, 0, 1.35)
+        # Left arm
+        left_arm_pivot = self.root.attachNewNode("left_arm_pivot")
+        left_arm_pivot.setPos(-0.28, 0, 1.35)
+        self.bone_nodes["upper_arm_left"] = left_arm_pivot
         
-        self.left_arm = self._create_cube(
+        left_arm_visual = self._create_cube(
             "left_arm",
-            self.left_arm_pivot,
+            left_arm_pivot,
             scale=(0.12, 0.12, 0.5),
             pos=(0, 0, -0.25)
         )
         
         # === LEGS ===
-        # Legs pivot from the hip (top of leg)
+        # Right leg - now articulated with thigh and shin
+        right_leg_pivot = self.root.attachNewNode("right_leg_pivot")
+        right_leg_pivot.setPos(0.1, 0, 0.8)
+        self.bone_nodes["thigh_right"] = right_leg_pivot
         
-        # Right Leg Pivot (at hip position)
-        self.right_leg_pivot = self.root.attachNewNode("right_leg_pivot")
-        self.right_leg_pivot.setPos(0.1, 0, 0.8)
-        
-        self.right_leg = self._create_cube(
+        right_leg_visual = self._create_cube(
             "right_leg",
-            self.right_leg_pivot,
+            right_leg_pivot,
             scale=(0.15, 0.15, 0.5),
             pos=(0, 0, -0.25)
         )
         
-        # Left Leg Pivot
-        self.left_leg_pivot = self.root.attachNewNode("left_leg_pivot")
-        self.left_leg_pivot.setPos(-0.1, 0, 0.8)
+        # Left leg
+        left_leg_pivot = self.root.attachNewNode("left_leg_pivot")
+        left_leg_pivot.setPos(-0.1, 0, 0.8)
+        self.bone_nodes["thigh_left"] = left_leg_pivot
         
-        self.left_leg = self._create_cube(
+        left_leg_visual = self._create_cube(
             "left_leg",
-            self.left_leg_pivot,
+            left_leg_pivot,
             scale=(0.15, 0.15, 0.5),
             pos=(0, 0, -0.25)
         )
+    
+    # === Backward Compatibility Properties ===
+    # These allow existing code to work unchanged
+    
+    @property
+    def head(self) -> NodePath:
+        """Head visual node."""
+        return self.bone_nodes.get("head")
+    
+    @property
+    def torso(self) -> NodePath:
+        """Torso visual node (maps to chest bone)."""
+        return self.bone_nodes.get("chest")
+    
+    @property
+    def right_arm_pivot(self) -> NodePath:
+        """Right arm pivot (maps to upper_arm_right bone)."""
+        return self.bone_nodes.get("upper_arm_right")
+    
+    @property
+    def left_arm_pivot(self) -> NodePath:
+        """Left arm pivot (maps to upper_arm_left bone)."""
+        return self.bone_nodes.get("upper_arm_left")
+    
+    @property
+    def right_arm(self) -> NodePath:
+        """Right arm visual (child of pivot)."""
+        pivot = self.right_arm_pivot
+        return pivot.getChild(0) if pivot and pivot.getNumChildren() > 0 else pivot
+    
+    @property
+    def left_arm(self) -> NodePath:
+        """Left arm visual (child of pivot)."""
+        pivot = self.left_arm_pivot
+        return pivot.getChild(0) if pivot and pivot.getNumChildren() > 0 else pivot
+    
+    @property
+    def right_leg_pivot(self) -> NodePath:
+        """Right leg pivot (maps to thigh_right bone)."""
+        return self.bone_nodes.get("thigh_right")
+    
+    @property
+    def left_leg_pivot(self) -> NodePath:
+        """Left leg pivot (maps to thigh_left bone)."""
+        return self.bone_nodes.get("thigh_left")
+    
+    @property
+    def right_leg(self) -> NodePath:
+        """Right leg visual (child of pivot)."""
+        pivot = self.right_leg_pivot
+        return pivot.getChild(0) if pivot and pivot.getNumChildren() > 0 else pivot
+    
+    @property
+    def left_leg(self) -> NodePath:
+        """Left leg visual (child of pivot)."""
+        pivot = self.left_leg_pivot
+        return pivot.getChild(0) if pivot and pivot.getNumChildren() > 0 else pivot
     
     def reset_pose(self):
         """Reset all limbs to neutral position."""

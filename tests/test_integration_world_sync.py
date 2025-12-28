@@ -4,7 +4,7 @@ import asyncio
 import logging
 from unittest.mock import MagicMock, patch
 
-from tests.test_utils.integration_harness import TestServerWrapper, TestClientWrapper
+from tests.test_utils.integration_harness import ServerTestHarness, ClientTestHarness
 
 
 
@@ -13,7 +13,7 @@ class TestIntegrationWorldSync(unittest.IsolatedAsyncioTestCase):
         logging.getLogger("net.server").setLevel(logging.WARNING)
         logging.getLogger("net.client").setLevel(logging.WARNING)
         
-        self.test_server = TestServerWrapper()
+        self.test_server = ServerTestHarness()
         await self.test_server.start()
         
     async def asyncTearDown(self):
@@ -23,7 +23,7 @@ class TestIntegrationWorldSync(unittest.IsolatedAsyncioTestCase):
 
     async def test_chunk_updates_propagate(self):
         """Verify server block updates reach the client."""
-        client = TestClientWrapper()
+        client = ClientTestHarness()
         
         # Setup mock world on client to capture updates
         mock_world = MagicMock()

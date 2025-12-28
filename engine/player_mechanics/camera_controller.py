@@ -145,4 +145,7 @@ class CameraMechanic(PlayerMechanic):
         else:
             camera_state.mode = CameraMode.THIRD_PERSON
             self.camera_controller = self.third_person_camera
+            # Reset current_distance to match target distance
+            # This fixes zoom bug after mode toggle
+            camera_state.current_distance = camera_state.distance
             print("📷 Switched to Third-Person")

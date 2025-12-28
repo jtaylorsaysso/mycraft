@@ -5,7 +5,7 @@ from engine.networking.server import GameServer
 from engine.networking.client import GameClient
 from engine.core.server_hot_config import ServerHotConfig
 
-class TestServerWrapper:
+class ServerTestHarness:
     """Helper to manage a GameServer instance for testing."""
     def __init__(self):
         self.config = ServerHotConfig()
@@ -53,7 +53,7 @@ class TestServerWrapper:
             except asyncio.CancelledError:
                 pass
 
-class TestClientWrapper:
+class ClientTestHarness:
     """Helper to manage a GameClient instance for testing."""
     def __init__(self):
         self.client = None

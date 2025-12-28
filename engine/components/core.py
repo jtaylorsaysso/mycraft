@@ -35,3 +35,38 @@ class Inventory(Component):
     slots: List[Optional[Tuple[str, int]]] = field(default_factory=lambda: [None] * 9)
     selected_slot: int = 0
     max_stack: int = 64
+
+@register_component
+@dataclass
+class Stamina(Component):
+    """General resource for physical actions (combat & traversal).
+    
+    Used for:
+    - Combat: Dodge, Parry
+    - Traversal (future): Sprint, Climb, Swim, Vault
+    """
+    current: float = 100.0
+    max_stamina: float = 100.0
+    regen_rate: float = 20.0  # stamina per second
+    regen_delay: float = 0.5  # delay after use before regen starts
+    regen_timer: float = 0.0  # countdown to regen start
+
+@register_component
+@dataclass
+class CombatState(Component):
+    """Tracks player's combat state for animation and action constraints.
+    
+    Used for:
+    - Preventing invalid actions (can't attack while dodging)
+    - Animation state management
+    - Visual feedback
+    - Enemy AI (future)
+    """
+    state: str = "idle"  # idle, attacking, dodging, parrying, stunned
+    state_timer: float = 0.0  # Time in current state
+    
+    # Action constraints (updated by combat systems)
+    can_cancel: bool = True  # Can cancel into other actions
+    can_attack: bool = True  # Can start new attack
+    can_dodge: bool = True
+    can_parry: bool = True

@@ -7,13 +7,13 @@ from dataclasses import dataclass
 
 @register_component
 @dataclass
-class TestComponent(Component):
+class MockComponent(Component):
     value: int = 0
 
-class TestSystem(System):
+class MockSystem(System):
     def update(self, dt: float):
-        for entity in self.world.get_entities_with(TestComponent):
-            comp = self.world.get_component(entity, TestComponent)
+        for entity in self.world.get_entities_with(MockComponent):
+            comp = self.world.get_component(entity, MockComponent)
             comp.value += 1
 
 class TestECSCore(unittest.TestCase):
@@ -27,23 +27,23 @@ class TestECSCore(unittest.TestCase):
         
     def test_component_assignment(self):
         entity = self.world.create_entity()
-        comp = TestComponent(value=10)
+        comp = MockComponent(value=10)
         self.world.add_component(entity, comp)
         
-        fetched = self.world.get_component(entity, TestComponent)
+        fetched = self.world.get_component(entity, MockComponent)
         self.assertEqual(fetched.value, 10)
-        self.assertTrue(self.world.has_component(entity, TestComponent))
+        self.assertTrue(self.world.has_component(entity, MockComponent))
 
     def test_system_update(self):
         entity = self.world.create_entity()
-        self.world.add_component(entity, TestComponent(value=0))
+        self.world.add_component(entity, MockComponent(value=0))
         
-        system = TestSystem(self.world, self.world.event_bus)
+        system = MockSystem(self.world, self.world.event_bus)
         self.world.add_system(system)
         
         self.world.update(1.0)
         
-        comp = self.world.get_component(entity, TestComponent)
+        comp = self.world.get_component(entity, MockComponent)
         self.assertEqual(comp.value, 1)
 
     def test_event_bus(self):
@@ -60,12 +60,12 @@ class TestECSCore(unittest.TestCase):
         
     def test_entity_destruction(self):
         entity = self.world.create_entity()
-        self.world.add_component(entity, TestComponent())
+        self.world.add_component(entity, MockComponent())
         
         self.world.destroy_entity(entity)
         
-        self.assertFalse(self.world.has_component(entity, TestComponent))
-        self.assertEqual(len(self.world.get_entities_with(TestComponent)), 0)
+        self.assertFalse(self.world.has_component(entity, MockComponent))
+        self.assertEqual(len(self.world.get_entities_with(MockComponent)), 0)
 
 if __name__ == '__main__':
     unittest.main()

@@ -131,8 +131,13 @@ class GroundMovementMechanic(PlayerMechanic):
             return raycast_ground_height(e, ctx.world.collision_traverser, ctx.world.base.render)
 
         def wall_check(e, move):
-            # Simplified wall check (placeholder for MVP)
-            return False
+            from engine.physics import raycast_wall_check
+            return raycast_wall_check(
+                e, 
+                move, 
+                ctx.world.collision_traverser, 
+                ctx.world.base.render
+            )
             
         if god_mode:
             # Direct position update (noclip)

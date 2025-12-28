@@ -4,7 +4,7 @@ import asyncio
 import logging
 from unittest.mock import MagicMock, patch
 
-from tests.test_utils.integration_harness import TestServerWrapper, TestClientWrapper
+from tests.test_utils.integration_harness import ServerTestHarness, ClientTestHarness
 
 
 
@@ -14,7 +14,7 @@ class TestIntegrationMultiplayer(unittest.IsolatedAsyncioTestCase):
         logging.getLogger("net.server").setLevel(logging.WARNING)
         logging.getLogger("net.client").setLevel(logging.WARNING)
         
-        self.test_server = TestServerWrapper()
+        self.test_server = ServerTestHarness()
         await self.test_server.start()
         
     async def asyncTearDown(self):
@@ -22,7 +22,7 @@ class TestIntegrationMultiplayer(unittest.IsolatedAsyncioTestCase):
         
     async def test_client_server_connection_flow(self):
         """Verify a client can connect and receive welcome message."""
-        client = TestClientWrapper()
+        client = ClientTestHarness()
         
         # Connect
         connected = await client.connect("127.0.0.1", self.test_server.port)
@@ -35,8 +35,8 @@ class TestIntegrationMultiplayer(unittest.IsolatedAsyncioTestCase):
 
     async def test_two_players_see_each_other(self):
         """Verify that when a second player joins, both are notified."""
-        client1 = TestClientWrapper()
-        client2 = TestClientWrapper()
+        client1 = ClientTestHarness()
+        client2 = ClientTestHarness()
         
         await client1.connect("127.0.0.1", self.test_server.port)
         await asyncio.sleep(0.1)
@@ -50,7 +50,7 @@ class TestIntegrationMultiplayer(unittest.IsolatedAsyncioTestCase):
         await client1.disconnect()
         await client2.disconnect()
 
-        client = TestClientWrapper()
+        client = ClientTestHarness()
         connected = await client.connect("127.0.0.1", self.test_server.port)
         self.assertTrue(connected, "Client failed to connect")
         

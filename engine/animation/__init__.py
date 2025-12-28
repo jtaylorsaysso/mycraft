@@ -9,6 +9,13 @@ from engine.animation.core import (
     ProceduralAnimator
 )
 
+from engine.animation.skeleton import (
+    Bone,
+    Skeleton,
+    HumanoidSkeleton,
+    BoneConstraints
+)
+
 from engine.animation.combat import (
     HitWindow,
     CombatClip,
@@ -24,6 +31,7 @@ from engine.animation.particles import (
     create_dust_cloud
 )
 
+
 __all__ = [
     # Core
     'Transform',
@@ -32,6 +40,11 @@ __all__ = [
     'VoxelRig',
     'VoxelAnimator',
     'ProceduralAnimator',
+    # Skeleton
+    'Bone',
+    'Skeleton',
+    'HumanoidSkeleton',
+    'BoneConstraints',
     # Combat
     'HitWindow',
     'CombatClip',
@@ -44,3 +57,4 @@ __all__ = [
     'create_impact_effect',
     'create_dust_cloud',
 ]
+

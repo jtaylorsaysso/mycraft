@@ -8,6 +8,9 @@ from engine.player_mechanics.input_handler import InputMechanic
 from engine.player_mechanics.camera_controller import CameraMechanic
 from engine.player_mechanics.ground_movement import GroundMovementMechanic
 from engine.player_mechanics.animation import AnimationMechanic
+from engine.player_mechanics.dodge_mechanic import DodgeMechanic
+from engine.player_mechanics.parry_mechanic import ParryMechanic
+from engine.player_mechanics.attack_mechanic import AttackMechanic
 from panda3d.core import CollisionTraverser
 
 class PlayerControlSystem(System):
@@ -22,6 +25,9 @@ class PlayerControlSystem(System):
             InputMechanic(base),
             CameraMechanic(base),
             GroundMovementMechanic(),
+            DodgeMechanic(),  # Dodge input handling
+            ParryMechanic(),  # Parry input handling
+            AttackMechanic(),  # Attack input handling
             AnimationMechanic(base),
         ]
         

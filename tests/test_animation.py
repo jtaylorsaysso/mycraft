@@ -65,7 +65,9 @@ class MockNodePath:
         else: self.pos = MockVector3(*args)
     
     def getPos(self): return self.pos
-    def setZ(self, z): self.pos.y = z # Note: mannequin uses setZ which is Y in some contexts but Panda Z is Up
+    def setZ(self, z): self.pos.z = z
+    def setX(self, x): self.pos.x = x
+    def setY(self, y): self.pos.y = y
     
     def setHpr(self, *args):
         if len(args) == 1: self.hpr = MockVector3(*args[0])
@@ -75,19 +77,39 @@ class MockNodePath:
     def getP(self): return self.hpr.y
     def getR(self): return self.hpr.z
     def setH(self, h): self.hpr.x = h
+    def setP(self, p): self.hpr.y = p
+    def setR(self, r): self.hpr.z = r
     
     def setScale(self, *args):
         if len(args) == 1: self.scale = MockVector3(*args[0])
         else: self.scale = MockVector3(*args)
+    
+    def setColorScale(self, *args):
+        pass  # Ignore color for tests
 
     def removeNode(self):
         if self.parent:
             self.parent.children.remove(self)
+    
+    def getNumChildren(self):
+        return len(self.children)
+    
+    def getChild(self, index):
+        return self.children[index] if 0 <= index < len(self.children) else None
+
+# Mock CardMaker for cube generation
+class MockCardMaker:
+    def __init__(self, name):
+        self.name = name
+    def setFrame(self, *args):
+        pass
+    def generate(self):
+        return MagicMock()
 
 mock_core.NodePath = MockNodePath
 mock_core.LVector3f = MockVector3
 mock_core.GeomNode = MagicMock
-mock_core.CardMaker = MagicMock
+mock_core.CardMaker = MockCardMaker
 mock_panda.core = mock_core
 sys.modules['panda3d'] = mock_panda
 sys.modules['panda3d.core'] = mock_core

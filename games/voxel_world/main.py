@@ -24,6 +24,16 @@ def run(**kwargs):
     )
     game.register_terrain_system(terrain_system)
     
+    # Register combat systems
+    from games.voxel_world.systems.stamina_system import StaminaSystem
+    from games.voxel_world.systems.dodge_system import DodgeSystem
+    from games.voxel_world.systems.parry_system import ParrySystem
+    from games.voxel_world.systems.combat_system import CombatSystem
+    game.world.add_system(StaminaSystem(game.world, game.world.event_bus))
+    game.world.add_system(DodgeSystem(game.world, game.world.event_bus))
+    game.world.add_system(ParrySystem(game.world, game.world.event_bus))
+    game.world.add_system(CombatSystem(game.world, game.world.event_bus))
+    
     # Register blocks 
     # (Engine provides defaults in BlockRegistry, we can add game-specific ones here if needed)
     

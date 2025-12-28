@@ -104,10 +104,12 @@ Unified with ground physics via shared `KinematicState`:
 
 Uses Panda3D's collision system:
 
-- **Terrain collision**: `CollisionPolygon` solids on chunk top faces
+- **Terrain collision**: `CollisionPolygon` solids on chunk top faces AND side faces (East, West, South, North)
 - **Ground detection**: Downward raycast from above entity
-- **Wall detection**: Horizontal raycast in movement direction
+- **Wall detection**: Horizontal raycast in movement direction (enabled in `GroundMovementMechanic`)
 - **Collision masks**: BitMask32.bit(1) for terrain layer
+- **Side face generation**: Only creates collision for exposed faces (neighbor height is lower)
+- **Performance**: Non-greedy meshing (one polygon per block face per vertical layer)
 
 ## Usage Pattern
 
@@ -186,6 +188,8 @@ The physics module is designed to be reused by any entity:
 - ✅ Variable jump height
 - ✅ Slope handling and surface normal projection
 - ✅ Sliding on steep slopes
+- ✅ Side face collision geometry (2025-12-28) - Prevents phasing through vertical walls
+- ✅ Wall collision checking enabled (2025-12-28) - `GroundMovementMechanic` now uses `raycast_wall_check`
 
 ## Future Extensions
 
@@ -202,5 +206,5 @@ The physics module is designed to be reused by any entity:
 
 ---
 
-*Last Updated: 2025-12-20*
-*Version: 3.0 - Phase 3: Slope Physics & Surface Normals*
+*Last Updated: 2025-12-28*
+*Version: 3.1 - Side Face Collision & Wall Detection*

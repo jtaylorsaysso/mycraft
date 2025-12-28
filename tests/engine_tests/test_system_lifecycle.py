@@ -8,7 +8,7 @@ from engine.ecs.system import System
 from engine.ecs.events import EventBus
 
 
-class TestSystem(System):
+class MockSystem(System):
     """Test system with configurable dependencies."""
     
     def __init__(self, world, event_bus, dependencies=None):
@@ -38,7 +38,7 @@ class TestSystemLifecycle(unittest.TestCase):
     def test_system_starts_not_ready(self):
         """System should start with ready=False."""
         world = World()
-        system = TestSystem(world, world.event_bus)
+        system = MockSystem(world, world.event_bus)
         self.assertFalse(system.ready)
     
     def test_get_dependencies_default(self):
@@ -50,7 +50,7 @@ class TestSystemLifecycle(unittest.TestCase):
     def test_on_ready_sets_ready_flag(self):
         """on_ready should set ready=True."""
         world = World()
-        system = TestSystem(world, world.event_bus)
+        system = MockSystem(world, world.event_bus)
         self.assertFalse(system.ready)
         system.on_ready()
         self.assertTrue(system.ready)
@@ -58,7 +58,7 @@ class TestSystemLifecycle(unittest.TestCase):
     def test_system_no_dependencies_ready_immediately(self):
         """System with no dependencies should become ready immediately."""
         world = World()
-        system = TestSystem(world, world.event_bus, dependencies=[])
+        system = MockSystem(world, world.event_bus, dependencies=[])
         world.add_system(system)
         
         self.assertTrue(system.initialize_called)
@@ -68,7 +68,7 @@ class TestSystemLifecycle(unittest.TestCase):
     def test_system_with_dependencies_waits(self):
         """System with dependencies should wait until satisfied."""
         world = World()
-        system = TestSystem(world, world.event_bus, dependencies=["player"])
+        system = MockSystem(world, world.event_bus, dependencies=["player"])
         world.add_system(system)
         
         self.assertTrue(system.initialize_called)
@@ -78,7 +78,7 @@ class TestSystemLifecycle(unittest.TestCase):
     def test_system_ready_when_dependency_created(self):
         """System should become ready when dependency entity is created."""
         world = World()
-        system = TestSystem(world, world.event_bus, dependencies=["player"])
+        system = MockSystem(world, world.event_bus, dependencies=["player"])
         world.add_system(system)
         
         # System waiting
@@ -94,7 +94,7 @@ class TestSystemLifecycle(unittest.TestCase):
     def test_multiple_dependencies(self):
         """System should wait for all dependencies."""
         world = World()
-        system = TestSystem(world, world.event_bus, dependencies=["player", "camera"])
+        system = MockSystem(world, world.event_bus, dependencies=["player", "camera"])
         world.add_system(system)
         
         # Create only one dependency
@@ -108,7 +108,7 @@ class TestSystemLifecycle(unittest.TestCase):
     def test_update_only_called_when_ready(self):
         """System.update should only be called when ready=True."""
         world = World()
-        system = TestSystem(world, world.event_bus, dependencies=["player"])
+        system = MockSystem(world, world.event_bus, dependencies=["player"])
         world.add_system(system)
         
         # Update while not ready
@@ -125,7 +125,7 @@ class TestSystemLifecycle(unittest.TestCase):
     def test_disabled_system_not_updated(self):
         """Disabled system should not receive updates even if ready."""
         world = World()
-        system = TestSystem(world, world.event_bus)
+        system = MockSystem(world, world.event_bus)
         world.add_system(system)
         
         # System is ready (no dependencies)
@@ -146,7 +146,7 @@ class TestSystemLifecycle(unittest.TestCase):
         world.create_entity(tag="player")
         
         # Add system that depends on it
-        system = TestSystem(world, world.event_bus, dependencies=["player"])
+        system = MockSystem(world, world.event_bus, dependencies=["player"])
         world.add_system(system)
         
         # Should be ready immediately

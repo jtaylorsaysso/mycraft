@@ -210,7 +210,7 @@ class VoxelGame(ShowBase):
 
     def spawn_player(self, position: tuple = (0, 10, 0)):
         """Spawn the player character."""
-        from engine.components.core import Transform, Health, Inventory, KinematicState, CameraState, CameraMode
+        from engine.components.core import Transform, Health, Inventory, Stamina, CombatState, KinematicState, CameraState, CameraMode
         
         # Create entity WITHOUT tag first to prevent early system wakeup
         entity_id = self.world.create_entity() # tag="player" removed
@@ -221,6 +221,8 @@ class VoxelGame(ShowBase):
         self.world.add_component(entity_id, Transform(position=pos))
         self.world.add_component(entity_id, Health(current=100, max_hp=100))
         self.world.add_component(entity_id, Inventory(slots=[None]*9))
+        self.world.add_component(entity_id, Stamina())  # Add stamina for combat/traversal
+        self.world.add_component(entity_id, CombatState())  # Add combat state for action tracking
         self.world.add_component(entity_id, KinematicState())  # Add physics state
         self.world.add_component(entity_id, CameraState(  # Add camera state
             mode=CameraMode.THIRD_PERSON,

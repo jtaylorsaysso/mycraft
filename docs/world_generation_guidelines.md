@@ -102,7 +102,7 @@
 - **Height Function**: Biome-specific height functions with y=0 baseline
 - **Meshing**: Greedy meshing for top faces, side face culling based on height differences
 - **Performance**: Single mesh per chunk with optimized vertex count, frustum culling enabled
-- **Collision**: Mesh colliders for raycast-based ground detection
+- **Collision**: Mesh colliders for raycast-based ground detection AND wall detection (top + side faces)
 - **Network Sync**: Terrain is client-side identical for all players
 - **Texture Atlas**: 16x16 tile grid from terrain.png with per-face UV mapping
 - **Block Registry**: 18 block types with color fallback and texture tiles

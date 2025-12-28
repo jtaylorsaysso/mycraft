@@ -1,12 +1,12 @@
 
 import unittest
 import asyncio
-from tests.test_utils.integration_harness import TestServerWrapper
+from tests.test_utils.integration_harness import ServerTestHarness
 
 class TestServerStartup(unittest.IsolatedAsyncioTestCase):
     async def test_server_startup_shutdown(self):
         print("Creating wrapper...")
-        wrapper = TestServerWrapper()
+        wrapper = ServerTestHarness()
         
         print("Starting server...")
         await wrapper.start()

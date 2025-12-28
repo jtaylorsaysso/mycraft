@@ -184,8 +184,22 @@ if self.camera_mode == 'third_person':
 - Calculates movement direction from input + camera heading
 - Applies horizontal acceleration
 - Handles gravity, jumping, slope forces
-- Integrates movement (updates position)
+- Integrates movement with collision detection (ground + walls)
 - Supports god mode (noclip flying)
+
+**Collision Integration**:
+
+```python
+# Ground check for vertical collision
+def ground_check(e):
+    return raycast_ground_height(e, collision_traverser, render_node)
+
+# Wall check for horizontal collision (2025-12-28: enabled)
+def wall_check(e, move):
+    return raycast_wall_check(e, move, collision_traverser, render_node)
+
+integrate_movement(entity, state, dt, ground_check, wall_check)
+```
 
 **Example**:
 
