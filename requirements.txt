@@ -1,2 +1,4 @@
-ursina==8.2.0
-pytest
+panda3d
+screeninfo
+numpy
+PyYAML

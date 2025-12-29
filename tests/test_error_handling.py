@@ -2,8 +2,8 @@ import unittest
 import asyncio
 import time
 from unittest.mock import MagicMock, patch, AsyncMock
-from network.client import GameClient
-from network.server import GameServer
+from engine.networking.client import GameClient
+from engine.networking.server import GameServer
 
 class TestErrorHandling(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

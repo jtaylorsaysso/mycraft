@@ -1,0 +1,55 @@
+# MyCraft Monorepo - Project Configuration
+
+[project]
+name = "mycraft-monorepo"
+version = "0.1.0"
+description = "MyCraft engine and game projects"
+authors = [{name = "MyCraft Team"}]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ursina>=7.0.0",  # Temporary, will migrate to Panda3D
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+panda3d = [
+    "panda3d>=1.10.0",  # For future Panda3D migration
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["engine*", "games*", "network*", "util*", "shared*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests", "tests/engine_tests", "tests/game_tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["engine", "games", "network", "util"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

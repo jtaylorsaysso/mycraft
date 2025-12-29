@@ -18,8 +18,9 @@ Phase 2 Features:
 import argparse
 import sys
 from pathlib import Path
-from engine.game_app import run
-from network.client import connect, disconnect
+from games.voxel_world.main import run
+from engine.networking.client import connect, disconnect
+from engine.core.hot_config import HotConfig
 
 
 def main():
@@ -28,6 +29,7 @@ def main():
     parser.add_argument("--port", type=int, default=5420, help="Server port (default: 5420)")
     parser.add_argument("--name", type=str, default="Player", help="Your player name (default: Player)")
     parser.add_argument("--sensitivity", type=float, default=40.0, help="Mouse sensitivity (default: 40.0)")
+    parser.add_argument("--fov", type=float, default=90.0, help="Field of View (default: 90.0)")
     
     # Playtest Presets
     parser.add_argument("--preset", choices=['creative', 'testing', 'performance'], help="Configuration preset")
@@ -46,10 +48,12 @@ def main():
     config = {
         'networking': False,
         'sensitivity': args.sensitivity,
+        'fov': args.fov,
         'god_mode': False,
         'debug': False,
         'spawn_point': None,
         'config_path': None,
+        'hot_config': None,
         'record_session': None,
         'replay_session': None
     }
@@ -85,6 +89,13 @@ def main():
         if default_config.exists():
             config['config_path'] = str(default_config)
             print(f"⚙️ Hot-config (default): {default_config}")
+            
+    # Initialize HotConfig instance for real-time tuning
+    if config['config_path']:
+        config['hot_config'] = HotConfig(config['config_path'])
+        # Push CLI overrides into hot-config
+        config['hot_config'].set("mouse_sensitivity", args.sensitivity)
+        config['hot_config'].set("fov", args.fov)
     
     # 4. Phase 2: Session Recording
     if args.record:

@@ -38,139 +38,120 @@ pytest --cov=util --cov=engine --cov=network
 
 ---
 
-## Current Test Suite
+## Current Test Suite Status
 
-### Phase 1 – Core Utilities and Physics
+**Last Test Run:** 2025-12-28  
+**Pass Rate:** 257/294 tests (87%)  
+**Test Execution Time:** ~15 seconds
 
-#### `tests/test_logger.py`
+### Test Categories
 
-- **Purpose**: Verify that `util.logger.time_block` writes metrics to CSV even at DEBUG level.
-- **Key fixtures**: `tmp_path`, `monkeypatch` to redirect the logs directory.
-- **Assertions**:
-  - `metrics.csv` is created.
-  - Header row matches `["timestamp", "name", "value", "labels"]`.
-  - The last row’s `name` column matches the block name.
+#### ✅ Animation & Character (93 tests passing)
 
-#### `tests/test_physics.py`
+- `test_animation.py` - Animation state machine and transitions (20 tests)
+- `test_animation_layers.py` - Layered animation system with bone masking (17 tests)
+- `test_ik.py` - Inverse kinematics (14 tests)
+- `test_skeleton.py` - Skeletal hierarchy and transforms (14 tests)
+- `test_voxel_avatar.py` - Avatar creation and body parts (7 tests)
+- `test_root_motion.py` - Root motion application (14 tests)
+- `test_player_physics.py` - Player movement physics (9 tests)
 
-- **Purpose**: Isolate and validate the kinematic physics logic without Ursina.
-- **Fake entity**: `DummyEntity` with only a `.y` attribute.
-- **Test cases**:
-  1. `apply_gravity_respects_max_fall_speed`
-  2. `integrate_vertical_snaps_to_ground`
-  3. `jump_coyote_and_buffer_behavior`
-- **What’s covered**:
-  - Gravity clamping.
-  - Ground snapping.
-  - Jump buffering and coyote time.
+#### ✅ Combat Systems (40+ tests passing)
 
-### Phase 2 – Server Admin Commands
+- `game_tests/test_attack_system.py` - Attack mechanics and timing
+- `game_tests/test_dodge_system.py` - Dodge mechanics and stamina
+- `game_tests/test_parry_system.py` - Parry timing and windows
+- `game_tests/test_stamina_system.py` - Stamina regeneration and costs
 
-#### `tests/test_server_admin.py`
+#### ✅ World & Terrain (30+ tests passing)
 
-- **Purpose**: Test server-side admin command handling and host player state.
-- **Fake writer**: `FakeWriter` mimics `asyncio.StreamWriter` for in-memory assertions.
-- **Test cases**:
-  1. `test_admin_list_includes_host_and_player`
-  2. `test_admin_hostpos_and_hostrot_update_host_state`
-  3. `test_admin_kick_removes_client_and_state`
-- **What’s covered**:
-  - `admin_command` → `admin_response` round trip.
-  - Host player updates.
-  - Client removal on `/kick`.
+- `test_biomes.py` - Biome generation and height functions (14 tests)
+- `test_blocks.py` - Block registry and properties (11 tests)
 
-### Phase 3 – World and Chunk Loading
+#### ✅ Physics & Collision (13 tests passing)
 
-#### `tests/test_world_chunk_loading.py`
+- `test_physics_raycast.py` - Raycast ground detection (4 tests)
+- `test_camera.py` - Camera movement and updates (2 tests)
+- `test_debug_movement.py` - Player control system integration (1 test)
 
-- **Purpose**: Test dynamic chunk loading, unloading, and world generation determinism.
-- **No Ursina**: Tests use the World class but avoid rendering.
-- **Test cases**:
-  1. `test_get_player_chunk_coords` - Coordinate conversion
-  2. `test_chunk_loading_on_update` - Chunks load on player movement
-  3. `test_chunk_unloading_on_distance` - Distant chunks unload
-  4. `test_chunk_generation_determinism` - Same coords = same terrain
-  5. `test_chunk_loading_respects_max_per_frame` - Throttling works
-  6. `test_chunk_load_radius` - Only loads within radius
-  7. `test_height_function_consistency` - Terrain generation is stable
-  8. `test_empty_world_after_init` - No premature generation
-  9. `test_chunk_queues_clear_after_processing` - Queue management
-- **What's covered**:
-  - Dynamic chunk loading/unloading.
-  - Deterministic terrain generation.
-  - Performance throttling.
-  - Memory management.
+#### ✅ Integration Tests (3 tests passing)
+
+- `test_integration_multiplayer.py` - Client-server connection and player visibility (2 tests)
+- `test_integration_world_sync.py` - Block update propagation (1 test)
+
+#### ⏭️ Skipped Tests (12 tests)
+
+- `test_world_chunk_loading.py` - Requires World API update for new chunk system
+
+#### ❌ Remaining Failures (17 tests)
+
+See [Tech Debt Register](tech_debt.md#test-suite-remaining-failures) for details.
+
+### Mock Infrastructure
+
+**Consolidated Mock Library:** `tests/test_utils/mock_panda.py`
+
+Provides robust mocks for Panda3D types when testing without full Panda3D installation:
+
+- `MockVector3` / `MockVector2` - Full vector arithmetic and operations
+- `MockNodePath` - Scene graph hierarchy and transforms
+- `MockCollisionHandlerQueue` / `MockCollisionTraverser` - Collision detection
+
+**Benefits:**
+
+- Tests run without Panda3D installation
+- Consistent mock behavior across all test files
+- Proper type handling prevents `TypeError` in arithmetic operations
 
 ---
 
 ## How Tests Are Structured
 
-- **No Ursina in unit tests**: All core logic tests avoid importing `ursina`.
-- **Async tests**: Server admin tests use `asyncio.run` to call async methods.
-- **Fixtures**: `tmp_path` and `monkeypatch` are used to avoid touching real files or global state.
-- **Fake objects**: `FakeWriter` and `DummyEntity` provide the minimal interface needed.
+- **No Panda3D required for unit tests**: Core logic tests use mocks from `tests/test_utils/mock_panda.py`
+- **Async integration tests**: Use `unittest.IsolatedAsyncioTestCase` for proper async/await support
+- **Fixtures**: `tmp_path` and `monkeypatch` avoid touching real files or global state
+- **Mock objects**: Provide minimal interface needed for testing
 
 ---
 
 ## Extending the Test Suite
 
-### Next Phase: Client Protocol (`tests/test_client_protocol.py`)
+### Adding New Tests
 
-Add tests for `network/client.py`:
+1. **Import shared mocks** from `tests/test_utils/mock_panda.py`:
 
-- `_handle_state_snapshot`:
-  - Feed a mock snapshot with two players.
-  - Assert `remote_players` dict is updated correctly.
-  - Remove a player in a second snapshot; assert the entity is removed.
-- `_handle_admin_response`:
-  - Send an `admin_response` message.
-  - Assert `client._admin_log` contains the lines in order.
-- `send_admin_command`:
-  - Verify the message placed on `send_queue` matches the expected JSON.
+   ```python
+   from tests.test_utils.mock_panda import MockVector3, MockNodePath
+   ```
 
-**Pattern**: Use the real `GameClient` class but avoid sockets by calling handlers directly.
+2. **Use `unittest.TestCase`** for standard tests:
 
-### Next Phase: Headless Integration (`tests/test_integration_headless.py`)
+   ```python
+   import unittest
+   
+   class TestMyFeature(unittest.TestCase):
+       def test_something(self):
+           self.assertEqual(expected, actual)
+   ```
 
-Spin up a real server on a random port and connect a client:
+3. **Use `unittest.IsolatedAsyncioTestCase`** for async tests:
 
-```python
-import asyncio
-from network.server import GameServer
-from network.client import GameClient
-
-async def test_client_connects_and_receives_welcome():
-    server = GameServer(host="127.0.0.1", port=0)  # port=0 picks a free port
-    await server.start()
-    addr = server.server.sockets[0].getsockname()
-    client = GameClient(addr[0], addr[1])
-    client.start()
-    # Wait briefly, then assert client.player_id is set
-    assert client.player_id is not None
-    client.stop()
-    server.running = False
-    server.server.close()
-```
-
-- Use `pytest.mark.asyncio`.
-- Keep the test short (connect, exchange one message, disconnect).
+   ```python
+   import unittest
+   
+   class TestAsyncFeature(unittest.IsolatedAsyncioTestCase):
+       async def test_something(self):
+           result = await async_function()
+           self.assertEqual(expected, result)
+   ```
 
 ### Performance / Regression Tests
 
-Add a `tests/test_performance.py`:
+Add benchmark tests in `tests/benchmarks/`:
 
-```python
-def test_world_generate_baseline():
-    from engine.world import World
-    world = World()
-    with time_block("world_generate", logger, {"chunks": 9}):
-        world.create_chunk(0, 0)
-        # ... generate a few more chunks
-    # Assert duration is below a soft threshold (e.g. 100 ms)
-```
-
-- Use `time_block` or `time.perf_counter` directly.
-- Store thresholds in constants at the top of the file for easy tuning.
+- Requires `pytest-benchmark` package
+- Use `@pytest.mark.benchmark` decorator
+- Store baseline results for regression detection
 
 ---
 
@@ -223,12 +204,12 @@ repos:
 
 ## Tips for Writing New Tests
 
-1. **Isolate the unit**: Avoid importing Ursina unless you’re testing an Ursina-specific feature.
-2. **Use fakes**: Provide the smallest possible interface (e.g. `.y` for entities).
-3. **Avoid real network I/O**: Call handlers directly or use `FakeWriter`.
-4. **Prefer `tmp_path`**: Never write to the real `logs/` directory in tests.
-5. **Keep async tests short**: Use `asyncio.run` for single calls; avoid long-running servers.
-6. **Assert behavior, not implementation**: Test that the player ends up at the correct position, not that a specific internal variable was set.
+1. **Isolate the unit**: Use mocks from `tests/test_utils/mock_panda.py` instead of real Panda3D
+2. **Use shared mocks**: Don't create local mock classes - extend the shared library
+3. **Avoid real network I/O**: Call handlers directly or use test harnesses
+4. **Prefer `tmp_path`**: Never write to real directories in tests
+5. **Keep async tests short**: Use proper async/await patterns
+6. **Assert behavior, not implementation**: Test outcomes, not internal state
 
 ---
 
@@ -245,4 +226,4 @@ repos:
 
 ## Last Updated
 
-2025-12-12
+2025-12-28

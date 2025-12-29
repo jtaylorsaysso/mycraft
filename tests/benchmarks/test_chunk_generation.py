@@ -1,7 +1,7 @@
 
-from engine.world import World
-from engine.blocks import Block
-from engine.biomes import BiomeRegistry
+from engine.ecs.world import World
+from games.voxel_world.blocks.blocks import Block
+from games.voxel_world.biomes.biomes import BiomeRegistry
 
 # ... (mock setup) ...
 

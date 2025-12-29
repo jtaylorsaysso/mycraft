@@ -1,8 +1,8 @@
 import asyncio
 import json
 
-from network.server import GameServer
-from util.server_hot_config import ServerHotConfig
+from engine.networking.server import GameServer
+from engine.core.server_hot_config import ServerHotConfig
 
 
 class FakeWriter:

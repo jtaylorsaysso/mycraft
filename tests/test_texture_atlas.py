@@ -1,7 +1,7 @@
 """Tests for texture atlas system."""
 import pytest
-from ursina import Vec2
-from engine.texture_atlas import TextureAtlas
+from panda3d.core import LVector2f as Vec2
+from engine.rendering import TextureAtlas
 
 
 def test_texture_atlas_initialization():

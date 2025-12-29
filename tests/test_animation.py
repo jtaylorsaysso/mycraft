@@ -12,79 +12,40 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # ----------------- MOCKS -----------------
 
-class FakeVec3:
-    """Fake Vec3 for testing."""
-    def __init__(self, x=0, y=0, z=0):
-        self.x = float(x)
-        self.y = float(y)
-        self.z = float(z)
-    
-    def __add__(self, other):
-        return FakeVec3(self.x + other.x, self.y + other.y, self.z + other.z)
-    
-    def __sub__(self, other):
-        return FakeVec3(self.x - other.x, self.y - other.y, self.z - other.z)
-    
-    def __mul__(self, other):
-        if isinstance(other, (int, float)):
-            return FakeVec3(self.x * other, self.y * other, self.z * other)
-        return NotImplemented
-    
-    def __truediv__(self, other):
-        if isinstance(other, (int, float)):
-            return FakeVec3(self.x / other, self.y / other, self.z / other)
-        return NotImplemented
-    
-    def length(self):
-        return math.sqrt(self.x**2 + self.y**2 + self.z**2)
+# Mock panda3d before importing anything else
+import sys
+from unittest.mock import MagicMock
+from tests.test_utils.mock_panda import MockVector3, MockNodePath
 
+mock_panda = MagicMock()
+mock_core = MagicMock()
 
-class FakeEntity:
-    """Fake Entity for testing animations without Ursina."""
-    def __init__(self, **kwargs):
-        self.position = kwargs.get('position', FakeVec3(0, 0, 0))
-        if isinstance(self.position, tuple):
-            self.position = FakeVec3(*self.position)
-        
-        self.rotation_x = kwargs.get('rotation_x', 0.0)
-        self.rotation_y = kwargs.get('rotation_y', 0.0)
-        self.rotation_z = kwargs.get('rotation_z', 0.0)
-        self.scale = kwargs.get('scale', 1.0)
-        self.y = kwargs.get('y', 0.0)
-        self.origin_y = kwargs.get('origin_y', 0.0)
-        self.parent = kwargs.get('parent', None)
-        self.model = kwargs.get('model', None)
-        self.color = kwargs.get('color', None)
-        self.children = []
-        
-        if self.parent and hasattr(self.parent, 'children'):
-            self.parent.children.append(self)
-    
-    def animate(self, attr, value, duration=1.0, **kwargs):
-        """Mock animate - instantly sets value for testing."""
-        setattr(self, attr, value)
+# Mock CardMaker for cube generation
+class MockCardMaker:
+    def __init__(self, name):
+        self.name = name
+    def setFrame(self, *args):
+        pass
+    def generate(self):
+        return MagicMock()
 
+mock_core.NodePath = MockNodePath
+mock_core.LVector3f = MockVector3
+mock_core.GeomNode = MagicMock
+mock_core.CardMaker = MockCardMaker
+mock_panda.core = mock_core
+sys.modules['panda3d'] = mock_panda
+sys.modules['panda3d.core'] = mock_core
 
-# Mock ursina module
-mock_ursina = MagicMock()
-mock_ursina.Entity = FakeEntity
-mock_ursina.Vec3 = FakeVec3
-mock_ursina.color = MagicMock()
-mock_ursina.color.azure = "azure"
-mock_ursina.color.rgb = lambda r, g, b: (r, g, b)
-
-# Mock time
-mock_time = MagicMock()
-mock_time.dt = 0.016
-mock_ursina.time = mock_time
-
-# Mock ursina module - store original state first
-_original_ursina = sys.modules.get('ursina')
-sys.modules['ursina'] = mock_ursina
+# Mock direct.interval
+mock_direct = MagicMock()
+sys.modules['direct'] = mock_direct
+sys.modules['direct.interval'] = MagicMock()
+sys.modules['direct.interval.IntervalGlobal'] = MagicMock()
 
 # ----------------- IMPORT AFTER MOCKING -----------------
 
-from engine.animation import AnimationState, AnimatedMannequin, AnimationController
+from engine.animation.mannequin import AnimationState, AnimationController, AnimatedMannequin
 
 
 # ----------------- TESTS -----------------
@@ -110,7 +71,9 @@ class TestAnimatedMannequin(unittest.TestCase):
     """Test AnimatedMannequin class."""
     
     def setUp(self):
-        self.mannequin = AnimatedMannequin()
+        # Create a mock parent node
+        self.parent_node = MockNodePath("parent")
+        self.mannequin = AnimatedMannequin(self.parent_node)
     
     def test_initialization(self):
         """Test mannequin initializes with correct attributes."""
@@ -140,20 +103,23 @@ class TestAnimatedMannequin(unittest.TestCase):
         self.assertEqual(self.mannequin._walk_phase, 0.0)
     
     def test_body_parts_are_entities(self):
-        """Test all body parts are FakeEntity instances."""
-        self.assertIsInstance(self.mannequin.head, FakeEntity)
-        self.assertIsInstance(self.mannequin.torso, FakeEntity)
-        self.assertIsInstance(self.mannequin.right_arm, FakeEntity)
-        self.assertIsInstance(self.mannequin.left_arm, FakeEntity)
-        self.assertIsInstance(self.mannequin.right_leg, FakeEntity)
-        self.assertIsInstance(self.mannequin.left_leg, FakeEntity)
+        """Test all body parts are MockNodePath instances."""
+        # In the Panda3D implementation, body parts are NodePaths created by _create_cube
+        # which returns nodes attached to the mannequin hierarchy
+        self.assertIsInstance(self.mannequin.head, MockNodePath)
+        self.assertIsInstance(self.mannequin.torso, MockNodePath)
+        self.assertIsInstance(self.mannequin.right_arm, MockNodePath)
+        self.assertIsInstance(self.mannequin.left_arm, MockNodePath)
+        self.assertIsInstance(self.mannequin.right_leg, MockNodePath)
+        self.assertIsInstance(self.mannequin.left_leg, MockNodePath)
 
 
 class TestAnimationController(unittest.TestCase):
     """Test AnimationController state machine."""
     
     def setUp(self):
-        self.mannequin = AnimatedMannequin()
+        parent_node = MockNodePath("parent")
+        self.mannequin = AnimatedMannequin(parent_node)
         self.controller = AnimationController(self.mannequin)
     
     def test_initial_state(self):
@@ -174,37 +140,37 @@ class TestAnimationController(unittest.TestCase):
     
     def test_update_detects_walking(self):
         """Test update transitions to WALKING when moving."""
-        velocity = FakeVec3(3.0, 0, 0)
+        velocity = MockVector3(3.0, 0, 0)
         self.controller.update(0.016, velocity, grounded=True)
         self.assertEqual(self.controller.current_state, AnimationState.WALKING)
     
     def test_update_detects_idle(self):
         """Test update stays/transitions to IDLE when still."""
-        velocity = FakeVec3(0.1, 0, 0)  # Very slow
+        velocity = MockVector3(0.1, 0, 0)  # Very slow
         self.controller.update(0.016, velocity, grounded=True)
         self.assertEqual(self.controller.current_state, AnimationState.IDLE)
     
     def test_update_detects_jumping(self):
         """Test update transitions to JUMPING when rising."""
-        velocity = FakeVec3(0, 5.0, 0)  # Moving up
+        velocity = MockVector3(0, 0, 5.0)  # Moving up (Z is up in Panda3D)
         self.controller.update(0.016, velocity, grounded=False)
         self.assertEqual(self.controller.current_state, AnimationState.JUMPING)
     
     def test_update_detects_falling(self):
         """Test update transitions to FALLING when descending."""
-        velocity = FakeVec3(0, -5.0, 0)  # Moving down
+        velocity = MockVector3(0, 0, -5.0)  # Moving down
         self.controller.update(0.016, velocity, grounded=False)
         self.assertEqual(self.controller.current_state, AnimationState.FALLING)
     
     def test_landing_after_falling(self):
         """Test landing state after falling and hitting ground."""
         # Start falling
-        velocity = FakeVec3(0, -5.0, 0)
+        velocity = MockVector3(0, 0, -5.0)
         self.controller.update(0.016, velocity, grounded=False)
         self.assertEqual(self.controller.current_state, AnimationState.FALLING)
         
         # Hit ground
-        velocity = FakeVec3(0, 0, 0)
+        velocity = MockVector3(0, 0, 0)
         self.controller.update(0.016, velocity, grounded=True)
         self.assertEqual(self.controller.current_state, AnimationState.LANDING)
     
@@ -214,7 +180,7 @@ class TestAnimationController(unittest.TestCase):
         self.controller.set_state(AnimationState.LANDING)
         
         # Wait for landing duration to pass
-        velocity = FakeVec3(0, 0, 0)
+        velocity = MockVector3(0, 0, 0)
         for _ in range(20):  # 20 * 0.016 = 0.32s > landing_duration (0.15s)
             self.controller.update(0.016, velocity, grounded=True)
         
@@ -235,7 +201,8 @@ class TestAnimationStateTransitions(unittest.TestCase):
     """Integration tests for animation state machine transitions."""
     
     def setUp(self):
-        self.mannequin = AnimatedMannequin()
+        parent_node = MockNodePath("parent")
+        self.mannequin = AnimatedMannequin(parent_node)
         self.controller = AnimationController(self.mannequin)
     
     def test_full_jump_cycle(self):
@@ -244,20 +211,20 @@ class TestAnimationStateTransitions(unittest.TestCase):
         self.assertEqual(self.controller.current_state, AnimationState.IDLE)
         
         # Jump (moving up, not grounded)
-        self.controller.update(0.016, FakeVec3(0, 5.0, 0), grounded=False)
+        self.controller.update(0.016, MockVector3(0, 0, 5.0), grounded=False)
         self.assertEqual(self.controller.current_state, AnimationState.JUMPING)
         
         # Fall (moving down)
-        self.controller.update(0.016, FakeVec3(0, -3.0, 0), grounded=False)
+        self.controller.update(0.016, MockVector3(0, 0, -3.0), grounded=False)
         self.assertEqual(self.controller.current_state, AnimationState.FALLING)
         
         # Land
-        self.controller.update(0.016, FakeVec3(0, 0, 0), grounded=True)
+        self.controller.update(0.016, MockVector3(0, 0, 0), grounded=True)
         self.assertEqual(self.controller.current_state, AnimationState.LANDING)
         
         # Wait for landing to finish
         for _ in range(20):
-            self.controller.update(0.016, FakeVec3(0, 0, 0), grounded=True)
+            self.controller.update(0.016, MockVector3(0, 0, 0), grounded=True)
         self.assertEqual(self.controller.current_state, AnimationState.IDLE)
     
     def test_walking_while_landing_skips_idle(self):
@@ -267,7 +234,7 @@ class TestAnimationStateTransitions(unittest.TestCase):
         
         # Walk during landing wait
         for _ in range(20):
-            self.controller.update(0.016, FakeVec3(3.0, 0, 0), grounded=True)
+            self.controller.update(0.016, MockVector3(3.0, 0, 0), grounded=True)
         
         # Should transition to WALKING, not IDLE
         self.assertEqual(self.controller.current_state, AnimationState.WALKING)
@@ -282,20 +249,14 @@ class TestAnimationStateTransitions(unittest.TestCase):
             self.controller._update_procedural_animation(0.05, speed=3.0)
         
         # Arms should have rotated from neutral position
-        # At least one arm should be rotated
+        # Check that at least one arm pivot has non-zero pitch (hpr.y in our mock)
         arm_rotated = (
-            abs(self.mannequin.right_arm_pivot.rotation_x) > 1 or
-            abs(self.mannequin.left_arm_pivot.rotation_x) > 1
+            abs(self.mannequin.right_arm_pivot.hpr.y) > 1 or
+            abs(self.mannequin.left_arm_pivot.hpr.y) > 1
         )
         self.assertTrue(arm_rotated, "Arms should swing during walk animation")
 
 
-def teardown_module():
-    """Restore original ursina module state after all tests."""
-    if _original_ursina is None:
-        sys.modules.pop('ursina', None)
-    else:
-        sys.modules['ursina'] = _original_ursina
 
 if __name__ == '__main__':
     unittest.main()

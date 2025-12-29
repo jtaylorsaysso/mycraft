@@ -21,14 +21,16 @@ The tests use a shared harness defined in `tests/test_utils/integration_harness.
 ## Test Coverage
 
 ### Multiplayer (`test_integration_multiplayer.py`)
+
 - **Connection Flow**: Verifies client can connect and receive a welcome handshake.
 - **Player Visibility**: Verifies that when a second player joins, the first player receives a `player_join` event.
 - **Admin Commands**: Verifies that chat/admin commands effectively route from client to server and invoke callbacks.
 
 ### World Synchronization (`test_integration_world_sync.py`)
+
 - **Block Updates**: Verifies that when the server broadcasts a block update, connected clients receive it and fire `on_block_update`.
 
 ## Known Limitations
 
 - **Async Loop Conflicts**: The test harness relies on complex interaction between `unittest.IsolatedAsyncioTestCase` and the game's internal loops. In some environments, this can lead to hangs during teardown or connection attempts. If tests hang, try running them individually or restarting the environment.
-- **Headless Limitations**: Visuals are not verified. We mock `Ursina` components to prevent window creation.
+- **Headless Limitations**: Visuals are not verified. We run in a headless environment without window creation.

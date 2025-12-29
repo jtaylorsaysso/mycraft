@@ -1,11 +1,11 @@
 
 import asyncio
 from unittest.mock import MagicMock, patch
-from network.server import GameServer
-from network.client import GameClient
-from util.server_hot_config import ServerHotConfig
+from engine.networking.server import GameServer
+from engine.networking.client import GameClient
+from engine.core.server_hot_config import ServerHotConfig
 
-class TestServerWrapper:
+class ServerTestHarness:
     """Helper to manage a GameServer instance for testing."""
     def __init__(self):
         self.config = ServerHotConfig()
@@ -42,18 +42,14 @@ class TestServerWrapper:
                 
     async def stop(self):
         """Stop the server."""
-        self.server.running = False
-        if self.server.server:
-            self.server.server.close()
-            await self.server.server.wait_closed()
+        await self.server.stop()
         if self.task:
-            self.task.cancel()
             try:
                 await self.task
             except asyncio.CancelledError:
                 pass
 
-class TestClientWrapper:
+class ClientTestHarness:
     """Helper to manage a GameClient instance for testing."""
     def __init__(self):
         self.client = None
@@ -61,7 +57,7 @@ class TestClientWrapper:
         
     async def connect(self, host: str, port: int):
         self.client = GameClient(host, port)
-        # Mock UI callbacks to avoid ursina errors
+        # Mock UI callbacks to avoid errors
         self.client.on_player_joined = MagicMock()
         self.client.on_player_left = MagicMock()
         self.client.on_chat_message = MagicMock()
@@ -87,4 +83,4 @@ class TestClientWrapper:
             self.receive_task = None
             
         if self.client:
-            self.client.disconnect()
+            self.client.stop()

@@ -1,0 +1,27 @@
+name: "MyCraft Voxel Config"
+blocks:
+  custom:
+    - id: diamond_ore
+      texture_tile: [3, 1]
+      color: "#00FFFF"
+      hardness: 2.0
+      drop: diamond
+
+player:
+  spawn: [0, 20, 0]
+  health: 100
+  inventory_slots: 9
+
+entities:
+  - type: trigger
+    id: spawn_zone
+    bounds: [[-5, -5, -5], [5, 5, 5]]
+    on_exit: show_tutorial
+    
+  - type: spawner
+    id: zombie_spawner
+    components: 
+        Spawner:
+            entity_prefab: zombie
+            interval: 10.0
+            max_active: 5

@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""
+MyCraft Launcher Wrapper
+Ensures dependencies are available before launching the GUI
+"""
+
+import sys
+import subprocess
+from pathlib import Path
+
+def check_panda3d():
+    """Check if Panda3D is available."""
+    try:
+        import panda3d
+        return True
+    except ImportError:
+        return False
+
+def find_venv_python():
+    """Try to find a venv Python executable."""
+    possible_venvs = [
+        Path("venv/bin/python3"),
+        Path("venv/bin/python"),
+        Path(".venv/bin/python3"),
+        Path(".venv/bin/python"),
+    ]
+    
+    for venv_python in possible_venvs:
+        if venv_python.exists():
+            return str(venv_python.absolute())
+    return None
+
+def main():
+    # First, check if dependencies are available
+    if not check_panda3d():
+        print("=" * 60)
+        print("⚠️  Missing Dependencies Detected")
+        print("=" * 60)
+        print()
+        print("Panda3D is not installed in your current Python environment.")
+        print()
+        
+        # Try to find a venv
+        venv_python = find_venv_python()
+        
+        if venv_python:
+            print("Found a virtual environment! Relaunching with venv Python...")
+            print(f"Using: {venv_python}")
+            print()
+            
+            # Relaunch with venv python
+            subprocess.run([venv_python, "launcher.py"] + sys.argv[1:])
+            return 0
+        else:
+            print("No virtual environment found.")
+            print()
+            print("Please either:")
+            print("  1. Create and activate a venv:")
+            print("     python3 -m venv venv")
+            print("     source venv/bin/activate  # On Windows: venv\\Scripts\\activate")
+            print("     pip install -r requirements.txt")
+            print("     ./launcher.py")
+            print()
+            print("  2. Install dependencies system-wide:")
+            print("     pip install -r requirements.txt")
+            print()
+            input("Press Enter to exit...")
+            return 1
+    
+    # Dependencies are available, launch the GUI
+    import launcher
+    import tkinter as tk
+    
+    try:
+        root = tk.Tk()
+        app = launcher.MyCraftLauncher(root)
+        root.mainloop()
+    except Exception as e:
+        print(f"Error launching GUI: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
+    
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())

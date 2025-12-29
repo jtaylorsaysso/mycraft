@@ -11,39 +11,40 @@ from engine.physics import (
 
 
 class DummyEntity:
-    def __init__(self, y: float = 0.0):
+    """Test entity using Panda3D coordinates (Z-up)."""
+    def __init__(self, z: float = 0.0):
         self.x = 0.0
-        self.y = y
-        self.z = 0.0
+        self.y = 0.0
+        self.z = z
 
 
 def test_apply_gravity_respects_max_fall_speed():
-    state = KinematicState(velocity_y=0.0)
+    state = KinematicState(velocity_z=0.0)
 
     apply_gravity(state, dt=1.0, gravity=-10.0, max_fall_speed=-20.0)
-    assert -20.0 < state.velocity_y <= -10.0
+    assert -20.0 < state.velocity_z <= -10.0
 
     # Apply again; velocity should clamp to max_fall_speed
     apply_gravity(state, dt=1.0, gravity=-10.0, max_fall_speed=-20.0)
-    assert state.velocity_y == -20.0
+    assert state.velocity_z == -20.0
 
 
 def test_integrate_vertical_snaps_to_ground():
-    entity = DummyEntity(y=5.0)
-    state = KinematicState(velocity_y=-10.0, grounded=False)
+    entity = DummyEntity(z=5.0)
+    state = KinematicState(velocity_z=-10.0, grounded=False)
 
     def ground_check(e):
         return simple_flat_ground_check(e, ground_height=2.0)
 
     integrate_movement(entity, state, dt=1.0, ground_check=ground_check)
 
-    assert entity.y == 2.0
-    assert state.velocity_y == 0.0
+    assert entity.z == 2.0
+    assert state.velocity_z == 0.0
     assert state.grounded is True
 
 
 def test_jump_coyote_and_buffer_behavior():
-    state = KinematicState(velocity_y=0.0, grounded=True)
+    state = KinematicState(velocity_z=0.0, grounded=True)
 
     # Player presses jump while grounded
     register_jump_press(state)
@@ -56,5 +57,5 @@ def test_jump_coyote_and_buffer_behavior():
 
     # Perform a jump and ensure state updates
     perform_jump(state, jump_height=5.0)
-    assert state.velocity_y == 5.0
+    assert state.velocity_z == 5.0
     assert state.grounded is False

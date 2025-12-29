@@ -66,6 +66,72 @@ To establish a baseline, run these scenarios and save the resulting `logs/` fold
    - If possible, start multiple clients on the same LAN.
    - Focus on networking tick time and payload sizes.
 
+---
+
+## Automated Benchmarking
+
+Use the provided benchmark script to run standardized performance tests:
+
+```bash
+./run_benchmark.py
+```
+
+This script:
+
+- Runs single-player performance preset for 2 minutes
+- Captures metrics to `logs/metrics.csv`
+- Generates detailed logs in `logs/`
+
+**Manual benchmarking** is also valuable for specific scenarios:
+
+```bash
+python run_client.py --preset performance
+# Play for 5 minutes, explore biomes, test physics
+# Exit and analyze logs/metrics.csv
+```
+
+---
+
+## Baseline Results (Milestone 1)
+
+> [!NOTE]
+> **Status**: Baseline establishment in progress
+>
+> Run `./run_benchmark.py` to generate baseline metrics, then update this section with results.
+
+### Target Metrics
+
+Once baseline is established, we'll track:
+
+**Chunk Generation**:
+
+- Average `chunk_create` time (target: <50ms)
+- Peak loaded chunks (memory usage indicator)
+- Mesh triangle count per chunk
+
+**Rendering Performance**:
+
+- Frame rate stability (target: 30+ FPS)
+- Frame time consistency
+- Render thread utilization
+
+**Networking** (multiplayer):
+
+- Network tick time (target: <16ms for 60Hz)
+- Position sync latency
+- Bandwidth usage per client
+
+### Baseline Data
+
+**TODO**: After running benchmarks, add:
+
+- CSV data summary
+- Performance graphs
+- Comparison against targets
+- Identified bottlenecks
+
+---
+
 ## New Metrics (Chunk Loading System)
 
 With dynamic chunk loading, the following metrics are now tracked:
@@ -76,6 +142,7 @@ With dynamic chunk loading, the following metrics are now tracked:
 - `chunk_mesh_triangles` - Triangle count per chunk
 
 These metrics enable monitoring:
+
 - Chunk generation performance over time
 - Memory usage (via total_chunks)
 - Mesh complexity trends
