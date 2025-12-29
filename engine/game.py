@@ -237,7 +237,7 @@ class VoxelGame(ShowBase):
         self.world.add_component(entity_id, CombatState())  # Add combat state for action tracking
         self.world.add_component(entity_id, KinematicState())  # Add physics state
         self.world.add_component(entity_id, CameraState(  # Add camera state
-            mode=CameraMode.THIRD_PERSON,
+            mode=CameraMode.EXPLORATION,
             yaw=0.0,
             pitch=-15.0,
             distance=5.0,

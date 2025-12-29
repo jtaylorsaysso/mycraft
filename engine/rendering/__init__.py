@@ -17,13 +17,18 @@ from .mesh import (
     MeshBuilder
 )
 
-from .camera import (
-    FPSCamera
-)
+from .base_camera import BaseCamera, CameraUpdateContext
+from .first_person_camera import FirstPersonCamera
+from .exploration_camera import ExplorationCamera
+from .combat_camera import CombatCamera
 
 __all__ = [
     'TextureAtlas',
     'TileRegistry',
     'MeshBuilder',
-    'FPSCamera'
+    'BaseCamera',
+    'CameraUpdateContext',
+    'FirstPersonCamera',
+    'ExplorationCamera',
+    'CombatCamera'
 ]

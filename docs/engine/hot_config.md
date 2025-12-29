@@ -69,13 +69,17 @@ def update(self, ctx: PlayerContext) -> None:
         # Apply FOV
         self.base.camLens.setFov(fov)
         
-        # Apply sensitivity (update controllers)
-        self.fps_camera.sensitivity = sensitivity
-        self.third_person_camera.sensitivity = sensitivity
+        # Apply sensitivity to all camera modes
+        for camera in self.cameras.values():
+            if hasattr(camera, 'set_sensitivity'):
+                camera.set_sensitivity(sensitivity)
         
-        # Apply camera distance (third-person only)
+        # Apply camera distance (exploration/combat modes only)
         cam_dist = self.base.config_manager.get("camera_distance", 4.0)
-        self.third_person_camera.set_distance(cam_dist)
+        for mode in (CameraMode.EXPLORATION, CameraMode.COMBAT):
+            cam = self.cameras.get(mode)
+            if cam and hasattr(cam, 'set_distance'):
+                cam.set_distance(camera_state, cam_dist)
 ```
 
 **Result**: Players can edit `config/playtest.json` while the game is running, and camera settings update immediately.
@@ -135,7 +139,7 @@ gravity = base.config_manager.get("gravity", -12.0)
 ### Player Physics
 
 | Parameter | Default | Description |
-|-----------|---------|-------------|
+| :--- | :--- | :--- |
 | `mouse_sensitivity` | 40.0 | Camera rotation sensitivity |
 | `movement_speed` | 6.0 | Player walking speed |
 | `fly_speed` | 12.0 | Flight speed in god mode |
@@ -146,16 +150,18 @@ gravity = base.config_manager.get("gravity", -12.0)
 ### Camera
 
 | Parameter | Default | Description |
-|-----------|---------|-------------|
+| :--- | :--- | :--- |
 | `fov` | 90 | Field of view (degrees) |
 | `camera_distance` | 4.0 | Third-person camera distance |
 | `camera_height` | 2.0 | Camera height offset |
 | `camera_side_offset` | 1.0 | Shoulder offset (1=right, -1=left) |
+| `camera_auto_center_strength` | 0.3 | Strength of camera auto-drift (0-1) |
+| `camera_auto_center_dead_zone` | 0.5 | Delay after mouse input (seconds) |
 
 ### Animations
 
 | Parameter | Default | Description |
-|-----------|---------|-------------|
+| :--- | :--- | :--- |
 | `walk_frequency` | 10.0 | Walk cycle speed |
 | `walk_amplitude_arms` | 35.0 | Arm swing angle |
 | `walk_amplitude_legs` | 30.0 | Leg swing angle |
@@ -165,7 +171,7 @@ gravity = base.config_manager.get("gravity", -12.0)
 ### World
 
 | Parameter | Default | Description |
-|-----------|---------|-------------|
+| :--- | :--- | :--- |
 | `view_distance` | 5 | Render distance (chunks) |
 | `chunk_load_radius` | 3 | Chunks to keep loaded |
 | `chunk_unload_radius` | 5 | Unload distance |
@@ -411,5 +417,5 @@ config_manager.save_defaults(Path("config/playtest.json"))
 
 ---
 
-*Last Updated: 2025-12-25*  
-*Version: 1.0*
+*Last Updated: 2025-12-28*  
+*Version: 1.1*

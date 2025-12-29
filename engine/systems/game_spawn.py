@@ -120,6 +120,19 @@ class GameSpawnSystem(System):
         # Create player entity
         self.game.spawn_player(position=self.calculated_spawn_pos)
         
+        # SPAWN TEST DUMMY
+        dummy_pos = (
+            self.calculated_spawn_pos[0] + 5.0, 
+            self.calculated_spawn_pos[1] + 5.0, 
+            self.calculated_spawn_pos[2]
+        )
+        dummy = self.world.create_entity()
+        self.world.add_component(dummy, Transform(position=LVector3f(*dummy_pos)))
+        self.world.add_component(dummy, Health(current=100, max_hp=100))
+        # Add visual (placeholder, maybe use a simple model if available, or just rely on physics/debug)
+        # For now, without a visual system hook here, it's invisible but targetable.
+        logger.info(f"🎯 Spawned Test Dummy at {dummy_pos}")
+        
         # Apply spawn protection
         player_id = self.world.get_entity_by_tag("player")
         if player_id:

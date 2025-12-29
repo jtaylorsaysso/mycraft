@@ -29,8 +29,8 @@ class DodgeSystem(System):
     IFRAME_DURATION = 0.3  # seconds of invulnerability
     
     # Dodge movement
-    DODGE_DISTANCE = 3.0  # units
-    DODGE_DURATION = 0.3  # seconds
+    DODGE_DISTANCE = 2.5  # units
+    DODGE_DURATION = 0.4  # seconds
     
     def initialize(self):
         """Initialize dodge system and subscribe to input events."""

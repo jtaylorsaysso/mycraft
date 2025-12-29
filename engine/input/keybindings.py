@@ -43,6 +43,7 @@ class InputAction(Enum):
     ATTACK_HEAVY = auto()  # Heavy/charged attack
     DODGE = auto()  # Context: dodge roll in combat
     PARRY = auto()  # Future: timing-based parry/block
+    LOCK_ON = auto() # Toggle target lock
     
     # ===== Camera =====
     CAMERA_TOGGLE_MODE = auto()  # Toggle 1st/3rd person
@@ -84,6 +85,7 @@ DEFAULT_BINDINGS: Dict[InputAction, str] = {
     # InputAction.ATTACK_HEAVY: 'mouse3',  # Disabled - conflicts with parry
     InputAction.DODGE: 'shift',  # Context: dodge in combat
     InputAction.PARRY: 'mouse3',  # Right click for parry
+    InputAction.LOCK_ON: 'tab',   # Toggle target lock
     
     # Camera
     InputAction.CAMERA_TOGGLE_MODE: 'v',

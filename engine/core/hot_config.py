@@ -27,19 +27,21 @@ class HotConfig:
     DEFAULTS = {
         # Player Physics
         "mouse_sensitivity": 40.0,
-        "movement_speed": 6.0,
-        "fly_speed": 12.0,
-        "jump_height": 3.5,
-        "gravity": -12.0,
+        "movement_speed": 4.5,
+        "fly_speed": 8.0,
+        "jump_height": 2.0,
+        "gravity": -20.0,
         "god_mode": False,
         
         # Camera
         "debug_overlay": False,
         "view_distance": 5,
         "fov": 90,
-        "camera_distance": 4.0,
+        "camera_distance": 5.0,
         "camera_height": 2.0,
         "camera_side_offset": 1.0,
+        "camera_auto_center_strength": 0.4,  # 0.0 = free orbit, 1.0 = always behind
+        "camera_auto_center_dead_zone": 0.5,  # Seconds after mouse input before auto-center activates
         
         # Animations
         "walk_frequency": 10.0,

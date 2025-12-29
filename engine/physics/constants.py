@@ -10,7 +10,7 @@ FRICTION = 15.0
 AIR_CONTROL = 0.5
 
 # Base move speed (units per second) – max speed after acceleration
-MOVE_SPEED = 6.0
+MOVE_SPEED = 4.5
 
 # Water-specific multipliers
 WATER_MULTIPLIER = 0.5  # Horizontal speed is halved in water
@@ -22,7 +22,7 @@ SLIDE_FRICTION = 5.0        # friction coefficient when sliding down slopes
 SLIDE_ACCELERATION = 15.0   # units/s² - downslope acceleration when sliding
 SLIDE_CONTROL = 0.3         # 0.0-1.0 - player control multiplier while sliding
 # Jump Physics
-JUMP_VELOCITY = 9.6  # units/s - explicit jump velocity (tuned for ~1.2 unit height)
+JUMP_VELOCITY = 6.32  # units/s - explicit jump velocity (tuned for ~1.0 unit height with -20g)
 GRAVITY = -20.0      # units/s² - snappy downward acceleration
 
 # Player-specific movement

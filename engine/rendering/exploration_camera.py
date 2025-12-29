@@ -1,74 +1,38 @@
-"""First-person camera controller for Panda3D."""
+"""Exploration camera with orbit control and auto-centering."""
 
-from panda3d.core import LVector3f
-from typing import Optional, Any
+import math
+from typing import Any, Optional
+from panda3d.core import LVector3f, LPoint3f, CollisionRay, CollisionNode, CollisionHandlerQueue, BitMask32
+from engine.rendering.base_camera import BaseCamera, CameraUpdateContext
 
 
-class FPSCamera:
-    """First-person camera controller using Panda3D."""
+class ExplorationCamera(BaseCamera):
+    """Third-person exploration camera with soft auto-centering.
     
-    def __init__(self, camera_node: Any, player_entity: Any, sensitivity: float = 40.0):
-        """Initialize FPS Camera.
-        
-        Args:
-            camera_node: Panda3D camera NodePath (base.camera)
-            player_entity: The player entity/node to control
-            sensitivity: Mouse sensitivity
-        """
-        self.camera = camera_node
-        self.player = player_entity
-        self.sensitivity = sensitivity
-        self.clamp_vertical = True
-        self.min_pitch = -89.0
-        self.max_pitch = 89.0
-        
-    def update(self, mouse_dx: float, mouse_dy: float, camera_state: Any, dt: float) -> None:
-        """Update camera rotation based on mouse movement.
-        
-        Args:
-            mouse_dx: Mouse delta X (horizontal movement) - already per-frame
-            mouse_dy: Mouse delta Y (vertical movement) - already per-frame
-            camera_state: CameraState component (for reading/writing rotation)
-            dt: Delta time (not used for mouse input, which is already per-frame)
-        """
-        # Horizontal rotation (yaw)
-        # NOTE: mouse_dx is already a per-frame delta, don't multiply by dt!
-        camera_state.yaw += mouse_dx * self.sensitivity
-        
-        # Vertical rotation (pitch)
-        camera_state.pitch -= mouse_dy * self.sensitivity
-        
-        # Clamp vertical rotation
-        if self.clamp_vertical:
-            camera_state.pitch = max(self.min_pitch, min(self.max_pitch, camera_state.pitch))
-        
-        # Apply rotations to camera
-        # Panda3D uses HPR (Heading, Pitch, Roll)
-        self.camera.setHpr(camera_state.yaw, camera_state.pitch, 0)
-        
-    def set_sensitivity(self, value: float) -> None:
-        """Update mouse sensitivity."""
-        self.sensitivity = value
-
-
-class ThirdPersonCamera:
-    """Third-person camera that orbits around a target entity."""
+    Features:
+    - Orbit camera with yaw/pitch rotation
+    - Soft auto-centering: camera drifts behind player when moving
+    - Terrain collision detection (raycast pull-in)
+    - Camera bob during movement
+    - Scroll wheel zoom
+    - Over-the-shoulder offset
+    - Ground height constraints
+    """
     
-    def __init__(self, camera_node: Any, target_entity: Any, sensitivity: float = 40.0,
-                 collision_traverser: Optional[Any] = None, render_node: Optional[Any] = None,
+    def __init__(self, camera_node: Any, sensitivity: float = 40.0,
+                 collision_traverser: Optional[Any] = None, 
+                 render_node: Optional[Any] = None,
                  side_offset: float = 1.0):
-        """Initialize third-person camera.
+        """Initialize exploration camera.
         
         Args:
             camera_node: Panda3D camera NodePath (base.camera)
-            target_entity: The entity/node to orbit around
             sensitivity: Mouse sensitivity for rotation
             collision_traverser: Optional CollisionTraverser for terrain collision
             render_node: Optional render root node for raycasting
             side_offset: Lateral offset for over-the-shoulder view (positive = right)
         """
         self.camera = camera_node
-        self.target = target_entity
         self.sensitivity = sensitivity
         
         # Collision detection
@@ -98,41 +62,53 @@ class ThirdPersonCamera:
         # Ground constraints
         self.min_camera_height_above_ground = 0.5  # Minimum clearance above terrain
         
-    def update(self, mouse_dx: float, mouse_dy: float, dt: float, target_position: LVector3f, 
-               camera_state: Any, player_velocity: Optional[LVector3f] = None) -> None:
-        """Update camera position and rotation.
+        # Auto-centering
+        self.auto_center_dead_zone = 0.5  # Seconds after mouse input before auto-center activates
+    
+    def update(self, ctx: CameraUpdateContext) -> None:
+        """Update camera position and orientation.
         
         Args:
-            mouse_dx: Mouse delta X (horizontal movement)
-            mouse_dy: Mouse delta Y (vertical movement)
-            dt: Delta time
-            target_position: World position of the target entity
-            camera_state: CameraState component (for reading/writing state)
-            player_velocity: Optional player velocity for camera bob
+            ctx: Camera update context
         """
+        # Track mouse movement for auto-center dead zone
+        if ctx.mouse_delta != (0, 0):
+            ctx.camera_state.mouse_moved_recently = self.auto_center_dead_zone
+        else:
+            ctx.camera_state.mouse_moved_recently = max(0, 
+                ctx.camera_state.mouse_moved_recently - ctx.dt)
+        
         # Update rotation from mouse input
         # NOTE: mouse_dx/dy are already per-frame deltas, don't multiply by dt!
-        camera_state.yaw += mouse_dx * self.sensitivity
-        camera_state.pitch -= mouse_dy * self.sensitivity
+        ctx.camera_state.yaw += ctx.mouse_delta[0] * self.sensitivity
+        ctx.camera_state.pitch -= ctx.mouse_delta[1] * self.sensitivity
+        
+        # Apply auto-centering if conditions are met
+        self._apply_auto_center(ctx)
         
         # Clamp pitch
-        camera_state.pitch = max(self.min_pitch, min(self.max_pitch, camera_state.pitch))
+        ctx.camera_state.pitch = max(self.min_pitch, 
+                                     min(self.max_pitch, ctx.camera_state.pitch))
         
         # Calculate desired camera position (orbit around target)
-        import math
-        yaw_rad = math.radians(camera_state.yaw)
-        pitch_rad = math.radians(camera_state.pitch)
+        yaw_rad = math.radians(ctx.camera_state.yaw)
+        pitch_rad = math.radians(ctx.camera_state.pitch)
         
         # Check for collision and adjust distance
-        safe_distance = self._calculate_collision_distance(target_position, yaw_rad, pitch_rad, camera_state.distance)
+        safe_distance = self._calculate_collision_distance(
+            ctx.target_position, yaw_rad, pitch_rad, ctx.camera_state.distance
+        )
         
         # Smoothly interpolate current_distance toward safe_distance
-        camera_state.current_distance += (safe_distance - camera_state.current_distance) * (dt * self.distance_lerp_speed)
+        ctx.camera_state.current_distance += (
+            (safe_distance - ctx.camera_state.current_distance) * 
+            (ctx.dt * self.distance_lerp_speed)
+        )
         
         # Offset from target using collision-adjusted distance
-        offset_x = camera_state.current_distance * math.sin(yaw_rad) * math.cos(pitch_rad)
-        offset_y = -camera_state.current_distance * math.cos(yaw_rad) * math.cos(pitch_rad)
-        offset_z = camera_state.current_distance * math.sin(pitch_rad) + self.height_offset
+        offset_x = ctx.camera_state.current_distance * math.sin(yaw_rad) * math.cos(pitch_rad)
+        offset_y = -ctx.camera_state.current_distance * math.cos(yaw_rad) * math.cos(pitch_rad)
+        offset_z = ctx.camera_state.current_distance * math.sin(pitch_rad) + self.height_offset
         
         # Add lateral offset for over-the-shoulder view
         # Calculate right vector (perpendicular to camera direction in horizontal plane)
@@ -144,9 +120,13 @@ class ThirdPersonCamera:
         offset_y += right_y * self.side_offset
         
         # Calculate camera bob offset
-        bob_offset = self._calculate_bob_offset(player_velocity, camera_state, dt) if player_velocity else (0, 0)
+        bob_offset = self._calculate_bob_offset(ctx.player_velocity, ctx.camera_state, ctx.dt)
         
-        desired_pos = target_position + LVector3f(offset_x + bob_offset[0], offset_y, offset_z + bob_offset[1])
+        desired_pos = ctx.target_position + LVector3f(
+            offset_x + bob_offset[0], 
+            offset_y, 
+            offset_z + bob_offset[1]
+        )
         
         # Constrain camera to stay above ground
         if self.collision_traverser and self.render_node:
@@ -158,15 +138,60 @@ class ThirdPersonCamera:
         
         # Smooth camera movement (lerp)
         current_pos = self.camera.getPos()
-        new_pos = current_pos + (desired_pos - current_pos) * (dt * self.lerp_speed)
+        new_pos = current_pos + (desired_pos - current_pos) * (ctx.dt * self.lerp_speed)
         
         self.camera.setPos(new_pos)
         
         # Look at target (with height offset for better framing)
-        look_at_target = target_position + LVector3f(0, 0, self.height_offset * 0.5)
+        look_at_target = ctx.target_position + LVector3f(0, 0, self.height_offset * 0.5)
         self.camera.lookAt(look_at_target)
     
-    def _calculate_collision_distance(self, target_pos: LVector3f, yaw_rad: float, pitch_rad: float, desired_distance: float) -> float:
+    def _apply_auto_center(self, ctx: CameraUpdateContext) -> None:
+        """Apply soft auto-centering to camera yaw.
+        
+        When player is moving without recent mouse input, camera
+        gradually rotates to face behind the player's movement direction.
+        
+        Args:
+            ctx: Camera update context
+        """
+        # Check if auto-centering should be active
+        speed = math.sqrt(ctx.player_velocity.x**2 + ctx.player_velocity.y**2)
+        
+        if (speed > 0.1 and 
+            ctx.camera_state.mouse_moved_recently <= 0 and
+            ctx.camera_state.auto_center_strength > 0):
+            
+            # Calculate player facing direction from velocity
+            player_heading = math.degrees(math.atan2(ctx.player_velocity.x, 
+                                                     ctx.player_velocity.y))
+            
+            # Target yaw is behind player (180° from facing direction)
+            target_yaw = player_heading + 180
+            
+            # Normalize angle difference to [-180, 180]
+            yaw_diff = target_yaw - ctx.camera_state.yaw
+            while yaw_diff > 180:
+                yaw_diff -= 360
+            while yaw_diff < -180:
+                yaw_diff += 360
+            
+            # Smoothly rotate toward target yaw
+            ctx.camera_state.yaw += (yaw_diff * 
+                ctx.camera_state.auto_center_strength * ctx.dt)
+                
+            # Pitch Auto-Center
+            # Gently drift pitch back to optimal viewing angle (e.g. -15 degrees)
+            # This prevents "overhead views hanging there"
+            target_pitch = -15.0
+            pitch_diff = target_pitch - ctx.camera_state.pitch
+            
+            # Use same strength
+            ctx.camera_state.pitch += (pitch_diff * 
+                ctx.camera_state.auto_center_strength * ctx.dt)
+    
+    def _calculate_collision_distance(self, target_pos: LVector3f, yaw_rad: float, 
+                                      pitch_rad: float, desired_distance: float) -> float:
         """Calculate safe camera distance considering terrain collision.
         
         Raycasts from player toward camera position. If terrain blocks the view,
@@ -184,9 +209,6 @@ class ThirdPersonCamera:
         # If no collision system available, use desired distance
         if self.collision_traverser is None or self.render_node is None:
             return desired_distance
-        
-        from panda3d.core import CollisionRay, CollisionNode, CollisionHandlerQueue, BitMask32, LPoint3f
-        import math
         
         # Calculate direction from player to desired camera position
         dir_x = math.sin(yaw_rad) * math.cos(pitch_rad)
@@ -251,8 +273,6 @@ class ThirdPersonCamera:
         if self.collision_traverser is None or self.render_node is None:
             return None
         
-        from panda3d.core import CollisionRay, CollisionNode, CollisionHandlerQueue, BitMask32, LPoint3f
-        
         # Cast ray from high above straight down
         ray_origin = LPoint3f(x, y, 100.0)  # Start well above any terrain
         ray_direction = LVector3f(0, 0, -1)  # Straight down
@@ -290,7 +310,8 @@ class ThirdPersonCamera:
         
         return terrain_height
     
-    def _calculate_bob_offset(self, player_velocity: LVector3f, camera_state: Any, dt: float) -> tuple[float, float]:
+    def _calculate_bob_offset(self, player_velocity: LVector3f, 
+                              camera_state: Any, dt: float) -> tuple[float, float]:
         """Calculate camera bob offset based on player movement.
         
         Args:
@@ -303,8 +324,6 @@ class ThirdPersonCamera:
         """
         if not self.bob_enabled:
             return (0.0, 0.0)
-        
-        import math
         
         # Calculate horizontal speed (ignore vertical)
         speed = math.sqrt(player_velocity.x**2 + player_velocity.y**2)
@@ -329,8 +348,24 @@ class ThirdPersonCamera:
         
         return (bob_x * speed_factor, bob_z * speed_factor)
     
+    def on_enter(self, camera_state: Any) -> None:
+        """Called when entering exploration mode.
+        
+        Resets current_distance to match target distance to fix zoom bug.
+        
+        Args:
+            camera_state: CameraState component
+        """
+        # Reset current_distance to match target distance
+        # This fixes zoom bug after mode toggle
+        camera_state.current_distance = camera_state.distance
+    
     def set_sensitivity(self, value: float) -> None:
-        """Update mouse sensitivity."""
+        """Update mouse sensitivity.
+        
+        Args:
+            value: New sensitivity value
+        """
         self.sensitivity = value
     
     def set_distance(self, camera_state: Any, distance: float) -> None:

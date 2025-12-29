@@ -31,8 +31,8 @@ class TestHotConfig(unittest.TestCase):
         config = HotConfig(no_file_path)
         
         # Should have defaults
-        self.assertEqual(config.get("movement_speed"), 6.0) # Default
-        self.assertEqual(config.get("jump_height"), 3.5) # Default
+        self.assertEqual(config.get("movement_speed"), 4.5) # Default
+        self.assertEqual(config.get("jump_height"), 2.0) # Default
 
     def test_load_from_file(self):
         """Test loading values from existing file."""
@@ -42,7 +42,7 @@ class TestHotConfig(unittest.TestCase):
         self.assertEqual(config.get("jump_height"), 5.0)
         self.assertTrue(config.get("god_mode"))
         # Missing value should fallback to default
-        self.assertEqual(config.get("gravity"), -12.0)
+        self.assertEqual(config.get("gravity"), -20.0)
 
     def test_update_callback(self):
         """Test callbacks are triggered when file changes."""

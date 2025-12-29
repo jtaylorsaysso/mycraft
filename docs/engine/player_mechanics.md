@@ -146,29 +146,31 @@ Mechanics can write shared state that other mechanics read. For example:
 
 ### CameraMechanic (Priority: 10)
 
-**Purpose**: Handles camera mode switching and updates
+**Purpose**: Handles camera mode switching and updates using a modular mode system
 
 **Location**: [engine/player_mechanics/camera_controller.py](file:///home/jamest/Desktop/dev/mycraft/engine/player_mechanics/camera_controller.py)
 
 **Responsibilities**:
 
-- Manages `FPSCamera` and `ThirdPersonCamera` instances
+- Manages a registry of camera modes (`FirstPersonCamera`, `ExplorationCamera`, `CombatCamera`)
 - Detects V-key toggle via `InputAction.CAMERA_TOGGLE_MODE`
-- Updates active camera with mouse delta
-- Reads HotConfig for sensitivity, FOV, camera distance
-- Writes `ctx.camera_mode` for other mechanics
+- Updates active camera using `CameraUpdateContext`
+- Reads HotConfig for sensitivity, FOV, auto-centering strength, and camera distance
+
+**Camera Modes**:
+
+| Mode | Class | behavior |
+| :--- | :--- | :--- |
+| `FIRST_PERSON` | `FirstPersonCamera` | Direct control at eye eye-level |
+| `EXPLORATION` | `ExplorationCamera` | Orbit with soft auto-centering (yaw/pitch) and bob |
+| `COMBAT` | `CombatCamera` | Target framing with widened FOV |
 
 **Example**:
 
 ```python
-# Third-person mode
-if self.camera_mode == 'third_person':
-    self.camera_controller.update(
-        ctx.input.mouse_delta[0],
-        ctx.input.mouse_delta[1],
-        ctx.dt,
-        ctx.transform.position
-    )
+# Select camera from registry and update
+self.active_camera = self.cameras.get(camera_state.mode)
+self.active_camera.update(cam_ctx)
 ```
 
 ---
@@ -378,7 +380,7 @@ The system automatically sorts by priority.
 Mechanics execute in **descending priority order** (highest first):
 
 | Mechanic | Priority | Reason |
-|----------|----------|--------|
+| :--- | :--- | :--- |
 | InputMechanic | 1000 | Must populate input first |
 | ClimbingMechanic | 60 | Check special movement before ground |
 | GroundMovementMechanic | 50 | Default movement |
@@ -546,5 +548,5 @@ def update(self, ctx):
 
 ---
 
-*Last Updated: 2025-12-25*  
-*Version: 1.0*
+*Last Updated: 2025-12-28*  
+*Version: 1.1*

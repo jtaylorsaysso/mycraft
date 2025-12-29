@@ -28,11 +28,8 @@ All phases of combat animation integration complete. Combat prototype fully func
 
 **Reference:** Implementation plan and walkthrough in artifacts directory
 
-### Camera System Issues
-
-**Priority:** High | **Effort:** ~30 minutes
-
-- [ ] **Scroll wheel zoom broken after 1st→3rd person toggle** - Zoom works initially but stops functioning after toggling camera modes. Likely state not being reset properly on mode switch.
+- [x] **Refactor Camera to Mode-Based Architecture** - Split `ThirdPersonCamera` and `FPSCamera` into separate mode classes (`ExplorationCamera`, `FirstPersonCamera`, `CombatCamera`) with unified interface and soft auto-centering.
+- [x] **Scroll wheel zoom broken after 1st→3rd person toggle** - Fixed by implementing `on_enter()` hook in `ExplorationCamera` that resets `current_distance` to match `distance`.
 
 ### Test Suite Remaining Failures
 
@@ -178,7 +175,13 @@ Remaining items from state management cleanup:
 - [x] **Screenshot Tool** - Added F9 screenshot functionality for easier visual debugging
 - [x] **Feedback System Fix** - Resolved crash in FeedbackSystem overlay
 
-## ✅ Recently Completed (2025-12-27)
+### Camera System Refactor (2025-12-28)
+
+- [x] **Modular Camera Architecture** - Refactored monolithic camera classes into registry system with `BaseCamera` interface
+- [x] **Exploration Camera** - Added soft auto-centering that gently drifts behind player when moving without mouse input
+- [x] **Combat Camera** - Added base for target framing and situational FOV widening
+- [x] **Scroll Wheel Fix** - Resolved persistent zoom bug where distance state desynced after mode toggles
+- [x] **HotConfig Integration** - Added `camera_auto_center_strength` and `camera_auto_center_dead_zone` as tunable parameters
 
 ### Combat System Planning
 

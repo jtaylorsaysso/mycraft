@@ -181,7 +181,46 @@ class AnimationMechanic(PlayerMechanic):
         
         # 3. Sync Rotation
         cam_yaw = self.base.cam.getH()
-        self.avatar.root.setH(cam_yaw)
+        
+        # Determine target rotation based on camera mode and movement
+        if camera_state and camera_state.mode == CameraMode.EXPLORATION:
+            # In exploration mode, avatar faces movement direction, not camera
+            # unless standing still, then it keeps last rotation
+            velocity_xy = LVector3f(ctx.state.velocity_x, ctx.state.velocity_y, 0)
+            if velocity_xy.length() > 0.1:
+                # Calculate heading from velocity
+                # atan2(x, y) gives angle from Y-axis (North), which matches Panda3D heading
+                # BUT: velocity_x is East(+), velocity_y is North(+)
+                # atan2(y, x) is standard math (counter-clockwise from East)
+                # Panda3D Heading: Rotation around Z, 0 is East? No, usually Y is North.
+                # Standard Panda3D: +Y is forward. +X is right. H is rotation around Z.
+                # H=0 -> +Y. H=90 -> -X. H=-90 -> +X. (This varies by convention)
+                # Let's use standard atan2 logic consistent with GroundMovementMechanic
+                
+                # GroundMovementMechanic: 
+                # forward = (-sin(rad), cos(rad), 0)
+                # right = (cos(rad), sin(rad), 0)
+                # If H=0, rad=0. Forward=(0,1,0) -> +Y. Correct.
+                
+                target_h = math.degrees(math.atan2(-velocity_xy.x, velocity_xy.y))
+                
+                # Smoothly rotate towards heading
+                current_h = self.avatar.root.getH()
+                diff = target_h - current_h
+                while diff > 180: diff -= 360
+                while diff < -180: diff += 360
+                
+                # Rotation speed
+                rot_speed = 10.0 * ctx.dt
+                if abs(diff) < rot_speed:
+                    self.avatar.root.setH(target_h)
+                else:
+                    self.avatar.root.setH(current_h + diff * 15.0 * ctx.dt)
+            # If idle, preserve current rotation (don't snap to camera)
+            
+        else:
+            # First Person / Combat: lock (or soft-lock) to camera
+            self.avatar.root.setH(cam_yaw)
         
         # 4. Update Combat State and Trigger Animations
         from engine.components.core import CombatState

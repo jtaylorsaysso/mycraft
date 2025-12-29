@@ -100,6 +100,11 @@ class MockVector3:
             return MockVector3(self.x / other, self.y / other, self.z / other)
         return NotImplemented
     
+    def dot(self, other):
+        if hasattr(other, 'x'):
+            return self.x * other.x + self.y * other.y + self.z * other.z
+        return self.x * other[0] + self.y * other[1] + self.z * other[2]
+        
     def length(self):
         return math.sqrt(self.x**2 + self.y**2 + self.z**2)
     
