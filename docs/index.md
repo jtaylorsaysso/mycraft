@@ -60,6 +60,10 @@ Want to go deeper? These docs cover the technical details.
 | Document | Description |
 |----------|-------------|
 | [Architecture Overview](engine/ARCHITECTURE.md) | How MyCraft works under the hood |
+| [Animation System](engine/ANIMATION_SYSTEM.md) | Procedural + keyframe animations ✅ |
+| [Combat Architecture](engine/COMBAT_ARCHITECTURE.md) | Combat systems and state flow ✅ |
+| [State Management](engine/STATE_MANAGEMENT.md) | ECS component state patterns ✅ |
+| [Player Mechanics](engine/player_mechanics.md) | Priority-based control system ✅ |
 | [ECS: World](engine/ecs/world.md) | Entity Component System APIs ✅ |
 | [ECS: Systems](engine/ecs/systems.md) | System lifecycle and patterns ✅ |
 | [ECS: Events](engine/ecs/events.md) | EventBus reference ✅ |
@@ -75,6 +79,7 @@ Want to go deeper? These docs cover the technical details.
 
 | Document | Description |
 |----------|-------------|
+| [Animation Editor](engine/ANIMATION_EDITOR.md) | In-engine animation timing editor ✅ |
 | [World Generation](world_generation_guidelines.md) | Terrain design philosophy |
 | [Entity Sizing](entity_sizing_standards.md) | Block, player, and chunk sizing |
 | [Testing Guide](testing_guide.md) | Test suite and CI setup |
@@ -143,5 +148,5 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for details *(Coming Soon)*.
 
 ---
 
-*Last Updated: 2025-12-28*  
-*Version: 2.0 - Beginner-First*
+*Last Updated: 2025-12-30*  
+*Version: 3.0 - Core Architecture Documentation*
