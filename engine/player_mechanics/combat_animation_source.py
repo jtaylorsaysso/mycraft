@@ -234,6 +234,20 @@ class CombatAnimationSource:
             self.current_time = 0.0
             self.playing = True
     
+    def register_event_callback(self, event_name: str, callback: 'Callable'):
+        """Register callback for animation event.
+        
+        Args:
+            event_name: Event identifier to listen for
+            callback: Function(event_data) to call when event fires
+        """
+        if not hasattr(self, 'event_callbacks'):
+            self.event_callbacks = {}
+            
+        if event_name not in self.event_callbacks:
+            self.event_callbacks[event_name] = []
+        self.event_callbacks[event_name].append(callback)
+    
     def stop(self):
         """Stop current animation."""
         self.playing = False
@@ -253,11 +267,22 @@ class CombatAnimationSource:
         if not self.playing or not self.current_clip:
             return {}
         
+        # Store previous time for event checking
+        prev_time = self.current_time
+        
         # Update time
         self.current_time += dt
         
         # Get current clip
         clip = self.clips[self.current_clip]
+        
+        # Check logic for events
+        if hasattr(clip, 'events'):
+            for event in clip.events:
+                # Trigger if time crossed event time
+                # Simple check since combat animations don't loop generally
+                if prev_time < event.time <= self.current_time:
+                    self._trigger_event(event)
         
         # Check if animation finished
         if self.current_time >= clip.duration:
@@ -304,6 +329,12 @@ class CombatAnimationSource:
             final_pose[bone_name] = new_transform
             
         return final_pose
+    
+    def _trigger_event(self, event):
+        """Fire event callbacks."""
+        if hasattr(self, 'event_callbacks') and event.event_name in self.event_callbacks:
+            for callback in self.event_callbacks[event.event_name]:
+                callback(event.data)
     
     def get_current_clip(self) -> Optional[CombatClip]:
         """Get currently playing clip.

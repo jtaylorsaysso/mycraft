@@ -22,7 +22,8 @@ class FootIKController:
         self,
         raycast_callback: Callable[[LVector3f, LVector3f], Optional[LVector3f]],
         hip_adjustment: float = 0.8,
-        foot_offset: float = 0.1
+        foot_offset: float = 0.1,
+        update_interval: int = 2  # NEW: Update every N frames
     ):
         """Initialize foot IK controller.
         
@@ -30,18 +31,25 @@ class FootIKController:
             raycast_callback: Function(origin, direction) -> hit_point
             hip_adjustment: How much to lower hips on slopes (0-1)
             foot_offset: Distance above ground to place foot
+            update_interval: Frames between IK updates (2 = 30Hz at 60FPS)
         """
         self.raycast_callback = raycast_callback
         self.hip_adjustment = hip_adjustment
         self.foot_offset = foot_offset
         self.enabled = True
         self._foot_bones = ["foot_left", "foot_right"]
+        
+        # Phase 1 optimization: Update frequency control
+        self.update_interval = update_interval
+        self._frame_counter = 0
+        self._last_targets = {}  # Cache last computed targets
     
     def update(
         self,
         skeleton: Skeleton,
         world_position: LVector3f,
-        grounded: bool = True
+        grounded: bool = True,
+        dt: float = 0.0  # NEW: For frame timing
     ) -> Dict[str, IKTarget]:
         """Update foot IK targets based on terrain.
         
@@ -49,6 +57,7 @@ class FootIKController:
             skeleton: Character skeleton
             world_position: Character world position
             grounded: Whether character is on ground
+            dt: Delta time (for frame control)
             
         Returns:
             Dictionary of IK targets (bone_name -> IKTarget)
@@ -56,6 +65,23 @@ class FootIKController:
         if not self.enabled or not grounded:
             return {}
         
+        # Phase 1 optimization: Update frequency reduction
+        self._frame_counter += 1
+        if self._frame_counter % self.update_interval != 0:
+            # Return cached targets
+            return self._last_targets
+        
+        # Perform actual IK computation
+        targets = self._compute_ik_targets(skeleton, world_position)
+        self._last_targets = targets
+        return targets
+
+    def _compute_ik_targets(
+        self, 
+        skeleton: Skeleton, 
+        world_position: LVector3f
+    ) -> Dict[str, IKTarget]:
+        """Compute IK targets (extracted from update for caching)."""
         targets = {}
         ground_heights = []
         

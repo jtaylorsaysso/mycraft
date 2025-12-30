@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from typing import List, Optional
-from panda3d.core import NodePath, GeomNode, LVector3f, LVector4f
+from panda3d.core import NodePath, GeomNode, LVector3f, LVector4f, CardMaker, TransparencyAttrib
 import random
 
 
@@ -39,10 +39,15 @@ class VoxelParticleSystem:
         
         # Pre-create particle nodes (pooling)
         for i in range(max_particles):
-            # TODO: Create actual voxel cube geometry
-            # For now, placeholder
-            node = render.attachNewNode(f'particle_{i}')
+            # Create billboard quad using CardMaker
+            cm = CardMaker(f'particle_{i}')
+            cm.setFrame(-0.5, 0.5, -0.5, 0.5)  # Centered quad
+            
+            node = render.attachNewNode(cm.generate())
+            node.setTransparency(TransparencyAttrib.MAlpha)
+            node.setBillboardPointEye()  # Always face camera
             node.hide()
+            
             self.particle_nodes[i] = node
     
     def emit(
@@ -86,9 +91,12 @@ class VoxelParticleSystem:
                     )
                     
                     self.particles[i] = particle
-                    self.particle_nodes[i].setPos(position)
-                    self.particle_nodes[i].setScale(size)
-                    self.particle_nodes[i].show()
+                    node = self.particle_nodes[i]
+                    node.setPos(position)
+                    node.setScale(size)
+                    # Reset initial color (alpha 1.0)
+                    node.setColorScale(color)
+                    node.show()
                     self.active_count += 1
                     break
     
@@ -122,7 +130,15 @@ class VoxelParticleSystem:
             
             # Fade out based on lifetime
             alpha = 1.0 - (particle.age / particle.lifetime)
-            # TODO: Apply alpha to particle material
+            
+            # Apply color with alpha fade
+            current_color = LVector4f(
+                particle.color.x,
+                particle.color.y,
+                particle.color.z,
+                particle.color.w * alpha
+            )
+            self.particle_nodes[i].setColorScale(current_color)
     
     def clear(self):
         """Clear all particles."""

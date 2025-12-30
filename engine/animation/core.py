@@ -29,6 +29,23 @@ class Transform:
             rotation=self.rotation + (other.rotation - self.rotation) * t,
             scale=self.scale + (other.scale - self.scale) * t
         )
+    
+    def to_dict(self) -> dict:
+        """Serialize to JSON-compatible dict."""
+        return {
+            'position': [self.position.x, self.position.y, self.position.z],
+            'rotation': [self.rotation.x, self.rotation.y, self.rotation.z],
+            'scale': [self.scale.x, self.scale.y, self.scale.z]
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> 'Transform':
+        """Deserialize from dict."""
+        return cls(
+            position=LVector3f(*data.get('position', [0, 0, 0])),
+            rotation=LVector3f(*data.get('rotation', [0, 0, 0])),
+            scale=LVector3f(*data.get('scale', [1, 1, 1]))
+        )
 
 
 @dataclass
@@ -37,7 +54,47 @@ class Keyframe:
     time: float  # Time in seconds
     transforms: Dict[str, Transform]  # Bone name -> Transform
     
+    def to_dict(self) -> dict:
+        """Serialize to JSON-compatible dict."""
+        return {
+            'time': self.time,
+            'transforms': {bone: transform.to_dict() for bone, transform in self.transforms.items()}
+        }
     
+    @classmethod
+    def from_dict(cls, data: dict) -> 'Keyframe':
+        """Deserialize from dict."""
+        return cls(
+            time=data['time'],
+            transforms={bone: Transform.from_dict(t) for bone, t in data['transforms'].items()}
+        )
+    
+    
+@dataclass
+class AnimationEvent:
+    """Event triggered at specific animation time."""
+    time: float  # Time in seconds when event fires
+    event_name: str  # Event identifier (e.g., "hit", "footstep", "vfx")
+    data: dict = field(default_factory=dict)  # Optional event data
+    
+    def to_dict(self) -> dict:
+        """Serialize to JSON-compatible dict."""
+        return {
+            'time': self.time,
+            'event_name': self.event_name,
+            'data': self.data
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> 'AnimationEvent':
+        """Deserialize from dict."""
+        return cls(
+            time=data['time'],
+            event_name=data['event_name'],
+            data=data.get('data', {})
+        )
+
+
 @dataclass
 class AnimationClip:
     """Keyframe animation data."""
@@ -45,6 +102,7 @@ class AnimationClip:
     duration: float
     keyframes: List[Keyframe]
     looping: bool = True
+    events: List[AnimationEvent] = field(default_factory=list)
     
     def get_pose(self, time: float) -> Dict[str, Transform]:
         """Get interpolated pose at given time.
@@ -88,6 +146,27 @@ class AnimationClip:
                 result[bone_name] = prev_kf.transforms[bone_name]
         
         return result
+    
+    def to_dict(self) -> dict:
+        """Serialize to JSON-compatible dict."""
+        return {
+            'name': self.name,
+            'duration': self.duration,
+            'looping': self.looping,
+            'keyframes': [kf.to_dict() for kf in self.keyframes],
+            'events': [evt.to_dict() for evt in self.events]
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> 'AnimationClip':
+        """Deserialize from dict."""
+        return cls(
+            name=data['name'],
+            duration=data['duration'],
+            looping=data.get('looping', True),
+            keyframes=[Keyframe.from_dict(kf) for kf in data['keyframes']],
+            events=[AnimationEvent.from_dict(evt) for evt in data.get('events', [])]
+        )
 
 
 class VoxelRig:
@@ -163,9 +242,25 @@ class VoxelAnimator:
         self.blend_progress: float = 1.0  # 1.0 = fully in current animation
         self.previous_pose: Optional[Dict[str, Transform]] = None
         
+        # Event system
+        from typing import Callable
+        self.event_callbacks: Dict[str, List[Callable]] = {}
+        self.triggered_events: set = set()  # Track fired events per play
+        
     def add_clip(self, clip: AnimationClip):
         """Add an animation clip."""
         self.clips[clip.name] = clip
+    
+    def register_event_callback(self, event_name: str, callback: 'Callable'):
+        """Register callback for animation event.
+        
+        Args:
+            event_name: Event identifier to listen for
+            callback: Function(event_data) to call when event fires
+        """
+        if event_name not in self.event_callbacks:
+            self.event_callbacks[event_name] = []
+        self.event_callbacks[event_name].append(callback)
     
     def play(self, clip_name: str, blend: bool = True):
         """Play an animation clip.
@@ -188,6 +283,7 @@ class VoxelAnimator:
         self.current_clip = clip_name
         self.current_time = 0.0
         self.playing = True
+        self.triggered_events.clear()  # Reset event tracking
     
     def update(self, dt: float):
         """Update animation.
@@ -199,7 +295,55 @@ class VoxelAnimator:
             return
         
         clip = self.clips[self.current_clip]
+        
+        # Check for events in current time window BEFORE updating time
+        # This handles events that occur between prev_time and current_time
+        prev_time = self.current_time
         self.current_time += dt
+        
+        # Handle events
+        for event in clip.events:
+            event_key = f"{self.current_clip}_{event.time}"
+            
+            # Check if event time was crossed this frame
+            # Use wrapped time equality if within a small epsilon to catch exact start times?
+            # Or just check if event.time is between prev_time and current_time.
+            # For looping animations, we need to handle wrapping.
+            
+            should_trigger = False
+            
+            if clip.looping:
+                # Handle wrapping
+                prev_t_mod = prev_time % clip.duration
+                curr_t_mod = self.current_time % clip.duration
+                
+                if curr_t_mod < prev_t_mod:
+                    # Wrapped around
+                    if prev_t_mod < event.time <= clip.duration or 0 <= event.time <= curr_t_mod:
+                        should_trigger = True
+                        # If wrapped, we might need to reset triggered events for this loop?
+                        # For simple implementation, let's just trigger.
+                        # Ideally triggered_events should be cleared on loop.
+                else:
+                    if prev_t_mod < event.time <= curr_t_mod:
+                        should_trigger = True
+            else:
+                if prev_time < event.time <= self.current_time:
+                    should_trigger = True
+            
+            if should_trigger:
+                # Simple deduplication: if not looping, only fire once.
+                # If looping, we want to fire every loop.
+                # But 'set' approach only works for one-shot unless we clear it.
+                
+                # For now, let's just fire if condition met.
+                # The 'triggered_events' set is good for ensuring we don't double-fire if dt is small and we check ranges?
+                # Actually checking range (prev < t <= curr) is sufficient to fire exactly once per crossing.
+                # So we don't strictly need triggered_events set for the range check approach,
+                # UNLESS we want to prevent re-firing when scrubbing/seeking.
+                # But here we just advance time.
+                
+                self._trigger_event(event)
         
         # Get current pose
         current_pose = clip.get_pose(self.current_time)
@@ -226,6 +370,13 @@ class VoxelAnimator:
         # Stop if non-looping animation finished
         if not clip.looping and self.current_time >= clip.duration:
             self.playing = False
+
+    def _trigger_event(self, event: AnimationEvent):
+        """Fire event callbacks."""
+        # print(f"🔔 Event: {event.event_name}")
+        if event.event_name in self.event_callbacks:
+            for callback in self.event_callbacks[event.event_name]:
+                callback(event.data)
 
 
 class ProceduralAnimator:

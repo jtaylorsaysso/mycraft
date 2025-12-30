@@ -1,6 +1,6 @@
 # Tech Debt Register
 
-**Last Updated:** 2025-12-28
+**Last Updated:** 2025-12-30
 
 This register tracks technical debt, bugs, and future enhancements. Items are organized by priority and aligned with the project's current development direction.
 
@@ -24,7 +24,10 @@ All phases of combat animation integration complete. Combat prototype fully func
 - [x] **Skeleton/Visual Retargeting** - Fixed by implementing correct `rest_transform` logic in Skeleton and Animation Sources. Avatar now respects bone lengths and skeletal structure.
 - [x] **Procedural Locomotion Enhancement** - Implemented run/sprint/jump/fall animations with speed-based tiers and torso lean
 - [x] **Transition Blending** - Added 200ms blend transitions between idle/walk/run/sprint states
-- [ ] **Hit Window Callbacks** - Wire `on_hit` callback from animation to combat system for frame-perfect hit detection (currently using timing-based approach). *Deferred - current timing approach works well*
+- [x] **Hit Window Callbacks** - Implemented animation events system with frame-perfect callbacks. `AnimationMechanic` bridges events to global bus, `AttackMechanic` handles hitbox activation and damage dealing.
+- [x] **FootIK Integration** - Integrated `FootIKController` into `AnimationMechanic` with Phase 1 optimizations (30Hz updates, ~65% raycast reduction)
+- [x] **Particle System** - Completed `VoxelParticleSystem` with billboard geometry and alpha fading
+- [x] **Animation Events System** - Frame-perfect event callbacks for combat hits, VFX triggers, and gameplay synchronization
 
 **Reference:** Implementation plan and walkthrough in artifacts directory
 
@@ -78,6 +81,18 @@ Remaining items from state management cleanup:
 
 - [ ] Profile raycast ground detection performance with many entities (NPCs, projectiles)
 - [ ] Consider spatial partitioning for large numbers of physics objects
+
+### Animation System Performance
+
+**Priority:** Low | **Effort:** Varies
+
+**Status**: FootIK Phase 1 complete (30Hz updates). Current performance: ~42 raycasts/sec per player (acceptable for 1-4 players). Additional optimizations available if needed for 10+ player scenarios.
+
+- [ ] **Phase 2: Spatial Caching** (~2-3 hours) - Cache raycast results, only update when player moves >0.2 units or after 100ms. Expected ~80-85% total reduction.
+- [ ] **Phase 3: Async Raycasting** (~4-6 hours) - Background thread for raycasts, removes cost from main thread. Requires thread-safety validation for Panda3D collision system.
+- [ ] **Phase 4: Heightmap System** (~1-2 days) - Pre-computed terrain heights with bilinear interpolation. ~95% faster than raycasts, but requires chunk update logic and doesn't support moving platforms.
+
+**Reference**: Animation research document in artifacts directory
 
 ### World Generation
 

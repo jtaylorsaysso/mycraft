@@ -218,20 +218,63 @@ if ctx.input.back: move_dir -= forward
 
 ---
 
+### AttackMechanic (Priority: 53)
+
+**Purpose**: Handles attack input and manages combat hitbox logic
+
+**Location**: [engine/player_mechanics/attack_mechanic.py](file:///home/jamest/Desktop/dev/mycraft/engine/player_mechanics/attack_mechanic.py)
+
+**Responsibilities**:
+
+- Detects attack input (Mouse1 rising edge) and publishes `attack_input` event
+- Subscribes to global combat events (`combat_hit_start`, `combat_hit_end`) from `AnimationMechanic`
+- Manages hitbox activation state during attack animations
+- Performs cone-based enemy detection (range + angle checks)
+- Publishes `on_entity_damage` events consumed by `DamageSystem`
+- Prevents duplicate hits per attack via `hit_entities` tracking
+
+**Combat Event Flow**:
+
+```text
+Animation plays → AnimationEvent fires → AnimationMechanic bridges to global bus
+                                              ↓
+                                      combat_hit_start
+                                              ↓
+                                      AttackMechanic activates hitbox
+                                              ↓
+                                      Cone check each frame
+                                              ↓
+                                      on_entity_damage (if target found)
+                                              ↓
+                                      combat_hit_end (deactivate)
+```
+
+**Why priority 53?** Runs after parry (54) but before camera, allowing combat state to influence camera behavior.
+
+---
+
 ### AnimationMechanic (Priority: 5)
 
-**Purpose**: Updates procedural character animations
+**Purpose**: Manages player avatar rendering and layered animations
 
 **Location**: [engine/player_mechanics/animation.py](file:///home/jamest/Desktop/dev/mycraft/engine/player_mechanics/animation.py)
 
 **Responsibilities**:
 
-- Reads velocity to determine walk/idle state
-- Applies procedural arm/leg swing
-- Handles idle breathing animation
-- Adjusts for camera mode (hide head in first-person)
+- Renders `VoxelAvatar` with `HumanoidSkeleton` (17-bone bipedal rig)
+- Manages `LayeredAnimator` for compositing multiple animation sources:
+  - **Locomotion layer** (full body): procedural walk/run/sprint/jump animations
+  - **Combat layer** (upper body): keyframe attack/dodge/parry animations
+  - **IK layer** (highest priority): terrain-aware foot placement via `FootIKController`
+- Bridges animation events to global event bus for combat synchronization
+- Applies root motion for physics-driven movement during combat actions
+- Handles camera mode visibility (hide avatar in first-person)
 
-**Why priority 5?** Runs last, after movement is finalized.
+**Animation Events**:
+
+The mechanic listens to internal animation events (e.g., `attack_hit_start` from combat clips) and re-publishes them as global events (`combat_hit_start`) for other systems to consume.
+
+**Why priority 5?** Runs last, after movement is finalized, to reflect the final player state visually.
 
 ---
 
