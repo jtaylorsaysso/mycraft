@@ -12,6 +12,167 @@ class MeshBuilder:
     """Handles generation of chunk meshes from heightmap data using Panda3D."""
     
     @staticmethod
+    def build_chunk_mesh_from_grid(
+        voxel_grid: dict, 
+        chunk_x: int, 
+        chunk_z: int, 
+        chunk_size: int, 
+        texture_atlas: Optional[Any],
+        block_registry: Any
+    ) -> GeomNode:
+        """Generate mesh from a sparse voxel grid (dictionary).
+        
+        Args:
+            voxel_grid: Dict mapping (x, y, z) -> block_name
+            chunk_x: Chunk X coordinate
+            chunk_z: Chunk Z coordinate
+            chunk_size: Size of chunk
+            texture_atlas: TextureAtlas instance
+            block_registry: BlockRegistry for property lookups
+            
+        Returns:
+            GeomNode: The generated mesh node
+        """
+        base_x = chunk_x * chunk_size
+        base_z = chunk_z * chunk_size
+        
+        # Create vertex format (position + color + UV)
+        vformat = GeomVertexFormat.getV3c4t2()
+        vdata = GeomVertexData('chunk', vformat, Geom.UHStatic)
+        
+        vertex = GeomVertexWriter(vdata, 'vertex')
+        color_writer = GeomVertexWriter(vdata, 'color')
+        texcoord = GeomVertexWriter(vdata, 'texcoord')
+        
+        tris = GeomTriangles(Geom.UHStatic)
+        index = 0
+        
+        # Directions for neighbor checks
+        directions = [
+            (0, 1, 0, 'top'),
+            (0, -1, 0, 'bottom'),
+            (0, 0, -1, 'north'),
+            (0, 0, 1, 'south'),
+            (1, 0, 0, 'east'),
+            (-1, 0, 0, 'west')
+        ]
+        
+        # Iterate over all blocks in the sparse grid
+        # Note: This renders everything in the grid.
+        # Ensure grid only contains this chunk's blocks!
+        for pos, block_name in voxel_grid.items():
+            x, y, z = pos
+            
+            # Simple bounds check (should be handled by caller, but good safety)
+            # if not (0 <= x < chunk_size and 0 <= z < chunk_size):
+            #     continue
+                
+            block_def = block_registry.get_block(block_name)
+            if not block_def:
+                continue
+                
+            world_x = base_x + x
+            world_z = base_z + z
+            
+            # Check 6 faces
+            for dx, dy, dz, face_name in directions:
+                nx, ny, nz = x + dx, y + dy, z + dz
+                neighbor_pos = (nx, ny, nz)
+                
+                # Check if face is exposed
+                # Exposed if:
+                # 1. Neighbor is not in grid (empty air)
+                # 2. Neighbor is transparent (e.g. leaves, glass) - Future improvement
+                # For now, just check existence
+                if neighbor_pos in voxel_grid:
+                    neighbor_name = voxel_grid[neighbor_pos]
+                    neighbor_def = block_registry.get_block(neighbor_name)
+                    # Optimization: If neighbor is solid, cull face.
+                    # TODO: Add transparency support (leaves shouldn't cull solid blocks)
+                    if neighbor_name != "leaves" and neighbor_name != "water": 
+                         continue
+
+                # Use simple AO: 1.0 (optimize later)
+                ao = 1.0
+                
+                # Vertices in Panda3D coords (X, Z_depth, Y_up is handled by Z_height)
+                # Correction: Panda3D is Z-up. 
+                # Our logic: x=horizontal, y=height(Z), z=horizontal(depth/Y)
+                # So in Panda3D: (world_x, world_z, y)
+                
+                if face_name == 'top':
+                    v0 = LVector3f(world_x, world_z, y + 1)
+                    v1 = LVector3f(world_x + 1, world_z, y + 1)
+                    v2 = LVector3f(world_x + 1, world_z + 1, y + 1)
+                    v3 = LVector3f(world_x, world_z + 1, y + 1)
+                elif face_name == 'bottom':
+                    v0 = LVector3f(world_x, world_z + 1, y)
+                    v1 = LVector3f(world_x + 1, world_z + 1, y)
+                    v2 = LVector3f(world_x + 1, world_z, y)
+                    v3 = LVector3f(world_x, world_z, y)
+                elif face_name == 'north': # -Z direction in grid -> -Y in Panda
+                    v0 = LVector3f(world_x, world_z, y)
+                    v1 = LVector3f(world_x + 1, world_z, y)
+                    v2 = LVector3f(world_x + 1, world_z, y + 1)
+                    v3 = LVector3f(world_x, world_z, y + 1)
+                elif face_name == 'south': # +Z direction -> +Y
+                    v0 = LVector3f(world_x + 1, world_z + 1, y)
+                    v1 = LVector3f(world_x, world_z + 1, y)
+                    v2 = LVector3f(world_x, world_z + 1, y + 1)
+                    v3 = LVector3f(world_x + 1, world_z + 1, y + 1)
+                elif face_name == 'east': # +X
+                    v0 = LVector3f(world_x + 1, world_z, y)
+                    v1 = LVector3f(world_x + 1, world_z + 1, y)
+                    v2 = LVector3f(world_x + 1, world_z + 1, y + 1)
+                    v3 = LVector3f(world_x + 1, world_z, y + 1)
+                elif face_name == 'west': # -X
+                    v0 = LVector3f(world_x, world_z + 1, y)
+                    v1 = LVector3f(world_x, world_z, y)
+                    v2 = LVector3f(world_x, world_z, y + 1)
+                    v3 = LVector3f(world_x, world_z + 1, y + 1)
+
+                vertex.addData3(v0)
+                vertex.addData3(v1)
+                vertex.addData3(v2)
+                vertex.addData3(v3)
+                
+                # Colors
+                color_writer.addData4(ao, ao, ao, 1.0)
+                color_writer.addData4(ao, ao, ao, 1.0)
+                color_writer.addData4(ao, ao, ao, 1.0)
+                color_writer.addData4(ao, ao, ao, 1.0)
+
+                # UVs
+                lookup_face = face_name
+                if face_name in ['north', 'south', 'east', 'west']:
+                    lookup_face = 'side'
+                    
+                tile_index = block_def.get_face_tile(lookup_face)
+                if tile_index is not None and texture_atlas and texture_atlas.is_loaded():
+                    tile_uvs = texture_atlas.get_tile_uvs(tile_index)
+                    for uv in tile_uvs:
+                        texcoord.addData2(uv)
+                else:
+                    # Fallback
+                    texcoord.addData2(LVector2f(0, 0))
+                    texcoord.addData2(LVector2f(1, 0))
+                    texcoord.addData2(LVector2f(1, 1))
+                    texcoord.addData2(LVector2f(0, 1))
+
+                tris.addVertices(index, index + 1, index + 2)
+                tris.addVertices(index, index + 2, index + 3)
+                index += 4
+        
+        if index == 0:
+            return GeomNode('empty_chunk')
+
+        geom = Geom(vdata)
+        geom.addPrimitive(tris)
+        node = GeomNode('chunk_mesh')
+        node.addGeom(geom)
+        return node
+
+    @staticmethod
     def build_chunk_mesh_with_callback(
         heights: List[List[int]], 
         biomes: List[List[Any]], 

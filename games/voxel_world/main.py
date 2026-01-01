@@ -14,15 +14,16 @@ def run(**kwargs):
     # Create game instance
     game = VoxelGame(name=name, config_manager=hot_config)
     
-    # Register voxel_world's terrain system
-    from games.voxel_world.systems.world_gen import TerrainSystem
-    terrain_system = TerrainSystem(
+    # Register voxel_world's terrain system (uses engine ChunkManager)
+    from games.voxel_world.systems.world_gen import create_terrain_system
+    terrain_system = create_terrain_system(
         game.world, 
         game.world.event_bus, 
         game, 
         game.texture_atlas
     )
     game.register_terrain_system(terrain_system)
+
     
     # Register combat systems
     from games.voxel_world.systems.stamina_system import StaminaSystem

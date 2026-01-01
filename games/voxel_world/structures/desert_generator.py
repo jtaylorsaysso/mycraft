@@ -52,8 +52,7 @@ class CactusGenerator(StructureGenerator):
         height = self.random.randint(2, 4)
         
         for dy in range(height):
-            # Use wood as placeholder for cactus
-            blocks.append((x, y + dy + 1, z, "wood"))
+            blocks.append((x, y + dy + 1, z, "cactus"))
         
         return Structure(blocks=blocks, origin=(x, y, z))
     
@@ -68,7 +67,7 @@ class CactusGenerator(StructureGenerator):
         # Main trunk (3-5 blocks)
         trunk_height = self.random.randint(3, 5)
         for dy in range(trunk_height):
-            blocks.append((x, y + dy + 1, z, "wood"))
+            blocks.append((x, y + dy + 1, z, "cactus"))
         
         # Add 1-2 branches
         num_branches = self.random.randint(1, 2)
@@ -91,7 +90,7 @@ class CactusGenerator(StructureGenerator):
                     x + branch_dir[0] * i,
                     branch_y,
                     z + branch_dir[1] * i,
-                    "wood"
+                    "cactus"
                 ))
             
             # Vertical extension (1-2 blocks up from arm)
@@ -100,7 +99,7 @@ class CactusGenerator(StructureGenerator):
             arm_tip_z = z + branch_dir[1] * arm_length
             
             for dy in range(1, extension_height + 1):
-                blocks.append((arm_tip_x, branch_y + dy, arm_tip_z, "wood"))
+                blocks.append((arm_tip_x, branch_y + dy, arm_tip_z, "cactus"))
         
         return Structure(blocks=blocks, origin=(x, y, z))
     
@@ -115,7 +114,7 @@ class CactusGenerator(StructureGenerator):
         height = self.random.randint(5, 7)
         
         for dy in range(height):
-            blocks.append((x, y + dy + 1, z, "wood"))
+            blocks.append((x, y + dy + 1, z, "cactus"))
         
         return Structure(blocks=blocks, origin=(x, y, z))
 
@@ -138,20 +137,20 @@ class DeadBushGenerator(StructureGenerator):
         return self._generate_dead_bush(x, y, z)
     
     def _generate_dead_bush(self, x: int, y: int, z: int) -> Structure:
-        """Generate a dead bush (small, sparse wood blocks).
+        """Generate a dead bush.
         
-        Structure: 1-2 wood blocks representing dried twigs
+        Structure: 1-2 dead_bush blocks
         """
         blocks = []
         self.random.seed(x * 10000 + z + self.seed)
         
         # Central block
-        blocks.append((x, y + 1, z, "wood"))
+        blocks.append((x, y + 1, z, "dead_bush"))
         
         # Maybe one more nearby
         if self.random.random() < 0.4:
             offset = self.random.choice([(-1, 0), (1, 0), (0, -1), (0, 1)])
-            blocks.append((x + offset[0], y + 1, z + offset[1], "wood"))
+            blocks.append((x + offset[0], y + 1, z + offset[1], "dead_bush"))
         
         return Structure(blocks=blocks, origin=(x, y, z))
 

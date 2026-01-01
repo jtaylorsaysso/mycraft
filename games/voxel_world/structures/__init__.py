@@ -19,6 +19,13 @@ from games.voxel_world.structures.desert_generator import (
     DeadBushGenerator,
     SandDuneAccentGenerator
 )
+from games.voxel_world.structures.shrine_structures import (
+    PlainsAltarGenerator,
+    ForestClearingGenerator,
+    MountainPeakGenerator,
+    CanyonOutcropGenerator,
+    RiversideRuinsGenerator
+)
 
 __all__ = [
     'StructureGenerator',
@@ -29,6 +36,11 @@ __all__ = [
     'FallenLogGenerator',
     'CactusGenerator',
     'DeadBushGenerator',
-    'SandDuneAccentGenerator'
+    'SandDuneAccentGenerator',
+    'PlainsAltarGenerator',
+    'ForestClearingGenerator',
+    'MountainPeakGenerator',
+    'CanyonOutcropGenerator',
+    'RiversideRuinsGenerator'
 ]
 

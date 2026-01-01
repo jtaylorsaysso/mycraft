@@ -103,6 +103,10 @@ class BiomeRegistry:
         Uses simple noise-based biome selection for smooth transitions
         and variety across the world. Now includes mountain and canyon biomes.
         
+        NOTE: Water-based biomes (river, beach, swamp) are temporarily disabled
+        until water visual enhancements are complete. They are replaced with
+        terrestrial equivalents.
+        
         Args:
             x: World X coordinate
             z: World Z coordinate
@@ -118,24 +122,32 @@ class BiomeRegistry:
         secondary_noise = get_noise(x + 1000, z + 1000, scale=0.01, octaves=2)
         
         # River noise (looking for ridges/valleys)
-        river_noise = abs(get_noise(x, z, scale=0.012, octaves=2))
-        if river_noise < 0.15: # Narrow bands
-             return cls.get_biome("river")
+        # DISABLED: Water visuals need enhancement
+        # river_noise = abs(get_noise(x, z, scale=0.012, octaves=2))
+        # if river_noise < 0.15: # Narrow bands
+        #      return cls.get_biome("river")
 
         # Main biome selection
         if biome_value < -1.5:
             return cls.get_biome("canyon")  # Deep valleys
         elif biome_value < -0.8:
+            # DISABLED: Beach/swamp replaced with desert/plains
             # Check for water proximity for beach/swamp
             # Water noise (simulating moisture/water level)
-            water_noise = get_noise(x + 2000, z + 2000, scale=0.015, octaves=2)
+            # water_noise = get_noise(x + 2000, z + 2000, scale=0.015, octaves=2)
             
             # If low terrain and high moisture/water proximity
-            if secondary_noise < -0.2: 
-                if water_noise > 0.0:
-                    return cls.get_biome("swamp")
-                else:
-                    return cls.get_biome("beach")
+            # if secondary_noise < -0.2: 
+            #     if water_noise > 0.0:
+            #         return cls.get_biome("swamp")
+            #     else:
+            #         return cls.get_biome("beach")
+            # else:
+            #     return cls.get_biome("desert")
+            
+            # Temporary: Replace beach/swamp areas with desert or plains
+            if secondary_noise < -0.2:
+                return cls.get_biome("plains")  # Instead of beach/swamp
             else:
                 return cls.get_biome("desert")
         elif biome_value < 0.0:

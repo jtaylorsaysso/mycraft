@@ -19,6 +19,12 @@ All phases of combat animation integration complete. Combat prototype fully func
 - [x] **Phase 3: Parry Timing** - Wired timing quality detection to animation selection (success/fail)
 - [x] **Phase 3: Parry Testing** - Verified parry stance and recovery animations work correctly
 
+### Player Avatar Issues
+
+**Priority:** High | **Effort:** ~2-4 hours
+
+- [ ] **Detached Legs** - PlayerAvatar legs are detached from the model. Needs investigation of skeletal/mesh alignment or weight painting.
+
 **Technical Debt from Phase 1:**
 
 - [x] **Skeleton/Visual Retargeting** - Fixed by implementing correct `rest_transform` logic in Skeleton and Animation Sources. Avatar now respects bone lengths and skeletal structure.
@@ -124,6 +130,7 @@ Remaining items from state management cleanup:
 - [ ] No particle effects (dust clouds, jump/land impacts)
 - [ ] Basic static lighting - needs dynamic lighting and shadows
 - [ ] No skybox or atmosphere rendering
+- [ ] **Water Visuals**: Current implementation is functional but visually basic (jelly-like wobble). Needs reflections, foam, varied opacity, and underwater fog.
 
 ### Input & Controls
 

@@ -128,6 +128,23 @@ Mechanics can write shared state that other mechanics read. For example:
 
 ## Built-in Mechanics
 
+### SwimmingMechanic (Priority: 40)
+
+**Purpose**: Handles vertical swimming movement and water physics interaction
+
+**Location**: [engine/player_mechanics/swimming.py](file:///home/jamest/Desktop/dev/mycraft/engine/player_mechanics/swimming.py)
+
+**Responsibilities**:
+
+- Detecs if player is in water via `ctx.state.in_water`
+- Applies vertical movement forces (Space=Up, Shift=Down)
+- Applies buoyancy force (via integration with `WaterPhysicsSystem`)
+- Reduces horizontal speed movement when submerged
+
+**Why priority 40?** Runs near ground movement, allowing water physics to modify or override standard movement behavior relative to the environment.
+
+---
+
 ### InputMechanic (Priority: 1000)
 
 **Purpose**: Polls input and populates `ctx.input`

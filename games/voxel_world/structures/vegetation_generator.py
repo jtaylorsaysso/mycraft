@@ -53,29 +53,32 @@ class VegetationGenerator(StructureGenerator):
     def _generate_tall_grass(self, x: int, y: int, z: int) -> Structure:
         """Generate tall grass (1-2 blocks tall).
         
-        Structure: Single column of leaves (representing grass)
+        Structure: Single column of tall_grass blocks
         """
         blocks = []
         self.random.seed(x * 10000 + z + self.seed)
         
-        # 1 or 2 blocks tall
-        height = self.random.randint(1, 2)
+        # 1 block tall (tall grass is usually 1 block high visually, double tall is rare)
+        # Improving logic: mostly 1 block high
+        height = 1
+        if self.random.random() < 0.2:
+            height = 2
+            
         for dy in range(height):
-            blocks.append((x, y + dy + 1, z, "leaves"))
+            blocks.append((x, y + dy + 1, z, "tall_grass"))
         
         return Structure(blocks=blocks, origin=(x, y, z))
     
     def _generate_flower_patch(self, x: int, y: int, z: int) -> Structure:
         """Generate a small flower patch.
         
-        Structure: 2-3 leaves blocks in a small cluster
-        (In future, could use colored blocks for flower variety)
+        Structure: 2-3 flower blocks in a small cluster
         """
         blocks = []
         self.random.seed(x * 10000 + z + self.seed)
         
         # Center flower
-        blocks.append((x, y + 1, z, "leaves"))
+        blocks.append((x, y + 1, z, "flower"))
         
         # 1-2 adjacent flowers
         num_flowers = self.random.randint(1, 2)
@@ -84,14 +87,14 @@ class VegetationGenerator(StructureGenerator):
         
         for i in range(num_flowers):
             dx, dz = offsets[i]
-            blocks.append((x + dx, y + 1, z + dz, "leaves"))
+            blocks.append((x + dx, y + 1, z + dz, "flower"))
         
         return Structure(blocks=blocks, origin=(x, y, z))
     
     def _generate_mushroom_cluster(self, x: int, y: int, z: int) -> Structure:
         """Generate a mushroom cluster.
         
-        Structure: Small wood 'stems' with leaf 'caps'
+        Structure: Small wood 'stems' with mushroom 'caps'
         """
         blocks = []
         self.random.seed(x * 10000 + z + self.seed)
@@ -104,41 +107,41 @@ class VegetationGenerator(StructureGenerator):
         for i in range(num_mushrooms):
             dx, dz = offsets[i]
             
-            # Stem (wood)
-            blocks.append((x + dx, y + 1, z + dz, "wood"))
-            
-            # Cap (leaves) - sometimes
-            if self.random.random() < 0.7:
-                blocks.append((x + dx, y + 2, z + dz, "leaves"))
+            # Use mushroom block (directly on ground?)
+            # Or stem + mushroom cap?
+            # Let's simple mushroom block on ground for small mushrooms
+            blocks.append((x + dx, y + 1, z + dz, "mushroom"))
+             
+            # If we want giant mushrooms, that's a different structure
         
         return Structure(blocks=blocks, origin=(x, y, z))
     
     def _generate_fern(self, x: int, y: int, z: int) -> Structure:
-        """Generate a fern (multi-block leaf pattern).
+        """Generate a fern (multi-block pattern).
         
-        Structure: Wider spread of leaves, 1-2 blocks tall
+        Structure: Wider spread of fern blocks
         """
         blocks = []
         self.random.seed(x * 10000 + z + self.seed)
         
         # Center
-        blocks.append((x, y + 1, z, "leaves"))
+        blocks.append((x, y + 1, z, "fern"))
         
         # Spread pattern (plus or X shape)
         if self.random.random() < 0.5:
             # Plus shape
             for dx, dz in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 if self.random.random() < 0.6:
-                    blocks.append((x + dx, y + 1, z + dz, "leaves"))
+                    blocks.append((x + dx, y + 1, z + dz, "fern"))
         else:
             # X shape
             for dx, dz in [(-1, -1), (1, 1), (-1, 1), (1, -1)]:
                 if self.random.random() < 0.6:
-                    blocks.append((x + dx, y + 1, z + dz, "leaves"))
+                    blocks.append((x + dx, y + 1, z + dz, "fern"))
         
-        # Sometimes add second layer
+        # Sometimes add second layer (tall fern logic?)
         if self.random.random() < 0.3:
-            blocks.append((x, y + 2, z, "leaves"))
+            blocks.append((x, y + 2, z, "fern"))
         
         return Structure(blocks=blocks, origin=(x, y, z))
 
