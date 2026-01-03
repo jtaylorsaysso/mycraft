@@ -225,5 +225,44 @@ class TestHumanoidSkeleton(unittest.TestCase):
         self.assertEqual(chain[-1].name, "head")
 
 
+class TestHumanoidSkeletonValidation(unittest.TestCase):
+    """Test humanoid skeleton validation methods."""
+    
+    def test_valid_skeleton_passes_structure_validation(self):
+        """A properly constructed HumanoidSkeleton should pass validation."""
+        skeleton = HumanoidSkeleton()
+        
+        # Should not raise
+        skeleton.validate_structure()
+    
+    def test_valid_skeleton_passes_constraint_validation(self):
+        """A properly constructed HumanoidSkeleton should pass constraint validation."""
+        skeleton = HumanoidSkeleton()
+        
+        # Should not raise
+        skeleton.validate_constraints()
+    
+    def test_get_expected_bones_returns_list(self):
+        """get_expected_bones() should return canonical bone list."""
+        expected = HumanoidSkeleton.get_expected_bones()
+        
+        self.assertIsInstance(expected, list)
+        self.assertEqual(len(expected), 18)
+        self.assertIn("hips", expected)
+        self.assertIn("head", expected)
+    
+    def test_expected_bones_matches_actual(self):
+        """EXPECTED_BONE_NAMES should match actual bones in skeleton."""
+        skeleton = HumanoidSkeleton()
+        
+        # All expected bones should exist
+        for bone_name in HumanoidSkeleton.EXPECTED_BONE_NAMES:
+            self.assertIn(bone_name, skeleton.bones)
+        
+        # All actual bones should be expected
+        for bone_name in skeleton.bones.keys():
+            self.assertIn(bone_name, HumanoidSkeleton.EXPECTED_BONE_NAMES)
+
+
 if __name__ == '__main__':
     unittest.main()

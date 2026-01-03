@@ -282,6 +282,15 @@ class HumanoidSkeleton(Skeleton):
                 └── foot_right
     """
     
+    # Canonical bone names for validation
+    EXPECTED_BONE_NAMES = [
+        "hips", "spine", "chest", "head",
+        "shoulder_left", "upper_arm_left", "forearm_left", "hand_left",
+        "shoulder_right", "upper_arm_right", "forearm_right", "hand_right",
+        "thigh_left", "shin_left", "foot_left",
+        "thigh_right", "shin_right", "foot_right"
+    ]
+    
     # Bone length constants (in voxel units)
     # Bone length constants (in voxel units)
     # Scaled for ~1.8m total height
@@ -413,8 +422,9 @@ class HumanoidSkeleton(Skeleton):
         # Thigh Left (Child of Hips). Hips are Neutral (World Space).
         # We want Thigh to point Down (World -Z).
         # Map Y to -Z. Pitch -90 in Panda3D.
+        # Position legs slightly behind center (-Y) and closer together
         self.bones["thigh_left"].local_transform.rotation = LVector3f(0, -90, 0)
-        self.bones["thigh_left"].local_transform.position = LVector3f(-0.15, 0, 0) # Offset from Hips
+        self.bones["thigh_left"].local_transform.position = LVector3f(-0.10, -0.05, 0)
         
         # Legs extend along +Y (World -Z).
         self.bones["shin_left"].local_transform.rotation = LVector3f(0, 0, 0)
@@ -424,7 +434,7 @@ class HumanoidSkeleton(Skeleton):
         self.bones["foot_left"].local_transform.position = LVector3f(0, self.SHIN_LENGTH, 0)
         
         self.bones["thigh_right"].local_transform.rotation = LVector3f(0, -90, 0)
-        self.bones["thigh_right"].local_transform.position = LVector3f(0.15, 0, 0)
+        self.bones["thigh_right"].local_transform.position = LVector3f(0.10, -0.05, 0)
         
         self.bones["shin_right"].local_transform.rotation = LVector3f(0, 0, 0)
         self.bones["shin_right"].local_transform.position = LVector3f(0, self.THIGH_LENGTH, 0)
@@ -441,3 +451,108 @@ class HumanoidSkeleton(Skeleton):
         # Update world transforms (still useful for logic that might read them, 
         # but not used for rendering anymore by us directly, though Panda does it under hood for nodes)
         self.update_world_transforms()
+    
+    @classmethod
+    def get_expected_bones(cls) -> List[str]:
+        """Get the canonical list of expected bone names.
+        
+        Returns:
+            List of bone names that should be present in a valid HumanoidSkeleton
+        """
+        return cls.EXPECTED_BONE_NAMES.copy()
+    
+    def validate_structure(self) -> None:
+        """Validate that skeleton has all expected bones with correct hierarchy.
+        
+        Raises:
+            ValueError: If skeleton is missing bones or has incorrect structure
+        """
+        # Check all expected bones exist
+        missing_bones = []
+        for bone_name in self.EXPECTED_BONE_NAMES:
+            if bone_name not in self.bones:
+                missing_bones.append(bone_name)
+        
+        if missing_bones:
+            raise ValueError(
+                f"HumanoidSkeleton is missing required bones: {', '.join(missing_bones)}"
+            )
+        
+        # Check for unexpected extra bones
+        extra_bones = []
+        for bone_name in self.bones.keys():
+            if bone_name not in self.EXPECTED_BONE_NAMES:
+                extra_bones.append(bone_name)
+        
+        if extra_bones:
+            raise ValueError(
+                f"HumanoidSkeleton has unexpected bones: {', '.join(extra_bones)}"
+            )
+        
+        # Validate hierarchy relationships (spot checks for key chains)
+        # Check spine chain
+        spine_chain = self.get_chain("hips", "head")
+        if len(spine_chain) != 4:  # hips -> spine -> chest -> head
+            raise ValueError(
+                f"Invalid spine chain: expected 4 bones, got {len(spine_chain)}"
+            )
+        
+        # Check arm chains
+        left_arm_chain = self.get_chain("shoulder_left", "hand_left")
+        if len(left_arm_chain) != 4:  # shoulder -> upper_arm -> forearm -> hand
+            raise ValueError(
+                f"Invalid left arm chain: expected 4 bones, got {len(left_arm_chain)}"
+            )
+        
+        right_arm_chain = self.get_chain("shoulder_right", "hand_right")
+        if len(right_arm_chain) != 4:
+            raise ValueError(
+                f"Invalid right arm chain: expected 4 bones, got {len(right_arm_chain)}"
+            )
+        
+        # Check leg chains
+        left_leg_chain = self.get_chain("thigh_left", "foot_left")
+        if len(left_leg_chain) != 3:  # thigh -> shin -> foot
+            raise ValueError(
+                f"Invalid left leg chain: expected 3 bones, got {len(left_leg_chain)}"
+            )
+        
+        right_leg_chain = self.get_chain("thigh_right", "foot_right")
+        if len(right_leg_chain) != 3:
+            raise ValueError(
+                f"Invalid right leg chain: expected 3 bones, got {len(right_leg_chain)}"
+            )
+    
+    def validate_constraints(self) -> None:
+        """Validate that key bones have appropriate rotation constraints.
+        
+        Raises:
+            ValueError: If constraints are missing or incorrectly configured
+        """
+        # Check elbow constraints (should only bend one way)
+        for elbow_name in ["forearm_left", "forearm_right"]:
+            elbow = self.get_bone(elbow_name)
+            if not elbow or not elbow.constraints:
+                raise ValueError(f"Bone '{elbow_name}' missing constraints")
+            
+            # Elbows should have limited pitch range (0 to 150)
+            if elbow.constraints.min_p != 0 or elbow.constraints.max_p != 150:
+                raise ValueError(
+                    f"Bone '{elbow_name}' has incorrect constraints: "
+                    f"expected min_p=0, max_p=150, got min_p={elbow.constraints.min_p}, "
+                    f"max_p={elbow.constraints.max_p}"
+                )
+        
+        # Check knee constraints (should only bend backward)
+        for knee_name in ["shin_left", "shin_right"]:
+            knee = self.get_bone(knee_name)
+            if not knee or not knee.constraints:
+                raise ValueError(f"Bone '{knee_name}' missing constraints")
+            
+            # Knees should have limited pitch range (-150 to 0)
+            if knee.constraints.min_p != -150 or knee.constraints.max_p != 0:
+                raise ValueError(
+                    f"Bone '{knee_name}' has incorrect constraints: "
+                    f"expected min_p=-150, max_p=0, got min_p={knee.constraints.min_p}, "
+                    f"max_p={knee.constraints.max_p}"
+                )

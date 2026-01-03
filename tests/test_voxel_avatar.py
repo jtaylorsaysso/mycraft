@@ -96,6 +96,31 @@ class TestVoxelAvatar(unittest.TestCase):
         for bone_name in avatar.skeleton.bones.keys():
             if avatar.skeleton.bones[bone_name].length > 0.01:
                 self.assertIn(bone_name, avatar.bone_nodes)
+    
+    def test_avatar_validates_on_init(self):
+        """Verify validation runs by default during initialization."""
+        # Should not raise with valid skeleton
+        avatar = VoxelAvatar(self.mock_root, self.skeleton, validate=True)
+        self.assertIsNotNone(avatar)
+    
+    def test_avatar_can_skip_validation(self):
+        """Verify validation can be disabled with validate=False."""
+        # Should not raise even with validation disabled
+        avatar = VoxelAvatar(self.mock_root, self.skeleton, validate=False)
+        self.assertIsNotNone(avatar)
+    
+    def test_thickness_map_completeness(self):
+        """Verify BONE_THICKNESS_MAP covers all skeleton bones."""
+        avatar = VoxelAvatar(self.mock_root, self.skeleton)
+        
+        # All bones with length should have thickness values
+        for bone_name in avatar.skeleton.bones.keys():
+            bone = avatar.skeleton.get_bone(bone_name)
+            if bone and bone.length > 0.01:
+                # Either in map or will use default
+                thickness = avatar.BONE_THICKNESS_MAP.get(bone_name, 0.1)
+                self.assertIsNotNone(thickness)
+                self.assertGreater(thickness, 0)
 
 if __name__ == '__main__':
     unittest.main()

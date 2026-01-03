@@ -100,7 +100,7 @@ class TimelineWidget:
                 tick_height = self.height * 0.3
                 # Add time label
                 label = DirectLabel(
-                    text=f\"{time:.1f}s\",
+                    text=f"{time:.1f}s",
                     scale=0.03,
                     pos=(x, 0, -self.height * 0.5 - 0.05),
                     text_fg=(0.7, 0.7, 0.7, 1),

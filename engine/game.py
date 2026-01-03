@@ -20,6 +20,12 @@ from engine.voxel.block import Block
 from engine.input.manager import InputManager
 from engine.input.keybindings import KeyBindingManager
 
+# Animation Editor
+from engine.animation.animation_registry import get_animation_registry
+from engine.ui.animation_editor import AnimationEditorWindow
+from engine.ui.editors.voxel_model_editor import VoxelModelEditorWindow
+from engine.ui.editor_manager import EditorManager
+
 # Panda3D imports
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import LVector3f, WindowProperties
@@ -52,7 +58,8 @@ class VoxelGame(ShowBase):
         # Window setup
         props = WindowProperties()
         props.setTitle(name)
-        self.win.requestProperties(props)
+        if self.win:
+            self.win.requestProperties(props)
         self.disableMouse() # Disable default camera controls
         
         self.name = name
@@ -73,6 +80,14 @@ class VoxelGame(ShowBase):
         
         # Core key bindings
         self.accept('f9', self.take_screenshot)
+        
+        # Editor Manager
+        self.editor_manager = EditorManager(self)
+        self._setup_editors()
+        
+        # Key bindings
+        self.accept('f4', lambda: self.editor_manager.toggle_editor("Animation Editor"))
+        self.accept('f6', lambda: self.editor_manager.toggle_editor("Model Editor"))
         
         # Environment and Rendering
         from engine.rendering.environment import EnvironmentManager
@@ -155,6 +170,17 @@ class VoxelGame(ShowBase):
             print("📸 Screenshot saved to game directory")
         else:
             print("❌ Screenshot failed - check console for errors")
+
+    def _setup_editors(self):
+        """Initialize and register editor tools."""
+        self.anim_registry = get_animation_registry()
+        
+        # Create editors (lazy loaded or upfront - simplified to upfront for now for stability)
+        anim_editor = AnimationEditorWindow(self, self.anim_registry)
+        self.editor_manager.register_editor("Animation Editor", anim_editor)
+        
+        model_editor = VoxelModelEditorWindow(self)
+        self.editor_manager.register_editor("Model Editor", model_editor)
 
     def _setup_default_systems(self):
         """Add core systems to the world."""

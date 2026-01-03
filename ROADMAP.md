@@ -1,7 +1,7 @@
 # MyCraft Roadmap
 
-**Last Updated**: 2025-12-31  
-**Current Version**: v0.2 - Combat Prototype
+**Last Updated**: 2026-01-03  
+**Current Version**: v0.2 (Combat Prototype) → v1.0-Hybrid (In Planning)
 
 > [!IMPORTANT]
 > **Semantic Versioning Adopted**: This roadmap now uses semantic versioning (v0.x → v1.0 → v2.0 → v3.0) aligned with the design team's vision.
@@ -54,6 +54,7 @@ Sprint-level details and task tracking are managed in [`docs/tech_debt.md`](docs
 - Fix remaining test failures (37 tests, mostly minor edge cases)
 - Complete documentation pass (API references, developer guides)
 - Performance baseline established
+- **Tooling Foundation**: Editor Manager and Base Editor Architecture ✅
 
 ---
 
@@ -80,13 +81,35 @@ Sprint-level details and task tracking are managed in [`docs/tech_debt.md`](docs
 
 ---
 
-## v1.0 - Alpha: Core Gameplay Loop
+## v1.0-Hybrid - Alpha: Color Combat Loop
 
-> **Theme**: "Can I play the game and have fun for 1 hour?"
+> **Theme**: "Can I play the game, customize, AND have fun with friends for 1 hour?"
 
-**Status**: Planned (Milestone 2 completion)  
-**Target**: ~6-8 weeks (Est. Feb 2026)  
-**Goal**: Deliver playable alpha with exploration → challenge → reward loop
+**Status**: 🚧 In Active Development (Started Jan 2026)  
+**Current Milestone**: 1/7 - Color Foundation  
+**Target**: ~10 weeks (Jan 6 → Mar 10, 2026)  
+**Goal**: Deliver playable alpha with exploration → combat → loot → customize → social play loop
+
+> [!IMPORTANT]
+> **Hybrid Approach**: Parallel development of game systems AND avatar customization. Colors are integrated gameplay rewards, not separate cosmetics.
+
+### Development Milestones
+
+#### Week 1: Foundation & Visuals
+
+- ⏳ **M1: Color Foundation** (2-3h) - Core color system infrastructure
+- 🔒 **M2: Avatar Rendering** (2-3h) - Visual avatar customization
+- 🔒 **M3: Enemy Tinting** (2-3h) - Colored enemies in camps
+
+#### Week 2: Gameplay Loop
+
+- 🔒 **M4: Color Drops & Pickup** (2-3h) - Complete loot loop
+- 🔒 **M5: Color Projectiles** (3-4h) - Throw colors at friends
+
+#### Week 3: Social Features
+
+- 🔒 **M6: Trading System** (2-3h) - Share colors between players
+- 🔒 **M7: Network Sync** (2-3h) - Multiplayer color state sync
 
 ### Features
 
@@ -96,45 +119,101 @@ Sprint-level details and task tracking are managed in [`docs/tech_debt.md`](docs
 - Movement mechanics (walk, run, jump, climb, vault)
 - Multiplayer co-op (networking infrastructure ready)
 - 8 normal biomes (Plains, Forest, Rocky, Desert, Mountain, Canyon, River, Beach/Swamp)
+- POI System (Shrines + Camps)
 
-#### New for v1.0 🎯
+#### New for v1.0-Hybrid 🎯
 
-- **POI System**: Discoverable Points of Interest
-  - Challenge Shrines (3-5 types)
-  - Visible landmarks from far away
-  - Reward chests with basic loot
-- **First Enemy Type**: Skeleton
+##### Enemy Types (2 Variants)
+
+- **Skeleton**
   - Telegraphed attacks (1.5s windup)
   - AI state machine (Idle → Aggro → Windup → Attack → Recovery)
   - Health: 50, Damage: 20
-- **Death System**:
-  - Respawn at last safe point
-  - Item recovery (Elden Ring-style, no time limit)
-  - Death = inconvenience, not punishment
-- **Balanced Difficulty**:
-  - Casual-first approach (default)
-  - Accessible to broad audience
-  - Optional difficulty variants deprioritized for now
-- **Basic Loot**:
-  - Loot drops from enemies
-  - Collectible items in shrines
-  - Inventory system functional
+  - Medium speed, solo hunter
+  - Visual: Bone-white base with color tint overlay
+  
+- **Zombie** (NEW)
+  - Slower attacks (2.0s windup)
+  - Health: 80, Damage: 15
+  - Slow shambling movement
+  - Pack behavior (nearby zombies aggro together)
+  - Visual: Decayed appearance, must look like zombies
+  - Stronger color tint than skeletons
+
+##### Color Combat Loop (NEW)
+
+- **Starter Palette**: 8 basic colors (primary + secondary) available immediately
+- **Enemy Tinting**: Enemies visually tinted to signal their color drop
+- **Color Drops**: Defeating enemies drops color swatches (collectible loot)
+- **Camp Seeding**: Each camp has consistent 2-4 colors (seeded per world)
+- **Avatar Customization**: Apply unlocked colors to avatar body and per-bone
+- **Color Projectiles**:
+  - Throw colors at other players (T key)
+  - 60-second temporary color override
+  - 3-second cooldown, non-depleting
+  - Player-only projectiles (reusable foundation for future systems)
+- **Trading System**:
+  - Give swatches to nearby players
+  - G to offer → Y/N to accept/decline
+  
+##### POI Rewards (NEW)
+
+- **Preset Unlocks**: Complete shrines → unlock full avatar presets
+  - Knight (steel armor + gold helmet)
+  - Ranger (forest green + brown hood)
+  - Mage (purple robes + glowing hands)
+  - More presets planned
+
+##### Death System
+
+- Respawn at last safe point
+- Item recovery (Elden Ring-style, no time limit)
+- Drop color swatches on death (recoverable)
+- Death = inconvenience, not punishment
+
+##### Social Features (NEW)
+
+- Trade colors between players
+- Throw colors at friends for temporary "paint" effect
+- Multiplayer sees your customization (including temp overrides)
+- Share camp coordinates for rare colors
 
 ### Success Criteria
 
-- [ ] Player can explore → find POI → defeat enemies → collect loot
+- [ ] Player can explore → find camp → defeat enemies → collect colors
+- [ ] Enemy tint clearly signals color reward
+- [ ] Avatar customization feels rewarding and fun
+- [ ] Color projectiles create playful chaos in multiplayer
+- [ ] Trading system works smoothly
+- [ ] Preset unlocks from shrines feel special
 - [ ] Combat feels fun and skill-based
-- [ ] Multiplayer supports 2-4 players co-op
+- [ ] Multiplayer supports 2-4 players with color sync
 - [ ] Death/respawn loop is forgiving
-- [ ] 1-hour playtest reveals engaging core loop
+- [ ] 1-hour playtest reveals engaging combat AND customization loop
 
 ### Effort Estimate
 
-- POI System: ~2-3 weeks
-- Skeleton Enemy AI: ~1-2 weeks
+**Track A: Game Systems**
+
+- Skeleton + Zombie AI: ~3 weeks
 - Death System: ~1 week
-- Basic Loot: ~1 week
-- **Total**: ~6-8 weeks
+- Camp Color Seeding: ~3 days
+
+**Track B: Color Systems**
+
+- Avatar Color Foundation: ~1 week
+- Color Drop + Pickup: ~1 week
+- Projectile System (Reusable): ~1 week
+- Trading System: ~1 week
+- Preset System: ~2 weeks
+
+**Integration + Polish**
+
+- UI Polish: ~1 week
+- Network Sync: ~1 week
+- Integration Testing: ~2 weeks
+
+**Total**: ~10 weeks
 
 ---
 
@@ -142,8 +221,8 @@ Sprint-level details and task tracking are managed in [`docs/tech_debt.md`](docs
 
 > **Theme**: "Add variety to the 1-hour loop"
 
-**Status**: Planned (Milestone 2.5)  
-**Target**: ~2-3 months (Est. Apr-May 2026)  
+**Status**: Planned (Post v1.0-Hybrid)  
+**Target**: ~2-3 months (Est. Apr-Jun 2026)  
 **Goal**: Expand content without adding new systems
 
 ### v1.1 - Enemy Variety 🎯
@@ -151,22 +230,21 @@ Sprint-level details and task tracking are managed in [`docs/tech_debt.md`](docs
 **Priority**: High  
 **Effort**: ~2-3 weeks
 
-- **Zombie Enemy** (requested by design team)
-  - Must look like zombies (design requirement)
-  - Shambling movement, slower but higher health
-  - Group behavior (zombies hunt in packs)
-- **2-3 Additional Enemy Types**:
+- **Additional Enemy Types** (Skeletons + Zombies already in v1.0-Hybrid):
   - Archer (ranged combat)
   - Brute (high damage, slow attacks)
   - Agile (fast, low health)
-  
+- **Enemy Variations**:
+  - Tinted variants with rare color drops
+  - Elite enemies with multiple colors
+
 ### v1.2 - More POI Types 🎯
 
 **Priority**: Medium  
 **Effort**: ~2-3 weeks
 
 - **Caves**: Underground exploration
-- **Camps**: Enemy outposts with loot
+- **Camps**: Enemy outposts with loot (already basic in v1.0-Hybrid)
 - **Towers**: Vertical climbing challenges
 - **Ruins**: Puzzle-based POIs
 

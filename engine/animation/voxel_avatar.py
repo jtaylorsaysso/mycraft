@@ -15,7 +15,29 @@ class VoxelAvatar:
     A rigged voxel avatar with visual nodes generated from a HumanoidSkeleton.
     """
     
-    def __init__(self, parent_node: NodePath, skeleton: Optional[HumanoidSkeleton] = None, body_color=(0.2, 0.8, 0.2, 1.0)):
+    # Standardized bone thickness values for consistent visual representation
+    BONE_THICKNESS_MAP = {
+        "spine": 0.25,
+        "chest": 0.35,
+        "head": 0.25,
+        "hips": 0.30,
+        "thigh_left": 0.18,
+        "thigh_right": 0.18,
+        "shin_left": 0.15,
+        "shin_right": 0.15,
+        "upper_arm_left": 0.12,
+        "upper_arm_right": 0.12,
+        "forearm_left": 0.10,
+        "forearm_right": 0.10,
+        "shoulder_left": 0.15,
+        "shoulder_right": 0.15,
+        "hand_left": 0.08,
+        "hand_right": 0.08,
+        "foot_left": 0.12,
+        "foot_right": 0.12,
+    }
+    
+    def __init__(self, parent_node: NodePath, skeleton: Optional[HumanoidSkeleton] = None, body_color=(0.2, 0.8, 0.2, 1.0), validate: bool = True):
         """
         Initialize VoxelAvatar.
         
@@ -23,6 +45,7 @@ class VoxelAvatar:
             parent_node: Parent Panda3D NodePath.
             skeleton: Optional existing skeleton. If None, creates a new HumanoidSkeleton.
             body_color: Base color for the avatar.
+            validate: If True, validate skeleton structure on initialization (default: True).
         """
         self.root = parent_node.attachNewNode("VoxelAvatar")
         self.body_color = body_color
@@ -30,33 +53,17 @@ class VoxelAvatar:
         self.skeleton = skeleton if skeleton else HumanoidSkeleton()
         self.bone_nodes: Dict[str, NodePath] = {}
         
+        # Runtime validation (opt-out via validate=False)
+        if validate:
+            self.validate_avatar()
+        
         self._build_visuals()
         
     # Old _create_cube_visual removed. Logic moved to _create_bone_geometry.
 
     def _build_visuals(self):
         """Build visual nodes for all bones in skeleton."""
-        
-        # Specific thickness tweaks for body parts
-        thickness_map = {
-            "spine": 0.25,
-            "chest": 0.35,
-            "head": 0.25,
-            "hips": 0.30,
-            
-            "thigh_left": 0.18, "thigh_right": 0.18,
-            "shin_left": 0.15, "shin_right": 0.15,
-            
-            "upper_arm_left": 0.12, "upper_arm_right": 0.12,
-            "forearm_left": 0.10, "forearm_right": 0.10,
-        }
-        
-        # 1. Create hierarchy of empty nodes (skeleton structure)
-        # We traverse the bone list. Since skeleton.bones is a specific order,
-        # we need to ensure parents are created before children.
-        # But dictionary order isn't guaranteed (though in Py3.7+ it is insertion order).
-        # Safe way: recursive traversal from root.
-        
+        # Recursively build bone hierarchy from root
         self._build_bone_hierarchy(self.skeleton.root)
 
     def _build_bone_hierarchy(self, bone: Bone, parent_node: Optional[NodePath] = None):
@@ -85,17 +92,8 @@ class VoxelAvatar:
         # Build Visual (if bone has length)
         # Visual is a child of the bone node, aligned along Y
         if bone.length > 0.01:
-            # We want visual thickness
-            thickness_map = {
-                "spine": 0.25, "chest": 0.35, "head": 0.25, "hips": 0.30,
-                "thigh_left": 0.18, "thigh_right": 0.18,
-                "shin_left": 0.15, "shin_right": 0.15,
-                "upper_arm_left": 0.12, "upper_arm_right": 0.12,
-                "forearm_left": 0.10, "forearm_right": 0.10,
-                "shoulder_left": 0.15, "shoulder_right": 0.15, 
-            }
-            thickness = thickness_map.get(bone.name, 0.1)
-            
+            # Get thickness from standardized map
+            thickness = self.BONE_THICKNESS_MAP.get(bone.name, 0.1)
             self._create_bone_geometry(bone_node, bone.name, bone.length, thickness)
             
         # Recurse for children
@@ -133,5 +131,25 @@ class VoxelAvatar:
         # Geometry center is at length/2 along Y
         geom_holder.setPos(0, length / 2.0, 0)
 
+    def validate_avatar(self) -> None:
+        """Validate skeleton structure and avatar integrity.
+        
+        Raises:
+            ValueError: If skeleton is invalid or avatar has structural issues
+        """
+        # Validate skeleton structure
+        if isinstance(self.skeleton, HumanoidSkeleton):
+            self.skeleton.validate_structure()
+            self.skeleton.validate_constraints()
+        
+        # Validate all skeleton bones have thickness values
+        missing_thickness = []
+        for bone_name in self.skeleton.bones.keys():
+            if bone_name not in self.BONE_THICKNESS_MAP:
+                missing_thickness.append(bone_name)
+        
+        if missing_thickness:
+            print(f"⚠️ Warning: Bones missing thickness values (will use default 0.1): {', '.join(missing_thickness)}")
+    
     def cleanup(self):
         self.root.removeNode()
