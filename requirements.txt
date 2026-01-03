@@ -2,3 +2,4 @@ panda3d
 screeninfo
 numpy
 PyYAML
+panda3d-gltf

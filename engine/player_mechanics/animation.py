@@ -36,6 +36,7 @@ class AnimationMechanic(PlayerMechanic):
         """Called when player is ready."""
         self._player_id = player_id  # Store for event filtering
         try:
+            from engine.animation.glb_avatar import GLBAvatar
             from engine.animation.voxel_avatar import VoxelAvatar
             from engine.animation.mannequin import AnimationController
             from engine.animation.layers import LayeredAnimator, BoneMask
@@ -43,11 +44,22 @@ class AnimationMechanic(PlayerMechanic):
             from engine.animation.root_motion import RootMotionApplicator
             from engine.player_mechanics.combat_animation_source import CombatAnimationSource
             
-            # Create the avatar (visuals)
-            self.avatar = VoxelAvatar(
-                self.base.render, 
-                body_color=(0.2, 0.8, 0.2, 1.0)  # Greenish for local player
-            )
+            # Create the avatar (visuals) - try GLB first, fallback to procedural
+            try:
+                self.avatar = GLBAvatar(
+                    self.base.render,
+                    loader=self.base.loader
+                )
+                # Check if model actually loaded
+                if not hasattr(self.avatar, 'model') or self.avatar.model is None:
+                    raise RuntimeError("GLB model failed to load")
+                print("✅ Using GLBAvatar")
+            except Exception as e:
+                print(f"⚠️ GLBAvatar failed ({e}), falling back to VoxelAvatar")
+                self.avatar = VoxelAvatar(
+                    self.base.render, 
+                    body_color=(0.2, 0.8, 0.2, 1.0)
+                )
             
             # Create base animation controller for locomotion
             # Note: AnimationController still expects "mannequin" for backward compat properties?

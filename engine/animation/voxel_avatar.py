@@ -101,34 +101,52 @@ class VoxelAvatar:
             self._build_bone_hierarchy(child, bone_node)
 
     def _create_bone_geometry(self, parent_node: NodePath, name: str, length: float, thickness: float):
-        """Create visual geometry for bone."""
+        """Create visual geometry for bone.
+        
+        Creates a 6-face cube using CardMaker. Each face is positioned and rotated
+        to form a complete cube. Two-sided rendering is enabled to prevent backface culling issues.
+        """
         cm = CardMaker(f"cm_{name}")
-        cm.setFrame(-0.5, 0.5, -0.5, 0.5)
+        cm.setFrame(-0.5, 0.5, -0.5, 0.5)  # 1x1 card centered at origin
         
         # Container for geometry
         geom_holder = parent_node.attachNewNode(f"visual_{name}")
         
-        # Create cube faces
-        for face_info in [
-            (LVector3f(0, -0.5, 0), LVector3f(0, 0, 0)),    # Front
-            (LVector3f(0, 0.5, 0), LVector3f(180, 0, 0)),   # Back
-            (LVector3f(-0.5, 0, 0), LVector3f(90, 0, 0)),   # Left
-            (LVector3f(0.5, 0, 0), LVector3f(-90, 0, 0)),   # Right
-            (LVector3f(0, 0, 0.5), LVector3f(0, -90, 0)),   # Top
-            (LVector3f(0, 0, -0.5), LVector3f(0, 90, 0)),   # Bottom
-        ]:
+        # CardMaker creates cards in XZ plane, facing -Y by default.
+        # For a cube centered at origin with faces at ±0.5 on each axis:
+        # 
+        # Face positions and rotations (H=heading around Z, P=pitch around X, R=roll around Y):
+        # - Front (-Y face): at y=-0.5, needs to face -Y (default), no rotation
+        # - Back (+Y face): at y=+0.5, needs to face +Y, rotate H=180
+        # - Left (-X face): at x=-0.5, needs to face -X, rotate H=90
+        # - Right (+X face): at x=+0.5, needs to face +X, rotate H=-90 (or 270)
+        # - Top (+Z face): at z=+0.5, needs to face +Z, rotate P=-90
+        # - Bottom (-Z face): at z=-0.5, needs to face -Z, rotate P=90
+        
+        face_definitions = [
+            (LVector3f(0, -0.5, 0), LVector3f(0, 0, 0)),     # Front (-Y)
+            (LVector3f(0, 0.5, 0), LVector3f(180, 0, 0)),    # Back (+Y)
+            (LVector3f(-0.5, 0, 0), LVector3f(90, 0, 0)),    # Left (-X)
+            (LVector3f(0.5, 0, 0), LVector3f(-90, 0, 0)),    # Right (+X)
+            (LVector3f(0, 0, 0.5), LVector3f(0, -90, 0)),    # Top (+Z)
+            (LVector3f(0, 0, -0.5), LVector3f(0, 90, 0)),    # Bottom (-Z)
+        ]
+        
+        for pos, hpr in face_definitions:
             face = geom_holder.attachNewNode(cm.generate())
-            face.setPos(face_info[0])
-            face.setHpr(face_info[1])
+            face.setPos(pos)
+            face.setHpr(hpr)
+            # Enable two-sided rendering to prevent backface culling issues
+            face.setTwoSided(True)
             
         geom_holder.setColorScale(self.body_color)
         
         # Scale to match bone dimensions
-        # Visual aligns with Y axis (Forward)
+        # Visual aligns with Y axis (bone direction is +Y in local space)
         geom_holder.setScale(thickness, length, thickness)
         
         # Pivot is at start of bone (0,0,0)
-        # Geometry center is at length/2 along Y
+        # Geometry center is at length/2 along Y so cube spans from 0 to length
         geom_holder.setPos(0, length / 2.0, 0)
 
     def validate_avatar(self) -> None:

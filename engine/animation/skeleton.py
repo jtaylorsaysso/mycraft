@@ -294,6 +294,7 @@ class HumanoidSkeleton(Skeleton):
     # Bone length constants (in voxel units)
     # Bone length constants (in voxel units)
     # Scaled for ~1.8m total height
+    HIPS_LENGTH = 0.20  # Pelvic block
     SPINE_LENGTH = 0.3
     CHEST_LENGTH = 0.3
     HEAD_LENGTH = 0.25
@@ -308,6 +309,9 @@ class HumanoidSkeleton(Skeleton):
     def __init__(self):
         """Initialize humanoid skeleton with all bones and constraints."""
         super().__init__(root_name="hips")
+        
+        # Fix hips bone length (base Skeleton creates root with length=0)
+        self.root.length = self.HIPS_LENGTH
         
         # Spine chain
         self.add_bone("spine", "hips", self.SPINE_LENGTH)
@@ -362,21 +366,23 @@ class HumanoidSkeleton(Skeleton):
         # Set height to match Leg Length (Thigh + Shin) + slight offset
         # Leg = 0.45 + 0.45 = 0.9. Hips at 0.95 puts feet just on ground.
         self.bones["hips"].local_transform.position = LVector3f(0, 0, 0.95)
-        self.bones["hips"].local_transform.rotation = LVector3f(0, 0, 0) 
+        # Rotate Hips to point UP (+Z). This allows the pelvic block to align vertically.
+        # Pivot is at bottom of pelvis, +Y extends Up.
+        self.bones["hips"].local_transform.rotation = LVector3f(0, 90, 0) 
         
         # 2. Spine Chain (Upwards, +Z)
-        # Spine is child of Hips. Hips are neutral.
-        # We want Spine to go Up (+Z).
-        # We need to rotate Spine node so its +Y axis points Up (+Z).
-        # Rotate +90 around pitch (X axis) in Panda3D.
-        self.bones["spine"].local_transform.rotation = LVector3f(0, 90, 0)
-        self.bones["spine"].local_transform.position = LVector3f(0, 0, 0)
+        # Spine is child of Hips. Hips are pointing Up.
+        # Spine continues Up. Aligned with parent.
+        self.bones["spine"].local_transform.rotation = LVector3f(0, 0, 0)
+        self.bones["spine"].local_transform.position = LVector3f(0, self.HIPS_LENGTH * 0.5, 0) # Start from middle of hips?
+        # Actually Hips length is 0.2. Geometry center at 0.1.
+        # Spine should start at top of Hips bone (0.2 up).
+        self.bones["spine"].local_transform.position = LVector3f(0, self.HIPS_LENGTH, 0)
         
         # Chest (Child of Spine)
-        # Spine is now pointing Up. Chest continues Up.
-        # Since Parent (Spine) +Y is World +Z, Child (Chest) just needs to move along +Y.
+        # Spine is pointing Up. Chest continues Up.
         self.bones["chest"].local_transform.rotation = LVector3f(0, 0, 0) 
-        self.bones["chest"].local_transform.position = LVector3f(0, self.SPINE_LENGTH, 0) # Extend along parent bone
+        self.bones["chest"].local_transform.position = LVector3f(0, self.SPINE_LENGTH, 0)
         
         # Head (Child of Chest)
         self.bones["head"].local_transform.rotation = LVector3f(0, 0, 0)
@@ -385,16 +391,29 @@ class HumanoidSkeleton(Skeleton):
         # 3. Arms (Sideways, +/- X)
         # Shoulder Left (Child of Chest). Chest is pointing Up (World +Z).
         # We want Shoulder Left to point Left (World -X).
-        # In Chest's local space (aligned with World Z), World -X is ... well, Local X is World X.
-        # So Chest Local(1,0,0) is World(1,0,0).
-        # We want to point along World -X.
-        # Rotation: Map Y to -X. Heading 90.
+        # In Chest's local space (Aligned with World Z):
+        # Local X=World X, Local Y=World Z, Local Z=World -Y (Right-handed)
+        # Wait, if Chest Rot=(0,0,0) relative to Spine... relative to Hips(0,90,0)...
+        # Hips(0,90,0): X->X, Y->Z, Z->-Y
+        # So Chest Local Coordinates: X=World X, Y=World Z, Z=World -Y.
+        
+        # We want Shoulder Points Left (-X).
+        # Rotation: Head 90 around local Z? No.
+        # We want +Y (Bone Dir) to point -X.
+        # Current local axes: X(Right), Y(Up), Z(Back)
+        # Map Y->-X. Rotate 90 deg around Z.
+        # Heading 90 in Panda (around Z).
         self.bones["shoulder_left"].local_transform.rotation = LVector3f(90, 0, 0)
-        self.bones["shoulder_left"].local_transform.position = LVector3f(-0.20, self.CHEST_LENGTH * 0.9, 0) # Offset from chest origin
+        # Position: Offset from Chest Origin (Base of Chest).
+        # Chest Origin is at top of Spine.
+        # Ideally shoulder is near top of Chest.
+        # Offset: Left(-X), Up(+Y).
+        # Local Space (Y is Up).
+        # So (-0.2, 0.9*Length, 0) is correct in this space.
+        self.bones["shoulder_left"].local_transform.position = LVector3f(-0.20, self.CHEST_LENGTH * 0.9, 0)
         
         # Arms are children of Shoulder. Shoulder points -X.
         # Arms just extend along +Y (which is World -X).
-        # No rotation needed.
         self.bones["upper_arm_left"].local_transform.rotation = LVector3f(0, 0, 0)
         self.bones["upper_arm_left"].local_transform.position = LVector3f(0, self.SHOULDER_LENGTH, 0)
         
@@ -419,22 +438,30 @@ class HumanoidSkeleton(Skeleton):
         self.bones["hand_right"].local_transform.position = LVector3f(0, self.FOREARM_LENGTH, 0)
         
         # 4. Legs (Downwards, -Z)
-        # Thigh Left (Child of Hips). Hips are Neutral (World Space).
+        # Thigh Left (Child of Hips). Hips are Pointing Up (World Z).
         # We want Thigh to point Down (World -Z).
-        # Map Y to -Z. Pitch -90 in Panda3D.
-        # Position legs slightly behind center (-Y) and closer together
-        self.bones["thigh_left"].local_transform.rotation = LVector3f(0, -90, 0)
-        self.bones["thigh_left"].local_transform.position = LVector3f(-0.10, -0.05, 0)
+        # Hips Space: Y is Up.
+        # We want Thigh Y to be Down.
+        # Rotation 180 degrees (Pitch).
+        self.bones["thigh_left"].local_transform.rotation = LVector3f(0, 180, 0)
         
-        # Legs extend along +Y (World -Z).
+        # Position: Left(-X), Back(-Y in World).
+        # Hips Space (X=WorldX, Y=WorldZ, Z=-WorldY).
+        # Target World Offset: (-0.1, -0.05, 0).
+        # Local X = -0.1.
+        # Local Y (Up) = 0.
+        # Local Z (Back) = 0.05 (since Z is -WorldY).
+        self.bones["thigh_left"].local_transform.position = LVector3f(-0.10, 0, 0.05)
+        
+        # Legs extend along +Y (which is now Down/World -Z).
         self.bones["shin_left"].local_transform.rotation = LVector3f(0, 0, 0)
         self.bones["shin_left"].local_transform.position = LVector3f(0, self.THIGH_LENGTH, 0)
         
         self.bones["foot_left"].local_transform.rotation = LVector3f(0, 0, 0)
         self.bones["foot_left"].local_transform.position = LVector3f(0, self.SHIN_LENGTH, 0)
         
-        self.bones["thigh_right"].local_transform.rotation = LVector3f(0, -90, 0)
-        self.bones["thigh_right"].local_transform.position = LVector3f(0.10, -0.05, 0)
+        self.bones["thigh_right"].local_transform.rotation = LVector3f(0, 180, 0)
+        self.bones["thigh_right"].local_transform.position = LVector3f(0.10, 0, 0.05)
         
         self.bones["shin_right"].local_transform.rotation = LVector3f(0, 0, 0)
         self.bones["shin_right"].local_transform.position = LVector3f(0, self.THIGH_LENGTH, 0)

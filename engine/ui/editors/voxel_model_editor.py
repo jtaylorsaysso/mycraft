@@ -36,6 +36,15 @@ class VoxelModelEditorWindow(BaseEditorWindow):
         
     def setup(self):
         """Initialize Model Editor UI and Canvas."""
+        # 0. Create main frame container (required for base class hide/show)
+        self.main_frame = DirectFrame(
+            parent=self.ui_root,
+            frameColor=(0, 0, 0, 0),  # Transparent container
+            frameSize=(-1.5, 1.5, -1.0, 1.0),
+            pos=(0, 0, 0)
+        )
+        self.main_frame.hide()  # Start hidden
+        
         # 1. Canvas
         self.canvas = VoxelCanvas(self.base)
         # Move canvas to a safe spot or use a display region?
