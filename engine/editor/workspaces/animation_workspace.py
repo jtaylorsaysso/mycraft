@@ -1,7 +1,7 @@
 
 from typing import Optional
 from direct.gui.DirectGui import DirectEntry, DirectFrame, DirectLabel, DirectButton, DGG
-from panda3d.core import NodePath
+from panda3d.core import NodePath, ClockObject
 
 from engine.editor.workspace import Workspace
 from engine.editor.panels.clip_browser_panel import ClipBrowserPanel
@@ -141,7 +141,7 @@ class AnimationWorkspace(Workspace):
         if not self.playing or not self.current_clip:
             return task.cont
         
-        dt = globalClock.getDt()
+        dt = ClockObject.getGlobalClock().getDt()
         self.current_time += dt
         
         if self.current_clip.looping:
@@ -286,13 +286,20 @@ class AnimationWorkspace(Workspace):
         self._refresh_clip_list()
         
     def _execute_load(self, name):
+        if not name:
+            logger.warning("Load cancelled: no name provided")
+            return
+            
         try:
             clip = self.app.asset_manager.load_animation_clip(name)
             self.registry.register_clip(clip)
             self._refresh_clip_list()
             self._on_clip_selected(clip.name)
+            logger.info(f"Loaded clip: {clip.name}")
+        except FileNotFoundError:
+            logger.error(f"Clip file not found: {name}")
         except Exception as e:
-            logger.error(f"Load failed: {e}")
+            logger.error(f"Failed to load clip '{name}': {e}")
 
     def cleanup(self):
         super().cleanup()

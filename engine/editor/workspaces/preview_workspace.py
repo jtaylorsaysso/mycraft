@@ -1,7 +1,7 @@
 
 from typing import Optional
 from direct.gui.DirectGui import DirectFrame, DirectButton, DirectLabel
-from panda3d.core import NodePath, TextNode
+from panda3d.core import NodePath, TextNode, ClockObject
 
 from engine.editor.workspace import Workspace
 from engine.animation.skeleton import HumanoidSkeleton
@@ -149,7 +149,7 @@ class PreviewWorkspace(Workspace):
         if not self.playing or not self.current_clip:
             return task.cont
             
-        dt = globalClock.getDt()
+        dt = ClockObject.getGlobalClock().getDt()
         self.current_time += dt
         
         if self.current_clip.looping:
@@ -159,10 +159,14 @@ class PreviewWorkspace(Workspace):
             self.playing = False
             self.play_btn['text'] = "> Play"
             
-        # Apply Pose
-        pose = self.current_clip.get_pose(self.current_time)
-        self.skeleton.apply_pose(pose)
-        
+        # Apply Pose with error handling
+        try:
+            pose = self.current_clip.get_pose(self.current_time)
+            self.skeleton.apply_pose(pose)
+        except Exception as e:
+            logger.error(f"Failed to apply pose at time {self.current_time}: {e}")
+            self._stop_playback()
+            
         return task.cont
         
     def cleanup(self):

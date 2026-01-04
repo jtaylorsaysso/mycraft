@@ -1,12 +1,23 @@
 from direct.gui.DirectGui import DirectFrame, DirectLabel, DirectButton, DirectSlider, DirectCheckButton, DGG
 from panda3d.core import TextNode
 from engine.editor.tools.common.timeline_widget import TimelineWidget
+from engine.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 class TimelinePanel:
     """Bottom panel with timeline and playback controls."""
     
     def __init__(self, parent, callbacks):
         self.callbacks = callbacks # play, pause, stop, capture, delete_key
+        
+        # Validate required callbacks
+        required = ['play', 'pause', 'stop', 'capture', 'delete_key', 'looping']
+        missing = [k for k in required if k not in callbacks or callbacks[k] is None]
+        if missing:
+            logger.warning(f"TimelinePanel missing callbacks: {missing}. Using no-op placeholders.")
+            for key in missing:
+                self.callbacks[key] = lambda *args: None
         
         # Main container (Bottom strip)
         self.frame = DirectFrame(

@@ -1,5 +1,8 @@
 from direct.gui.DirectGui import DirectFrame, DirectLabel, DirectSlider
 from panda3d.core import TextNode
+from engine.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 class TransformInspectorPanel:
     """Right sidebar showing transform properties."""
@@ -7,6 +10,14 @@ class TransformInspectorPanel:
     def __init__(self, parent, selection, callbacks):
         self.selection = selection
         self.callbacks = callbacks # Dict of callback functions
+        
+        # Validate required callbacks
+        required = ['pos', 'rot', 'length']
+        missing = [k for k in required if k not in callbacks or callbacks[k] is None]
+        if missing:
+            logger.warning(f"TransformInspectorPanel missing callbacks: {missing}. Using no-op placeholders.")
+            for key in missing:
+                self.callbacks[key] = lambda *args: None
         
         # Main container
         self.frame = DirectFrame(

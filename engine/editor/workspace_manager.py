@@ -103,11 +103,17 @@ class WorkspaceManager:
             self.tab_buttons[name] = btn
 
     def switch_to(self, name: str):
-        """Switch active workspace."""
+        """Switch active workspace.
+        
+        Args:
+            name: Name of workspace to switch to
+        """
         if name not in self.workspaces:
+            logger.warning(f"Cannot switch to unknown workspace: '{name}'. Available: {list(self.workspaces.keys())}")
             return
             
         if self.active_workspace_name == name:
+            logger.debug(f"Already in workspace: {name}")
             return
             
         # Exit current
@@ -124,6 +130,14 @@ class WorkspaceManager:
         self._rebuild_tabs()
         
         logger.info(f"Switched to workspace: {name}")
+
+    def get_workspace_names(self) -> List[str]:
+        """Get list of registered workspace names.
+        
+        Returns:
+            List of workspace names in registration order
+        """
+        return self.workspace_order.copy()
 
     def update(self, dt):
         """Update active workspace."""
