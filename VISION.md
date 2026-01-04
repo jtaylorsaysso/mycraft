@@ -231,5 +231,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## Document Info
 
-*Last Updated: 2025-12-20*  
-*Version: 2.0 - Beginner-First Vision*
+*Last Updated: 2026-01-03*  
+*Version: 2.1 - Color Combat Loop Integration*

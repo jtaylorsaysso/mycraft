@@ -1,6 +1,6 @@
 # Tech Debt Register
 
-**Last Updated:** 2025-12-28
+**Last Updated:** 2026-01-04
 
 This register tracks technical debt, bugs, and future enhancements. Items are organized by priority and aligned with the project's current development direction.
 
@@ -19,12 +19,33 @@ All phases of combat animation integration complete. Combat prototype fully func
 - [x] **Phase 3: Parry Timing** - Wired timing quality detection to animation selection (success/fail)
 - [x] **Phase 3: Parry Testing** - Verified parry stance and recovery animations work correctly
 
+### Editor & Tooling
+
+**Priority:** Medium | **Effort:** Varies
+
+- [x] **Standalone Editor Suite** - Completed `EditorApp`, `EditorSuiteManager`, and `EditorSelection` for modular tool architecture
+- [x] **Model Editor Enhancements** - Added Symmetry Mode, Spine Mode, Save/Load, Undo/Redo, contextual hints
+- [ ] **Equipment Attachment Runtime** - Socket system implemented but no runtime item attachment/detachment yet
+- [ ] **Spine Mode Polish** - `SplineController` functional but needs better visual feedback and control point snapping
+
+### Animation & Avatar
+
+**Priority:** Medium-High | **Effort:** Varies
+
+- [x] **GLB Avatar Support** - Implemented `GLBAvatar` with named-part matching for rigid voxel models
+- [x] **Hand IK Controller** - Completed for climbing mechanics (similar to FootIK)
+- [ ] **VoxelAvatar Material System** - Current implementation uses single color per bone; needs texture/material support
+- [ ] **GLB Skinning Support** - Current GLB system uses rigid parenting; true weighted skinning not yet implemented
+
 **Technical Debt from Phase 1:**
 
 - [x] **Skeleton/Visual Retargeting** - Fixed by implementing correct `rest_transform` logic in Skeleton and Animation Sources. Avatar now respects bone lengths and skeletal structure.
 - [x] **Procedural Locomotion Enhancement** - Implemented run/sprint/jump/fall animations with speed-based tiers and torso lean
 - [x] **Transition Blending** - Added 200ms blend transitions between idle/walk/run/sprint states
-- [ ] **Hit Window Callbacks** - Wire `on_hit` callback from animation to combat system for frame-perfect hit detection (currently using timing-based approach). *Deferred - current timing approach works well*
+- [x] **Hit Window Callbacks** - Implemented animation events system with frame-perfect callbacks. `AnimationMechanic` bridges events to global bus, `AttackMechanic` handles hitbox activation and damage dealing.
+- [x] **FootIK Integration** - Integrated `FootIKController` into `AnimationMechanic` with Phase 1 optimizations (30Hz updates, ~65% raycast reduction)
+- [x] **Particle System** - Completed `VoxelParticleSystem` with billboard geometry and alpha fading
+- [x] **Animation Events System** - Frame-perfect event callbacks for combat hits, VFX triggers, and gameplay synchronization
 
 **Reference:** Implementation plan and walkthrough in artifacts directory
 
@@ -79,6 +100,18 @@ Remaining items from state management cleanup:
 - [ ] Profile raycast ground detection performance with many entities (NPCs, projectiles)
 - [ ] Consider spatial partitioning for large numbers of physics objects
 
+### Animation System Performance
+
+**Priority:** Low | **Effort:** Varies
+
+**Status**: FootIK Phase 1 complete (30Hz updates). Current performance: ~42 raycasts/sec per player (acceptable for 1-4 players). Additional optimizations available if needed for 10+ player scenarios.
+
+- [ ] **Phase 2: Spatial Caching** (~2-3 hours) - Cache raycast results, only update when player moves >0.2 units or after 100ms. Expected ~80-85% total reduction.
+- [ ] **Phase 3: Async Raycasting** (~4-6 hours) - Background thread for raycasts, removes cost from main thread. Requires thread-safety validation for Panda3D collision system.
+- [ ] **Phase 4: Heightmap System** (~1-2 days) - Pre-computed terrain heights with bilinear interpolation. ~95% faster than raycasts, but requires chunk update logic and doesn't support moving platforms.
+
+**Reference**: Animation research document in artifacts directory
+
 ### World Generation
 
 **Priority:** Medium | **Effort:** ~2-3 days
@@ -105,10 +138,11 @@ Remaining items from state management cleanup:
 
 **Priority:** Low-Medium | **Effort:** Varies
 
-- [ ] Player model is basic stacked cubes - needs proper character model
-- [ ] No particle effects (dust clouds, jump/land impacts)
+- [x] Voxel avatar system complete (both procedural `VoxelAvatar` and mesh-based `GLBAvatar`)
+- [x] Particle system implemented (`VoxelParticleSystem` with billboard geometry)
 - [ ] Basic static lighting - needs dynamic lighting and shadows
 - [ ] No skybox or atmosphere rendering
+- [ ] **Water Visuals**: Current implementation is functional but visually basic (jelly-like wobble). Needs reflections, foam, varied opacity, and underwater fog.
 
 ### Input & Controls
 
@@ -152,7 +186,31 @@ Remaining items from state management cleanup:
 
 ---
 
-## ✅ Recently Completed (2025-12-28)
+## ✅ Recently Completed (2026-01-03 - 2026-01-04)
+
+### Animation & Avatar System
+
+- [x] **GLB Avatar Loading** - Implemented `GLBAvatar` class with named-part matching for rigid voxel models from Blender
+- [x] **Hand IK Controller** - Created `HandIKController` for climbing mechanics with surface raycasting and 2-bone IK solver
+- [x] **VoxelAvatar Improvements** - Fixed bone hierarchy, added proper CardMaker-based geometry with 6-face cubes
+
+### Editor & Tooling
+
+- [x] **Standalone Editor Suite** - Migrated to new architecture with `EditorApp`, `EditorSuiteManager`, tab-based navigation
+- [x] **Model Editor Features** - Added Symmetry Mode (`S`), Spine Mode (`M`), Save/Load JSON, Undo/Redo system
+- [x] **Animation Editor Migration** - Moved to `engine/editor/tools/` and integrated with suite manager
+- [x] **Socket System** - Implemented equipment attachment points on skeleton (hands, back, belt sockets)
+
+### Documentation Updates
+
+- [x] **Editor Architecture Docs** - Created `docs/engine/EDITOR_ARCHITECTURE.md`
+- [x] **Equipment System Docs** - Created `docs/engine/EQUIPMENT_SYSTEM.md`
+- [x] **Animation System Update** - Added Hand IK and GLB Avatar sections to `ANIMATION_SYSTEM.md`
+- [x] **Model Editor Guide** - Created user-friendly guide at `docs/guides/model_editor_guide.md`
+
+---
+
+## ✅ Previously Completed (2025-12-28)
 
 ### Combat Animation Integration - Phase 1
 

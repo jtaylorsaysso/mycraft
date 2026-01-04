@@ -49,16 +49,20 @@ class MockVector2:
 
 class MockVector3:
     def __init__(self, x=0, y=0, z=0):
-        # Handle initialization from another MockVector3 or iterable
-        if hasattr(x, '__iter__') and not isinstance(x, (str, bytes)):
-            vals = list(x)
-            self.x = float(vals[0])
-            self.y = float(vals[1])
-            self.z = float(vals[2])
-        elif hasattr(x, 'x') and hasattr(x, 'y') and hasattr(x, 'z'):
+        if hasattr(x, 'x') and hasattr(x, 'y') and hasattr(x, 'z'):
             self.x = float(x.x)
             self.y = float(x.y)
             self.z = float(x.z)
+        elif hasattr(x, '__iter__') and not isinstance(x, (str, bytes)):
+            vals = list(x)
+            if len(vals) >= 3:
+                self.x = float(vals[0])
+                self.y = float(vals[1])
+                self.z = float(vals[2])
+            else:
+                self.x = float(vals[0]) if len(vals) > 0 else 0.0
+                self.y = float(vals[1]) if len(vals) > 1 else 0.0
+                self.z = 0.0
         else:
             self.x = float(x)
             self.y = float(y)
@@ -76,7 +80,7 @@ class MockVector3:
         return 3
 
     def __add__(self, other):
-        if hasattr(other, 'x'):
+        if hasattr(other, 'x') and hasattr(other, 'y') and hasattr(other, 'z'):
             return MockVector3(self.x + other.x, self.y + other.y, self.z + other.z)
         return MockVector3(self.x + other[0], self.y + other[1], self.z + other[2])
     
@@ -118,6 +122,16 @@ class MockVector3:
     
     def __repr__(self):
         return f"MockVector3({self.x}, {self.y}, {self.z})"
+
+class MockRotation:
+    def __init__(self, *args):
+        self.hpr = MockVector3(0, 0, 0)
+    def setHpr(self, hpr):
+        self.hpr = MockVector3(hpr)
+    def xform(self, vec):
+        return MockVector3(vec)
+
+LRotationf = MockRotation
 
 class MockCollisionHandlerQueue:
     def __init__(self):
@@ -198,6 +212,9 @@ class MockNodePath:
     def setColorScale(self, *args):
         pass
         
+    def setTwoSided(self, value):
+        pass
+
     def setQuat(self, quat):
         pass
 
@@ -231,3 +248,7 @@ class MockNodePath:
     
     def show(self):
         self._hidden = False
+
+    def find(self, path):
+        # Very limited mock find
+        return MockNodePath("found")

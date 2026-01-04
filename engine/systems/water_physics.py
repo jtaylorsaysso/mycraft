@@ -96,6 +96,10 @@ class WaterPhysicsSystem(System):
             # If no physics state, we fall back to position manipulation or skip
             # For this engine, we prefer entities have KinematicState for physics
             return
+        
+        # Update water state flags
+        state.in_water = submersion > 0
+        state.submersion_level = submersion
             
         # Simple buoyancy: affect vertical velocity (Z-axis in Panda3D)
         # We use a simple force-like application: velocity_z += force * dt
@@ -112,7 +116,7 @@ class WaterPhysicsSystem(System):
         # TODO: Hook into input system for swim controls
         
         # Emit event for other systems to react
-        self.event_bus.emit("entity_in_water", {
-            "entity_id": entity_id,
-            "submersion": submersion
-        })
+        self.event_bus.publish("entity_in_water", 
+            entity_id=entity_id,
+            submersion=submersion
+        )

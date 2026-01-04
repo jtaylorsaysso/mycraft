@@ -1,7 +1,7 @@
 """Base class for player mechanics using composition pattern."""
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from engine.player_mechanics.context import PlayerContext
@@ -40,6 +40,16 @@ class PlayerMechanic(ABC):
             ctx: Player context - modify state/transform as needed
         """
         pass
+        
+    def initialize(self, player_id: int, world: Any) -> None:
+        """Called when system is ready.
+        
+        Args:
+            player_id: The player entity ID
+            world: The game world
+        """
+        self._player_id = player_id
+        self.world = world
     
     def cleanup(self) -> None:
         """Called when mechanic is removed."""

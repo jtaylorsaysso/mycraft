@@ -18,7 +18,15 @@ The MyCraft engine is designed as a reusable core separating generic game system
 
 ```text
 engine/
-├── animation/    # Panda3D-based procedural animation system
+├── animation/    # Hybrid procedural + keyframe animation system
+│   ├── core.py           # Transform, Keyframe, AnimationClip, AnimationEvent
+│   ├── layers.py         # LayeredAnimator, BoneMask, animation compositing
+│   ├── skeleton.py       # HumanoidSkeleton (17-bone bipedal rig)
+│   ├── mannequin.py      # VoxelAvatar visual rendering
+│   ├── foot_ik.py        # Terrain-aware foot placement
+│   ├── combat.py         # Combat animation clips (attacks, dodges, parries)
+│   ├── root_motion.py    # Physics-driven attack movement
+│   └── animation_registry.py  # Clip management + JSON I/O
 ├── core/         # Core utilities (logging, config, time)
 ├── ecs/          # The Entity Component System
 ├── input/        # Input management (InputManager, keybindings, action system)
@@ -27,7 +35,7 @@ engine/
 ├── physics/      # Kinematic physics and collision
 ├── rendering/    # Rendering utilities (camera, texture atlas, environment)
 ├── systems/      # Core ECS systems (input, interaction, lifecycle, network, water)
-└── ui/           # HUD and UI components (OnscreenText-based)
+└── ui/           # HUD and editor UI (OnscreenText, DirectGUI tools)
 ```
 
 ## Core Patterns
@@ -76,14 +84,29 @@ Action-based input abstraction:
 - **InputMechanic**: High-priority mechanic (priority=1000) that populates PlayerContext
 - **Keybindings**: Configurable key-to-action mapping
 
+### Animation System
+
+Hybrid procedural + keyframe animation for voxel characters:
+
+- **Layered Composition**: Multiple animation sources combined with bone masking
+- **Procedural Animations**: Runtime-generated walk/idle cycles
+- **Keyframe Animations**: Combat attacks, dodges, parries with timing events
+- **IK System**: FootIKController for terrain-aware foot placement
+- **Root Motion**: Attack lunges driven by animation curves
+- **Events**: Frame-perfect callbacks for combat hit windows
+
+See [Animation System Documentation](ANIMATION_SYSTEM.md) for details.
+
 ### Rendering
 
 Panda3D-based rendering with:
 
-- **Camera**: Dual-mode system (FPS and third-person) with smoothing, collision detection, and HotConfig integration. Default is third-person with V-key toggle.
+- **Camera**: Mode-based system (FirstPersonCamera, ExplorationCamera, CombatCamera) with smoothing, collision detection, auto-centering, and zoom. V-key toggle between modes.
+- **Animation**: VoxelAvatar with LayeredAnimator for compositing locomotion, combat, and IK layers
 - **Texture Atlas**: 16x16 tile grid system
 - **Environment**: Lighting and atmosphere management
 - **HUD**: OnscreenText-based UI
+- **Editor UI**: DirectGUI-based tools (AnimationEditor with timeline visualization)
 
 ## Integration
 

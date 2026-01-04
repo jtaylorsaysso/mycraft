@@ -4,8 +4,9 @@
 
 ## Status
 
-Build Status: Pre-alpha playtest  
-**Visual Map Editor**: Coming in Milestone 3
+**Current Version**: v0.2 → v1.0-Hybrid (In Development)  
+**Build Status**: Pre-alpha playtest  
+**Active Milestone**: Color Foundation (M1/7)
 
 **📖 [Engine Vision](VISION.md)** | **🎮 [Game Vision](VISION_VOXEL_WORLD.md)** | **🚧 [Boundaries](ENGINE_GAME_BOUNDARIES.md)** | **🗺️ [Roadmap](ROADMAP.md)**
 
@@ -65,12 +66,21 @@ MyCraft comes with **voxel_world**, an action-adventure game to explore:
 - **Movement-First Gameplay**: Sprint, climb, vault, and master momentum-based traversal
 - **Timing-Based Combat**: Dodge, parry, and counterattack with skill-focused mechanics
 - **Cooperative Multiplayer**: Adventure with friends on your local network
-- **Customization**: Change textures, colors, and more *(visual tools coming soon!)*
 
-### Coming Soon
+### In Development (v1.0-Hybrid Alpha)
 
-- **Visual Map Editor** (Milestone 3): Design and build custom worlds
-- **Character Customization** (Milestone 4): Skins, models, and rigging tools
+**Color Combat Loop** - Colors as gameplay rewards:
+
+- 🎨 **Avatar Customization**: Unlock and apply colors to your character
+- 👾 **Enemy Tinting**: Enemies show their color drops visually
+- 💎 **Loot System**: Defeat enemies to collect color swatches
+- 🎯 **Color Projectiles**: Throw colors at friends for playful chaos
+- 🤝 **Trading**: Share colors with other players
+
+### Coming Later
+
+- **Visual Map Editor** (v2.0): Design and build custom worlds
+- **Building System** (v2.0): Fallout-style modular construction
 - **Points of Interest**: Challenge shrines, dungeons, and epic boss encounters
 - **Advanced Traversal**: Wall-running, grappling, and gliding mechanics
 

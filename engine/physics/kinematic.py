@@ -38,6 +38,10 @@ class KinematicState(Component):
     sliding: bool = False
     surface_normal: Tuple[float, float, float] = (0, 0, 1)  # Z-up by default
     slope_angle: float = 0.0  # degrees
+    
+    # Water physics
+    in_water: bool = False  # Whether entity is in water
+    submersion_level: float = 0.0  # 0.0 = not in water, 0.5 = waist deep, 1.0 = fully submerged
 
 
 def apply_gravity(state: KinematicState, dt: float, gravity: float = -9.81, max_fall_speed: Optional[float] = None) -> None:

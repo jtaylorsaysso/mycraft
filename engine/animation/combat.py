@@ -12,14 +12,64 @@ class HitWindow:
     end_time: float    # When hitbox deactivates
     damage_multiplier: float = 1.0  # Damage scaling for this window
     
+    def to_dict(self) -> dict:
+        """Serialize to JSON-compatible dict."""
+        return {
+            'start_time': self.start_time,
+            'end_time': self.end_time,
+            'damage_multiplier': self.damage_multiplier
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> 'HitWindow':
+        """Deserialize from dict."""
+        return cls(
+            start_time=data['start_time'],
+            end_time=data['end_time'],
+            damage_multiplier=data.get('damage_multiplier', 1.0)
+        )
+    
 
 @dataclass
 class CombatClip(RootMotionClip):
     """Animation clip with combat metadata and root motion."""
     hit_windows: List[HitWindow] = field(default_factory=list)
-    can_cancel_after: float = 0.0  # Time when player can cancel into another action
-    momentum_influence: float = 0.3  # How much movement affects the animation (0-1)
+    can_cancel_after: float = 0.0  # Time when attack can be cancelled
+    momentum_influence: float = 0.3  # How much movement speed affects damage
     recovery_time: float = 0.0  # Time after animation before next action
+    
+    def to_dict(self) -> dict:
+        """Serialize to JSON-compatible dict (combat metadata only)."""
+        return {
+            'hit_windows': [hw.to_dict() for hw in self.hit_windows],
+            'can_cancel_after': self.can_cancel_after,
+            'momentum_influence': self.momentum_influence,
+            'recovery_time': self.recovery_time
+        }
+    
+    @classmethod
+    def from_dict_metadata(cls, base_clip: AnimationClip, combat_data: dict) -> 'CombatClip':
+        """Create CombatClip from base clip and combat metadata.
+        
+        Args:
+            base_clip: Base AnimationClip with keyframes/events
+            combat_data: Combat-specific metadata dict
+            
+        Returns:
+            CombatClip with merged data
+        """
+        return cls(
+            name=base_clip.name,
+            duration=base_clip.duration,
+            keyframes=base_clip.keyframes,
+            looping=base_clip.looping,
+            events=base_clip.events,
+            hit_windows=[HitWindow.from_dict(hw) for hw in combat_data.get('hit_windows', [])],
+            can_cancel_after=combat_data.get('can_cancel_after', 0.0),
+            momentum_influence=combat_data.get('momentum_influence', 0.3),
+            recovery_time=combat_data.get('recovery_time', 0.0)
+        )
+
     
 
 class CombatAnimator(VoxelAnimator):
@@ -228,6 +278,26 @@ def create_sword_slash() -> CombatClip:
         duration=0.5
     )
     
+    # Add animation events
+    from engine.animation.core import AnimationEvent
+    events = [
+        AnimationEvent(
+            time=0.12,  # Start of hit window
+            event_name="attack_hit_start",
+            data={"damage_multiplier": 1.0}
+        ),
+        AnimationEvent(
+            time=0.15,  # Peak of swing
+            event_name="attack_impact",
+            data={"type": "sword_slash"}
+        ),
+        AnimationEvent(
+            time=0.18,  # End of hit window
+            event_name="attack_hit_end",
+            data={}
+        ),
+    ]
+    
     return CombatClip(
         name='sword_slash',
         duration=0.5,
@@ -237,5 +307,6 @@ def create_sword_slash() -> CombatClip:
         can_cancel_after=0.35,
         momentum_influence=0.4,
         recovery_time=0.15,
-        root_motion=root_motion
+        root_motion=root_motion,
+        events=events  # NEW
     )

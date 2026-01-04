@@ -7,6 +7,7 @@ from engine.player_mechanics.context import PlayerContext
 from engine.player_mechanics.input_handler import InputMechanic
 from engine.player_mechanics.camera_controller import CameraMechanic
 from engine.player_mechanics.ground_movement import GroundMovementMechanic
+from engine.player_mechanics.swimming import SwimmingMechanic
 from engine.player_mechanics.animation import AnimationMechanic
 from engine.player_mechanics.dodge_mechanic import DodgeMechanic
 from engine.player_mechanics.parry_mechanic import ParryMechanic
@@ -25,7 +26,8 @@ class PlayerControlSystem(System):
         self.mechanics = [
             InputMechanic(base),
             CameraMechanic(base),
-            GroundMovementMechanic(),
+            SwimmingMechanic(),  # Swimming controls (priority 40)
+            GroundMovementMechanic(),  # Ground movement (priority 50, runs after swimming)
             DodgeMechanic(),  # Dodge input handling
             ParryMechanic(),  # Parry input handling
             AttackMechanic(),  # Attack input handling

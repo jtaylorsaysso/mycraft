@@ -1,353 +1,285 @@
-"""Terrain generation and chunk management system with collision support."""
+"""Terrain generation for voxel_world game.
 
-from engine.ecs.system import System
-from engine.rendering.mesh import MeshBuilder
+This module implements the ChunkGenerator protocol for voxel_world,
+delegating chunk streaming to the engine's ChunkManager.
+"""
+
+from typing import Dict, Tuple, Any
+
 from games.voxel_world.biomes.biomes import BiomeRegistry
 from games.voxel_world.blocks.blocks import BlockRegistry
-from panda3d.core import (
-    NodePath, CollisionNode, CollisionPolygon, LVector3f,
-    BitMask32
-)
-from typing import Dict, Tuple, Optional
+from games.voxel_world.structures import *
+from games.voxel_world.structures.biome_structures import get_structure_generators_for_biome
+from games.voxel_world.pois import POIData, POIGenerator
+from games.voxel_world.pois.shrine_generator import ShrineGenerator
+from games.voxel_world.pois.camp_generator import CampGenerator
+from games.voxel_world.biomes.noise import get_noise
 
 
-class TerrainSystem(System):
-    """Manages terrain generation, chunk loading, and collision geometry."""
+class VoxelWorldGenerator:
+    """ChunkGenerator implementation for voxel_world.
     
-    def __init__(self, world, event_bus, base, texture_atlas=None):
-        super().__init__(world, event_bus)
-        self.base = base
-        self.texture_atlas = texture_atlas
-        self.chunks: Dict[Tuple[int, int], NodePath] = {}
-        self.chunk_size = 16
-        
-        # Dynamic loading configuration
-        self.load_radius = 6  # Load chunks within 6 chunk radius (~96 blocks)
-        self.unload_radius = 8  # Unload chunks beyond 8 chunk radius (2-chunk buffer)
-        self.max_chunks_per_frame = 3  # Throttle loading for performance
-        
-        # Track last player position to optimize loading
-        self.last_player_chunk: Optional[Tuple[int, int]] = None
-        
-        # Water configuration
-        self.sea_level = 0  # Blocks below this height get water
-
-        
-    def get_height(self, x: float, z: float) -> float:
-        """Get terrain height at world position using biome system.
+    Handles biome-based terrain generation and structure placement.
+    Streaming and collision are handled by ChunkManager.
+    """
+    
+    def __init__(self, seed: int = 0):
+        """Initialize generator.
         
         Args:
-            x: World X coordinate
-            z: World Z coordinate (depth/forward in Panda3D)
-            
-        Returns:
-            Height (Y coordinate) at the given position
+            seed: World seed for deterministic generation
         """
-        biome = BiomeRegistry.get_biome_at(x, z)
-        return biome.get_height(x, z)
+        self.world_seed = seed
+        self._structure_cache: Dict[Tuple[str, int], Any] = {}
+        self._pois: List[POIData] = []  # Track spawned POIs
+        self._poi_generators: List[POIGenerator] = []  # Registered generators
     
-    def create_chunk(self, chunk_x: int, chunk_z: int) -> NodePath:
-        """Generate a chunk with visual mesh and collision geometry.
+    def generate_chunk(
+        self, 
+        chunk_x: int, 
+        chunk_z: int,
+        chunk_size: int
+    ) -> Dict[Tuple[int, int, int], str]:
+        """Generate voxel grid for a chunk.
         
         Args:
             chunk_x: Chunk X coordinate
             chunk_z: Chunk Z coordinate
+            chunk_size: Size of chunk in blocks
             
         Returns:
-            NodePath containing the chunk mesh and collision
+            Dict mapping (local_x, y, local_z) -> block_name
         """
-        # Generate heightmap and biome data
+        # 1. Generate heightmap and biome data
         heights = []
         biomes = []
-        for x in range(self.chunk_size):
+        for x in range(chunk_size):
             heights.append([])
             biomes.append([])
-            for z in range(self.chunk_size):
-                world_x = chunk_x * self.chunk_size + x
-                world_z = chunk_z * self.chunk_size + z
+            for z in range(chunk_size):
+                world_x = chunk_x * chunk_size + x
+                world_z = chunk_z * chunk_size + z
                 biome = BiomeRegistry.get_biome_at(world_x, world_z)
                 heights[x].append(int(biome.get_height(world_x, world_z)))
                 biomes[x].append(biome)
         
-        # Build visual mesh
-        geom_node = MeshBuilder.build_chunk_mesh_with_callback(
-            heights, biomes, chunk_x, chunk_z, self.chunk_size,
-            self.texture_atlas,
-            BlockRegistry,
-            self.get_height
-        )
-
-        # Find water blocks (terrain below sea level)
-        water_blocks = []
-        for x in range(self.chunk_size):
-            for z in range(self.chunk_size):
-                terrain_height = heights[x][z]
-                # Place water from terrain surface up to sea level (exclusive)
-                # Water block at y has top face at y+1, so block at sea_level-1 has top at sea_level
-                if terrain_height < self.sea_level:
-                    for y in range(terrain_height, self.sea_level):
-                        water_blocks.append((x, y, z))
+        # 2. Create voxel grid from heightmap
+        voxel_grid = self._create_voxel_grid(heights, biomes, chunk_size)
         
-        # Create NodePath for chunk and attach to render
-        chunk_np = self.base.render.attachNewNode(geom_node)
+        # 3. Add structures (trees, boulders, etc.)
+        self._add_structures_to_grid(voxel_grid, chunk_x, chunk_z, biomes, heights, chunk_size)
         
-        # Apply texture if available (BEFORE adding water to prevent inheritance)
-        if self.texture_atlas and self.texture_atlas.is_loaded():
-            chunk_np.setTexture(self.texture_atlas.get_texture())
+        # 4. Add Points of Interest
+        self._add_pois_to_chunk(chunk_x, chunk_z, voxel_grid, biomes, heights, chunk_size)
         
-        # Add water mesh if there are water blocks
-        if water_blocks:
-            water_node = MeshBuilder.build_water_mesh(
-                water_blocks, chunk_x, chunk_z, self.chunk_size
-            )
-            if water_node:
-                water_np = chunk_np.attachNewNode(water_node)
-                # Enable transparency for water
-                from panda3d.core import TransparencyAttrib
-                water_np.setTransparency(TransparencyAttrib.MAlpha)
-                # Clear texture on water (prevent inheritance from parent)
-                water_np.clearTexture()
-        
-        # Add collision geometry
-        self._add_collision_to_chunk(chunk_np, heights, chunk_x, chunk_z)
-        
-        # Store chunk reference
-        self.chunks[(chunk_x, chunk_z)] = chunk_np
-
-        
-        return chunk_np
+        return voxel_grid
     
-    def _add_collision_to_chunk(
+    def get_height(self, x: float, z: float) -> float:
+        """Get terrain height at world position.
+        
+        Args:
+            x: World X coordinate
+            z: World Z coordinate
+            
+        Returns:
+            Height at this position
+        """
+        biome = BiomeRegistry.get_biome_at(x, z)
+        return biome.get_height(x, z)
+    
+    def get_block_registry(self) -> Any:
+        """Get block registry for property lookups."""
+        return BlockRegistry
+    
+    def _create_voxel_grid(
         self, 
-        chunk_np: NodePath, 
         heights: list, 
-        chunk_x: int, 
-        chunk_z: int
-    ) -> None:
-        """Add collision polygons to chunk mesh.
-        
-        Creates collision geometry for both top and side faces of terrain blocks.
-        This allows raycasting to detect ground height, surface normals, and walls.
-        
-        Collision Layer System:
-        - BitMask32.bit(1): Terrain collision layer
-        - setFromCollideMask: What this node can collide WITH (for active colliders like rays)
-        - setIntoCollideMask: What can collide INTO this node (terrain is passive, can be hit)
-        
-        Performance Note:
-        - Side faces use non-greedy meshing (one polygon per block face)
-        - Future optimization: Greedy meshing could merge adjacent vertical faces
+        biomes: list,
+        chunk_size: int
+    ) -> Dict[Tuple[int, int, int], str]:
+        """Create terrain voxel grid from heightmap.
         
         Args:
-            chunk_np: NodePath to attach collision to
-            heights: 2D array of block heights
+            heights: 2D array of heights
+            biomes: 2D array of biome objects
+            chunk_size: Size of chunk
+            
+        Returns:
+            Voxel grid dict
+        """
+        grid = {}
+        
+        for x in range(chunk_size):
+            for z in range(chunk_size):
+                h = heights[x][z]
+                biome = biomes[x][z]
+                
+                # Surface block
+                grid[(x, h, z)] = biome.surface_block
+                
+                # Subsurface layers (2 blocks down)
+                for y in range(h - 1, h - 3, -1):
+                    grid[(x, y, z)] = biome.subsurface_block
+        
+        return grid
+    
+    def _add_structures_to_grid(
+        self,
+        voxel_grid: Dict[Tuple[int, int, int], str],
+        chunk_x: int,
+        chunk_z: int,
+        biomes: list,
+        heights: list,
+        chunk_size: int
+    ):
+        """Add structures (trees, rocks, etc.) to voxel grid.
+        
+        Args:
+            voxel_grid: Grid to modify in-place
             chunk_x: Chunk X coordinate
             chunk_z: Chunk Z coordinate
+            biomes: 2D array of biome objects
+            heights: 2D array of heights
+            chunk_size: Chunk size
         """
-        cnode = CollisionNode(f'chunk_collision_{chunk_x}_{chunk_z}')
-        cnode.setFromCollideMask(BitMask32.bit(1))  # Terrain collision layer
-        cnode.setIntoCollideMask(BitMask32.bit(1))  # Can be collided with
-        
-        base_x = chunk_x * self.chunk_size
-        base_z = chunk_z * self.chunk_size
-        
-        # Create collision polygons for top faces
-        for x in range(self.chunk_size):
-            for z in range(self.chunk_size):
-                h = heights[x][z]
-                world_x = base_x + x
-                world_z = base_z + z
+        for x in range(chunk_size):
+            for z in range(chunk_size):
+                biome = biomes[x][z]
                 
-                # Create quad vertices (Panda3D: Z is up, Y is forward/depth)
-                # Top face at height h
-                v0 = LVector3f(world_x, world_z, h)
-                v1 = LVector3f(world_x + 1, world_z, h)
-                v2 = LVector3f(world_x + 1, world_z + 1, h)
-                v3 = LVector3f(world_x, world_z + 1, h)
+                # Get configured generators for this biome
+                gen_configs = get_structure_generators_for_biome(biome.name)
                 
-                # Add collision polygons (two triangles per quad)
-                # Counter-clockwise winding for upward-facing normals
-                cnode.addSolid(CollisionPolygon(v0, v1, v2))
-                cnode.addSolid(CollisionPolygon(v0, v2, v3))
-        
-        # Create collision polygons for side faces
-        # Only generate faces that are exposed (neighbor height is lower)
-        for x in range(self.chunk_size):
-            for z in range(self.chunk_size):
-                h = heights[x][z]
-                world_x = base_x + x
-                world_z = base_z + z
-                
-                # Get neighbor heights (with bounds checking)
-                # East neighbor (+X)
-                if x + 1 < self.chunk_size:
-                    h_east = heights[x + 1][z]
-                else:
-                    h_east = int(self.get_height(world_x + 1, world_z))
-                
-                # West neighbor (-X)
-                if x - 1 >= 0:
-                    h_west = heights[x - 1][z]
-                else:
-                    h_west = int(self.get_height(world_x - 1, world_z))
-                
-                # South neighbor (+Z)
-                if z + 1 < self.chunk_size:
-                    h_south = heights[x][z + 1]
-                else:
-                    h_south = int(self.get_height(world_x, world_z + 1))
-                
-                # North neighbor (-Z)
-                if z - 1 >= 0:
-                    h_north = heights[x][z - 1]
-                else:
-                    h_north = int(self.get_height(world_x, world_z - 1))
-                
-                # --- East side (+X) ---
-                if h_east < h:
-                    # Generate collision for each vertical layer
-                    for y0 in range(h_east + 1, h + 1):
-                        y_bottom = y0 - 1
-                        y_top = y0
-                        
-                        # Vertices for east-facing quad (counter-clockwise from outside)
-                        sv0 = LVector3f(world_x + 1, world_z, y_bottom)
-                        sv1 = LVector3f(world_x + 1, world_z + 1, y_bottom)
-                        sv2 = LVector3f(world_x + 1, world_z + 1, y_top)
-                        sv3 = LVector3f(world_x + 1, world_z, y_top)
-                        
-                        cnode.addSolid(CollisionPolygon(sv0, sv1, sv2))
-                        cnode.addSolid(CollisionPolygon(sv0, sv2, sv3))
-                
-                # --- West side (-X) ---
-                if h_west < h:
-                    for y0 in range(h_west + 1, h + 1):
-                        y_bottom = y0 - 1
-                        y_top = y0
-                        
-                        # Vertices for west-facing quad (counter-clockwise from outside)
-                        sv0 = LVector3f(world_x, world_z + 1, y_bottom)
-                        sv1 = LVector3f(world_x, world_z, y_bottom)
-                        sv2 = LVector3f(world_x, world_z, y_top)
-                        sv3 = LVector3f(world_x, world_z + 1, y_top)
-                        
-                        cnode.addSolid(CollisionPolygon(sv0, sv1, sv2))
-                        cnode.addSolid(CollisionPolygon(sv0, sv2, sv3))
-                
-                # --- South side (+Z) ---
-                if h_south < h:
-                    for y0 in range(h_south + 1, h + 1):
-                        y_bottom = y0 - 1
-                        y_top = y0
-                        
-                        # Vertices for south-facing quad (counter-clockwise from outside)
-                        sv0 = LVector3f(world_x + 1, world_z + 1, y_bottom)
-                        sv1 = LVector3f(world_x, world_z + 1, y_bottom)
-                        sv2 = LVector3f(world_x, world_z + 1, y_top)
-                        sv3 = LVector3f(world_x + 1, world_z + 1, y_top)
-                        
-                        cnode.addSolid(CollisionPolygon(sv0, sv1, sv2))
-                        cnode.addSolid(CollisionPolygon(sv0, sv2, sv3))
-                
-                # --- North side (-Z) ---
-                if h_north < h:
-                    for y0 in range(h_north + 1, h + 1):
-                        y_bottom = y0 - 1
-                        y_top = y0
-                        
-                        # Vertices for north-facing quad (counter-clockwise from outside)
-                        sv0 = LVector3f(world_x, world_z, y_bottom)
-                        sv1 = LVector3f(world_x + 1, world_z, y_bottom)
-                        sv2 = LVector3f(world_x + 1, world_z, y_top)
-                        sv3 = LVector3f(world_x, world_z, y_top)
-                        
-                        cnode.addSolid(CollisionPolygon(sv0, sv1, sv2))
-                        cnode.addSolid(CollisionPolygon(sv0, sv2, sv3))
-        
-        # Attach collision node to chunk
-        chunk_np.attachNewNode(cnode)
-
-    
-    def unload_chunk(self, chunk_x: int, chunk_z: int):
-        """Remove a chunk from the world.
-        
-        Args:
-            chunk_x: Chunk X coordinate
-            chunk_z: Chunk Z coordinate
-        """
-        chunk_key = (chunk_x, chunk_z)
-        if chunk_key in self.chunks:
-            chunk_np = self.chunks[chunk_key]
-            chunk_np.removeNode()
-            del self.chunks[chunk_key]
-    
-    def update(self, dt: float):
-        """Update terrain system with dynamic chunk loading/unloading.
-        
-        Loads chunks in a radius around the player and unloads distant chunks
-        to support exploration while managing memory.
-        
-        Args:
-            dt: Delta time since last update
-        """
-        # Get player entity
-        player_id = self.world.get_entity_by_tag("player")
-        if not player_id:
-            return  # No player spawned yet
-        
-        from engine.components.core import Transform
-        transform = self.world.get_component(player_id, Transform)
-        if not transform:
-            return
-        
-        # Calculate player's current chunk position
-        # Panda3D: X and Y are horizontal, Z is vertical
-        player_chunk_x = int(transform.position.x // self.chunk_size)
-        player_chunk_z = int(transform.position.y // self.chunk_size)  # Y is depth in Panda3D
-        player_chunk = (player_chunk_x, player_chunk_z)
-        
-        # Skip if player hasn't moved to a new chunk
-        if player_chunk == self.last_player_chunk:
-            return
-        
-        self.last_player_chunk = player_chunk
-        
-        # Determine chunks to load (circular radius around player)
-        chunks_to_load = []
-        for dx in range(-self.load_radius, self.load_radius + 1):
-            for dz in range(-self.load_radius, self.load_radius + 1):
-                # Circular radius check
-                distance_sq = dx * dx + dz * dz
-                if distance_sq <= self.load_radius * self.load_radius:
-                    chunk_pos = (player_chunk_x + dx, player_chunk_z + dz)
+                for gen_name, config in gen_configs:
+                    # Get/create generator instance
+                    cache_key = (gen_name, self.world_seed)
+                    if cache_key not in self._structure_cache:
+                        if gen_name in globals():
+                            gen_class = globals()[gen_name]
+                            kwargs = {k: v for k, v in config.items() 
+                                     if k not in ['density', 'scale', 'spacing']}
+                            self._structure_cache[cache_key] = gen_class(seed=self.world_seed, **kwargs)
+                        else:
+                            continue
                     
-                    # Only queue if not already loaded
-                    if chunk_pos not in self.chunks:
-                        chunks_to_load.append((chunk_pos, distance_sq))
+                    generator = self._structure_cache[cache_key]
+                    
+                    # Check placement
+                    world_x = chunk_x * chunk_size + x
+                    world_z = chunk_z * chunk_size + z
+                    
+                    density = config.get('density', 0.05)
+                    scale = config.get('scale', 0.2)
+                    spacing = config.get('spacing', 3)
+                    
+                    # Spacing check
+                    if x % spacing != 0 or z % spacing != 0:
+                        continue
+                    
+                    if generator.should_generate_at(world_x, world_z, density, scale):
+                        h = heights[x][z]
+                        structure = generator.generate_structure(
+                            world_x, h, world_z,
+                            height_callback=self.get_height
+                        )
+                        
+                        if structure:
+                            for bx, by, bz, bname in structure.blocks:
+                                # Convert to chunk-local
+                                rx = bx - (chunk_x * chunk_size)
+                                rz = bz - (chunk_z * chunk_size)
+                                
+                                # Only add if within bounds
+                                if 0 <= rx < chunk_size and 0 <= rz < chunk_size:
+                                    voxel_grid[(rx, by, rz)] = bname
+
+    def _add_pois_to_chunk(
+        self,
+        chunk_x: int, 
+        chunk_z: int, 
+        voxel_grid: Dict[Tuple[int, int, int], str],
+        biomes: list, 
+        heights: list,
+        chunk_size: int
+    ):
+        """Try to spawn POIs in this chunk."""
+        # Simple spawn chance check using noise
+        # Scale 0.01 = large features, ensuring POIs are spaced out
+        poi_noise = get_noise(chunk_x * 100, chunk_z * 100, scale=0.01, octaves=1)
         
-        # Sort by distance (load nearest chunks first)
-        chunks_to_load.sort(key=lambda x: x[1])
-        
-        # Load chunks (throttled to prevent frame drops)
-        chunks_loaded = 0
-        for chunk_pos, _ in chunks_to_load:
-            if chunks_loaded >= self.max_chunks_per_frame:
-                break
+        # ~8% spawn chance (customizable)
+        if poi_noise > 0.92:
+            # Deterministic POI selection
+            # Use distinct prime multipliers to mix up pattern relative to coordinates
+            val = (chunk_x * 73 + chunk_z * 31) % 100
             
-            self.create_chunk(chunk_pos[0], chunk_pos[1])
-            chunks_loaded += 1
-        
-        # Unload distant chunks (circular radius)
-        chunks_to_unload = []
-        for chunk_pos in self.chunks.keys():
-            dx = chunk_pos[0] - player_chunk_x
-            dz = chunk_pos[1] - player_chunk_z
-            distance_sq = dx * dx + dz * dz
+            if val < 60:
+                generator = ShrineGenerator(self.world_seed)
+            else:
+                generator = CampGenerator(self.world_seed)
             
-            # Unload if beyond unload radius
-            if distance_sq > self.unload_radius * self.unload_radius:
-                chunks_to_unload.append(chunk_pos)
+            if generator.should_spawn_at(chunk_x, chunk_z):
+                # Attempt to find position
+                pos = generator.get_spawn_position(
+                    chunk_x, chunk_z, chunk_size, biomes, self.get_height
+                )
+                
+                if pos:
+                    wx, wy, wz = pos
+                    
+                    # Flatten terrain
+                    generator.flatten_terrain(
+                        wx, wz, wy, 3, voxel_grid, chunk_x, chunk_z, chunk_size
+                    )
+                    
+                    # Generate structure
+                    poi_data = generator.generate(wx, wy, wz, self.world_seed)
+                    
+                    # Add blocks to grid
+                    for bx, by, bz, bname in poi_data.blocks:
+                        # Convert to chunk-local
+                        rx = bx - (chunk_x * chunk_size)
+                        rz = bz - (chunk_z * chunk_size)
+                        
+                        if 0 <= rx < chunk_size and 0 <= rz < chunk_size:
+                            voxel_grid[(rx, by, rz)] = bname
+                            
+                    # Track POI
+                    self._pois.append(poi_data)
+
+
+
+def create_terrain_system(world, event_bus, base, texture_atlas=None, seed=0):
+    """Factory function to create terrain system for voxel_world.
+    
+    Creates a VoxelWorldGenerator and wraps it with the engine's ChunkManager.
+    
+    Args:
+        world: ECS World instance
+        event_bus: Event bus
+        base: Panda3D ShowBase instance
+        texture_atlas: Optional TextureAtlas
+        seed: World seed
         
-        # Perform unloading
-        for chunk_pos in chunks_to_unload:
-            self.unload_chunk(chunk_pos[0], chunk_pos[1])
+    Returns:
+        ChunkManager configured for voxel_world
+    """
+    from engine.world.chunk_manager import ChunkManager
+    
+    generator = VoxelWorldGenerator(seed=seed)
+    
+    return ChunkManager(
+        world=world,
+        event_bus=event_bus,
+        base=base,
+        generator=generator,
+        texture_atlas=texture_atlas,
+        chunk_size=16,
+        load_radius=6,
+        unload_radius=8,
+        max_chunks_per_frame=3,
+        sea_level=0
+    )
+
+
+# Backward compatibility alias
+TerrainSystem = None  # Use create_terrain_system() instead

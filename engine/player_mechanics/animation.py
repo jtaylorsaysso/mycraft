@@ -36,6 +36,7 @@ class AnimationMechanic(PlayerMechanic):
         """Called when player is ready."""
         self._player_id = player_id  # Store for event filtering
         try:
+            from engine.animation.glb_avatar import GLBAvatar
             from engine.animation.voxel_avatar import VoxelAvatar
             from engine.animation.mannequin import AnimationController
             from engine.animation.layers import LayeredAnimator, BoneMask
@@ -43,11 +44,22 @@ class AnimationMechanic(PlayerMechanic):
             from engine.animation.root_motion import RootMotionApplicator
             from engine.player_mechanics.combat_animation_source import CombatAnimationSource
             
-            # Create the avatar (visuals)
-            self.avatar = VoxelAvatar(
-                self.base.render, 
-                body_color=(0.2, 0.8, 0.2, 1.0)  # Greenish for local player
-            )
+            # Create the avatar (visuals) - try GLB first, fallback to procedural
+            try:
+                self.avatar = GLBAvatar(
+                    self.base.render,
+                    loader=self.base.loader
+                )
+                # Check if model actually loaded
+                if not hasattr(self.avatar, 'model') or self.avatar.model is None:
+                    raise RuntimeError("GLB model failed to load")
+                print("✅ Using GLBAvatar")
+            except Exception as e:
+                print(f"⚠️ GLBAvatar failed ({e}), falling back to VoxelAvatar")
+                self.avatar = VoxelAvatar(
+                    self.base.render, 
+                    body_color=(0.2, 0.8, 0.2, 1.0)
+                )
             
             # Create base animation controller for locomotion
             # Note: AnimationController still expects "mannequin" for backward compat properties?
@@ -88,13 +100,8 @@ class AnimationMechanic(PlayerMechanic):
             self.layered_animator = LayeredAnimator(self.avatar.skeleton)
             
             # Create animation sources
-            # We need an AnimationController that works with VoxelAvatar.
-            # Since we can't easily rewrite AnimationController right this second without a new file or reading it again,
-            # Let's use a wrapper or just accept we might need to fix AnimationController next.
-            # Actually, `ProceduralAnimationSource` uses `AnimationController`.
-            # `AnimationController` uses `AnimatedMannequin`.
             
-            # Let's pass a mock/adapter to AnimationController if needed.
+            # Mock adapter for AnimationController compatibility
             class AvatarAdapter:
                 def __init__(self, avatar):
                     self.avatar = avatar
@@ -138,6 +145,80 @@ class AnimationMechanic(PlayerMechanic):
                 weight=1.0,
                 mask=BoneMask.upper_body()
             )
+
+            # --- Event System Wiring ---
+            # Bridge internal animation events to global event bus
+            def publish_hit_start(data):
+                world.event_bus.publish("combat_hit_start", 
+                    entity_id=self._player_id, 
+                    damage_multiplier=data.get('damage_multiplier', 1.0)
+                )
+            
+            def publish_impact(data):
+                world.event_bus.publish("combat_impact", 
+                    entity_id=self._player_id, 
+                    type=data.get('type', 'generic')
+                )
+                
+            def publish_hit_end(data):
+                world.event_bus.publish("combat_hit_end", 
+                    entity_id=self._player_id
+                )
+
+            self.combat_source.register_event_callback("attack_hit_start", publish_hit_start)
+            self.combat_source.register_event_callback("attack_impact", publish_impact)
+            self.combat_source.register_event_callback("attack_hit_end", publish_hit_end)
+            # ---------------------------
+            
+            # --- FootIK Integration ---
+            from engine.animation.foot_ik import FootIKController
+            from engine.animation.ik import IKLayer
+            from engine.physics import raycast_ground_height
+
+            # Create terrain raycast callback wrapper
+            def terrain_raycast(origin: LVector3f, direction: LVector3f) -> Optional[LVector3f]:
+                """Raycast callback for FootIKController."""
+                # Create mock entity with position for raycast_ground_height
+                class RayOrigin:
+                    def __init__(self, pos):
+                        self.x, self.y, self.z = pos.x, pos.y, pos.z
+                
+                entity = RayOrigin(origin)
+                # Use world collision traverser
+                result = raycast_ground_height(
+                    entity,
+                    world.collision_traverser,
+                    world.base.render,
+                    max_distance=5.0,
+                    ray_origin_offset=0.0, # Origin is already set at foot + 2.0
+                    return_normal=False
+                )
+                
+                if result is not None:
+                    # raycast_ground_height returns Z value
+                    return LVector3f(origin.x, origin.y, result)
+                return None
+
+            # Create FootIK controller with Phase 1 optimizations (update every 2 frames)
+            self.foot_ik = FootIKController(
+                raycast_callback=terrain_raycast,
+                hip_adjustment=0.8,
+                foot_offset=0.1,
+                update_interval=2
+            )
+
+            # Create IK layer
+            self.ik_layer = IKLayer(self.avatar.skeleton)
+
+            # Add IK layer with highest priority (applied last)
+            self.layered_animator.add_layer(
+                name="ik",
+                source=self.ik_layer,
+                priority=100,  # Highest priority
+                weight=1.0,
+                mask=BoneMask.full_body()
+            )
+            # --------------------------
             
             # Create root motion applicator
             self.root_motion_applicator = RootMotionApplicator()
@@ -145,7 +226,7 @@ class AnimationMechanic(PlayerMechanic):
             # Subscribe to parry success event for animation transitions
             world.event_bus.subscribe("parry_success", self._on_parry_success)
             
-            print("✅ AnimationMechanic: VoxelAvatar & Layered animation initialized")
+            print("✅ AnimationMechanic: VoxelAvatar, Layered Animation & FootIK initialized")
             
         except ImportError as e:
             print(f"❌ AnimationMechanic: Animation system error: {e}")
@@ -237,14 +318,30 @@ class AnimationMechanic(PlayerMechanic):
         )
         self.locomotion_source.set_movement_state(velocity, ctx.state.grounded)
         
-        # 6. Update Layered Animator
+        # 6. Update Foot IK (only when grounded, with frequency control)
+        if ctx.state.grounded:
+            foot_targets = self.foot_ik.update(
+                skeleton=self.avatar.skeleton,
+                world_position=ctx.transform.position,
+                grounded=ctx.state.grounded,
+                dt=ctx.dt
+            )
+            
+            # Apply IK targets to IK layer
+            for bone_name, target in foot_targets.items():
+                self.ik_layer.set_target(bone_name, target.position, target.weight)
+        else:
+            # Clear IK targets when airborne
+            self.ik_layer.clear_all_targets()
+        
+        # 7. Update Layered Animator
         self.layered_animator.update(ctx.dt)
         
         # Apply skeleton transforms to avatar bone nodes
         self.layered_animator.apply_to_skeleton()
         self._apply_skeleton_to_avatar()
         
-        # 7. Apply Root Motion (if combat animation is playing)
+        # 8. Apply Root Motion (if combat animation is playing)
         if self.combat_source.is_playing():
             current_clip = self.combat_source.get_current_clip()
             if current_clip and hasattr(current_clip, 'root_motion') and current_clip.root_motion:

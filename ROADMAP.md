@@ -1,145 +1,415 @@
 # MyCraft Roadmap
 
-**Last Updated**: 2025-12-28
-**Current Version**: 1.1 - Combat & Animation Focus
+**Last Updated**: 2026-01-03  
+**Current Version**: v0.2 (Combat Prototype) → v1.0-Hybrid (In Planning)
 
-## Overview
-
-This roadmap outlines the high-level milestones for MyCraft's development. Sprint-level details and task tracking are managed in [`docs/tech_debt.md`](docs/tech_debt.md).
+> [!IMPORTANT]
+> **Semantic Versioning Adopted**: This roadmap now uses semantic versioning (v0.x → v1.0 → v2.0 → v3.0) aligned with the design team's vision.
 
 ---
 
-## Milestone 1: Engine Foundation 🚧
+## Overview
 
-**Status**: In Progress  
+This roadmap outlines the high-level milestones for MyCraft's development, aligned with the design vision of creating **"a beautiful, open sandbox where players explore, build, collect, decorate, and play their own way."**
+
+Sprint-level details and task tracking are managed in [`docs/tech_debt.md`](docs/tech_debt.md).
+
+---
+
+## Version History & Semantic Versioning
+
+### Versioning Scheme
+
+- **v0.x - Pre-Alpha**: Engine foundation and prototyping
+- **v1.0 - Alpha**: Core gameplay loop functional ("Can I play for 1 hour?")
+- **v2.0 - Beta**: Major pillars implemented ("Can I play for 10+ hours?")
+- **v3.0 - Release**: Full vision realized ("I live there, not just beat it")
+
+### Patch & Minor Updates
+
+- **Minor versions** (v1.1, v1.2): New features, content additions, backward compatible
+- **Patch versions** (v1.0.1): Bug fixes, performance improvements
+
+---
+
+## v0.x - Pre-Alpha: Engine Foundation
+
+### v0.1 - Engine Foundation ✅
+
+**Status**: Mostly Complete (Milestone 1)  
 **Goal**: Establish core engine systems and architecture
 
-### Completed ✅
+#### Completed ✅
 
 - **ECS Architecture**: World, Entity, Component, System pattern
 - **Physics System**: Kinematic character controller with slope handling
 - **Networking**: TCP client/server with LAN discovery
 - **Rendering**: Panda3D integration, mesh building, texture atlas
 - **Water Physics**: Buoyancy and swimming mechanics
-- **Animation**: Procedural character animations
-- **Testing**: Unit and integration test framework
+- **Animation**: Layered animation system (procedural + keyframe)
+- **Testing**: Unit and integration test framework (257/294 tests passing)
 
-### Milestone 1: In Progress 🚧
+#### Remaining Work 🚧
 
-- **Documentation**: API references and developer guides
-- **Onboarding Docs**: Getting Started Guide, Player Guide polish, troubleshooting FAQ
-- **Test Infrastructure**: Fix 15 collection errors, establish CI baseline
-- **Performance**: Optimization and benchmarking
-- **Polish**: Bug fixes and UX improvements
-
-### Milestone 1 Success Criteria
-
-- [ ] Core engine systems documented with API references
-- [ ] Test coverage >70% for engine modules (currently 76 tests, 15 with collection errors)
-- [ ] All test collection errors resolved
-- [ ] Performance baseline established and met
-- [ ] voxel_world demonstrates all engine capabilities
-- [ ] Getting Started Guide complete (text-only)
-- [ ] Player Guide polished for playtester onboarding
-- [ ] Launcher UX reviewed and improved
-- [ ] Playtester-ready: install and play in <5 minutes
+- Fix remaining test failures (37 tests, mostly minor edge cases)
+- Complete documentation pass (API references, developer guides)
+- Performance baseline established
+- **Tooling Foundation**: Editor Manager and Base Editor Architecture ✅
 
 ---
 
-## Milestone 2: voxel_world Alpha
+### v0.2 - Combat Prototype 🚧
 
- **Status**: In Progress
- **Goal**: First playable version with core combat and exploration loop
+**Status**: In Progress (Milestone 2, Current Sprint)  
+**Goal**: Timing-based combat with dodge/parry mechanics
 
-### Milestone 2: In Progress 🚧
+#### Completed ✅
 
-- **Combat Animation**: Layered animation system with attacks, dodge, and parry
-- **Combat Mechanics**: Stamina system, damage calculation, and enemy AI framework
-- **Camera Polish**: Third-person camera with collision and improved feel
+- Layered animation system with combat clips (attacks, dodge, parry)
+- Combat state management (CombatState, Stamina components)
+- Attack/Dodge/Parry mechanics with timing windows
+- Root motion for attack lunges
+- Animation events for hit detection
+- Camera polish (collision, bob, zoom, mode-based architecture)
+- Stamina drain and regeneration
 
-### Planned Features
+#### In Progress 🚧
 
-- **Movement Mastery**: Climbing, vaulting, and fluid traversal
-- **Combat Prototype**: Basic attacks, dodging, and one enemy type
-- **Gameplay Loop**: Spawn → Find PoI → Challenge → Reward
-- **Content**: First "Challenge Shrine" implementation
-- **Multiplayer**: Sync for combat and movement state
-
-### Milestone 2 Success Criteria
-
-- [ ] Playable combat loop (attack/dodge feels good)
-- [ ] Functional traversal (climbing/vaulting working)
-- [ ] Complete PoI loop (Enter/Complete/Reward)
-- [ ] Multiplayer functionality for combat interactions
+- Combat animation integration (Phase 2: Dodge, Phase 3: Parry)
+- Enemy AI framework (Skeleton enemy planned)
+- Combat testing and tuning
 
 ---
 
-## Milestone 3: Visual Map Editor
+## v1.0-Hybrid - Alpha: Color Combat Loop
 
-**Status**: Planned  
-**Goal**: Multiplayer collaborative world building tool
+> **Theme**: "Can I play the game, customize, AND have fun with friends for 1 hour?"
 
-### Editor Features
+**Status**: 🚧 In Active Development (Started Jan 2026)  
+**Current Milestone**: 1/7 - Color Foundation  
+**Target**: ~10 weeks (Jan 6 → Mar 10, 2026)  
+**Goal**: Deliver playable alpha with exploration → combat → loot → customize → social play loop
 
-- **POI-Based Design**: Points of interest with chunk-sized regions
-- **Collaborative Editing**: Real-time multiplayer map building
-- **Visual Tools**: Paint terrain, place entities, configure biomes
-- **Export Pipeline**: Direct integration with world generation
-- **Preview Mode**: Test gameplay without leaving editor
+> [!IMPORTANT]
+> **Hybrid Approach**: Parallel development of game systems AND avatar customization. Colors are integrated gameplay rewards, not separate cosmetics.
 
-### Editor Success Criteria
+### Development Milestones
 
-- [ ] Functional editor with terrain painting
-- [ ] Multiplayer sync for collaborative editing
-- [ ] POI system integrated with world generation
-- [ ] Beginner-friendly UX validated with new users
+#### Week 1: Foundation & Visuals
+
+- ⏳ **M1: Color Foundation** (2-3h) - Core color system infrastructure
+- 🔒 **M2: Avatar Rendering** (2-3h) - Visual avatar customization
+- 🔒 **M3: Enemy Tinting** (2-3h) - Colored enemies in camps
+
+#### Week 2: Gameplay Loop
+
+- 🔒 **M4: Color Drops & Pickup** (2-3h) - Complete loot loop
+- 🔒 **M5: Color Projectiles** (3-4h) - Throw colors at friends
+
+#### Week 3: Social Features
+
+- 🔒 **M6: Trading System** (2-3h) - Share colors between players
+- 🔒 **M7: Network Sync** (2-3h) - Multiplayer color state sync
+
+### Features
+
+#### Core Systems ✅
+
+- Timing-based combat (dodge/parry)
+- Movement mechanics (walk, run, jump, climb, vault)
+- Multiplayer co-op (networking infrastructure ready)
+- 8 normal biomes (Plains, Forest, Rocky, Desert, Mountain, Canyon, River, Beach/Swamp)
+- POI System (Shrines + Camps)
+
+#### New for v1.0-Hybrid 🎯
+
+##### Enemy Types (2 Variants)
+
+- **Skeleton**
+  - Telegraphed attacks (1.5s windup)
+  - AI state machine (Idle → Aggro → Windup → Attack → Recovery)
+  - Health: 50, Damage: 20
+  - Medium speed, solo hunter
+  - Visual: Bone-white base with color tint overlay
+  
+- **Zombie** (NEW)
+  - Slower attacks (2.0s windup)
+  - Health: 80, Damage: 15
+  - Slow shambling movement
+  - Pack behavior (nearby zombies aggro together)
+  - Visual: Decayed appearance, must look like zombies
+  - Stronger color tint than skeletons
+
+##### Color Combat Loop (NEW)
+
+- **Starter Palette**: 8 basic colors (primary + secondary) available immediately
+- **Enemy Tinting**: Enemies visually tinted to signal their color drop
+- **Color Drops**: Defeating enemies drops color swatches (collectible loot)
+- **Camp Seeding**: Each camp has consistent 2-4 colors (seeded per world)
+- **Avatar Customization**: Apply unlocked colors to avatar body and per-bone
+- **Color Projectiles**:
+  - Throw colors at other players (T key)
+  - 60-second temporary color override
+  - 3-second cooldown, non-depleting
+  - Player-only projectiles (reusable foundation for future systems)
+- **Trading System**:
+  - Give swatches to nearby players
+  - G to offer → Y/N to accept/decline
+  
+##### POI Rewards (NEW)
+
+- **Preset Unlocks**: Complete shrines → unlock full avatar presets
+  - Knight (steel armor + gold helmet)
+  - Ranger (forest green + brown hood)
+  - Mage (purple robes + glowing hands)
+  - More presets planned
+
+##### Death System
+
+- Respawn at last safe point
+- Item recovery (Elden Ring-style, no time limit)
+- Drop color swatches on death (recoverable)
+- Death = inconvenience, not punishment
+
+##### Social Features (NEW)
+
+- Trade colors between players
+- Throw colors at friends for temporary "paint" effect
+- Multiplayer sees your customization (including temp overrides)
+- Share camp coordinates for rare colors
+
+### Success Criteria
+
+- [ ] Player can explore → find camp → defeat enemies → collect colors
+- [ ] Enemy tint clearly signals color reward
+- [ ] Avatar customization feels rewarding and fun
+- [ ] Color projectiles create playful chaos in multiplayer
+- [ ] Trading system works smoothly
+- [ ] Preset unlocks from shrines feel special
+- [ ] Combat feels fun and skill-based
+- [ ] Multiplayer supports 2-4 players with color sync
+- [ ] Death/respawn loop is forgiving
+- [ ] 1-hour playtest reveals engaging combat AND customization loop
+
+### Effort Estimate
+
+**Track A: Game Systems**
+
+- Skeleton + Zombie AI: ~3 weeks
+- Death System: ~1 week
+- Camp Color Seeding: ~3 days
+
+**Track B: Color Systems**
+
+- Avatar Color Foundation: ~1 week
+- Color Drop + Pickup: ~1 week
+- Projectile System (Reusable): ~1 week
+- Trading System: ~1 week
+- Preset System: ~2 weeks
+
+**Integration + Polish**
+
+- UI Polish: ~1 week
+- Network Sync: ~1 week
+- Integration Testing: ~2 weeks
+
+**Total**: ~10 weeks
 
 ---
 
-## Milestone 4: Customization Tools
+## v1.1 - v1.3: Content Expansion
 
-**Status**: Planned  
-**Goal**: Character and world personalization
+> **Theme**: "Add variety to the 1-hour loop"
 
-### Customization Features
+**Status**: Planned (Post v1.0-Hybrid)  
+**Target**: ~2-3 months (Est. Apr-Jun 2026)  
+**Goal**: Expand content without adding new systems
 
-- **Character Skinning**: Texture and color customization
-- **Primitive Modeling**: Build from cubes, spheres, etc.
-- **Model Extension**: Add parts to existing models
-- **Basic Rigging**: Custom animation support
-- **Asset Sharing**: Export and import custom content
+### v1.1 - Enemy Variety 🎯
 
-### Customization Success Criteria
+**Priority**: High  
+**Effort**: ~2-3 weeks
 
-- [ ] Visual character customization without code
-- [ ] Custom assets usable in-game
-- [ ] Community sharing pipeline established
-- [ ] Beginner tutorials for customization workflow
+- **Additional Enemy Types** (Skeletons + Zombies already in v1.0-Hybrid):
+  - Archer (ranged combat)
+  - Brute (high damage, slow attacks)
+  - Agile (fast, low health)
+- **Enemy Variations**:
+  - Tinted variants with rare color drops
+  - Elite enemies with multiple colors
+
+### v1.2 - More POI Types 🎯
+
+**Priority**: Medium  
+**Effort**: ~2-3 weeks
+
+- **Caves**: Underground exploration
+- **Camps**: Enemy outposts with loot (already basic in v1.0-Hybrid)
+- **Towers**: Vertical climbing challenges
+- **Ruins**: Puzzle-based POIs
+
+### v1.3 - Fantasy Biomes 🎯
+
+**Priority**: Medium  
+**Effort**: ~2-3 weeks
+
+- **Magical Forests**: Glowing trees, colorful atmosphere
+- **Crystal Caves**: Geometric crystals, light refraction
+- **Enchanted Plains**: Floating islands, sky platforms
+- **Fantasy = magical and colorful, not scary** (design requirement)
+
+### Success Criteria
+
+- [ ] Enemy combat feels varied and engaging
+- [ ] POIs have distinct identities (cave ≠ shrine)
+- [ ] Fantasy biomes feel whimsical and inviting
+- [ ] Players want to explore for variety, not just rewards
 
 ---
 
-## Long-Term Vision
+## v2.0 - Beta: Building & Progression
 
-### Editor & Tooling
+> [!IMPORTANT]
+> **MAJOR MILESTONE**: Implements the **Building & Hoarding pillar** (critical design requirement)
 
-- **Visual Level Editor**: Drag-and-drop world building
-- **Asset Pipeline**: Import/export for models, textures, sounds
-- **Debugging Tools**: In-game profiler, entity inspector
-- **Build System**: One-click packaging for distribution
+> **Theme**: "Can I play for 10+ hours and feel ownership?"
 
-### Community Ecosystem
+**Status**: Planned (Milestone 5)  
+**Target**: ~4-6 months (Est. Jun-Aug 2026)  
+**Goal**: Deliver the building/hoarding pillar and progression systems
 
-- **Game Gallery**: Showcase of MyCraft-powered games
+### Features
+
+#### Building & Crafting 🏗️
+
+**Priority**: Critical (Major design pillar)  
+**Effort**: ~4-6 weeks
+
+- **Chunk-Based Build Zones**: Tied to POIs (16x16 chunk building areas)
+- **Modular Building**: Fallout-style but improved
+  - Place walls, floors, roofs
+  - Snap-to-grid system
+  - Free-form voxel placement option
+- **Prefab System**: Pre-built structures (houses, towers, bridges)
+- **Item Interactions**:
+  - Pick up any placed item
+  - Break down for parts
+  - Upgrade (wood → stone → metal)
+  - Use as decoration
+- **Save/Load Builds**: Export/reload builds, future seed into world generation
+
+#### Skill Progression 📈
+
+**Priority**: High  
+**Effort**: ~2-3 weeks
+
+- **Simple Skill Tree** (Fallout 4 / Spider-Man style)
+  - Small, not sprawling (design requirement)
+  - Skills unlock options, not raw power
+- **4 Skill Categories**:
+  - **Combat**: Combo chains, weapon variety, stun attacks
+  - **Traversal**: Wall-run, gliding, double-jump
+  - **Loot/Crafting**: Auto-pickup, better salvage, rare finds
+  - **Building**: Larger zones, faster construction, advanced materials
+
+#### Loot & Economy 💰
+
+**Priority**: High  
+**Effort**: ~2-3 weeks
+
+- **Unified Currency**: Fallout caps-style (not rare or grindy)
+- **Collectibles**: Clothing, cosmetics, décor items
+- **Hoarding Support**: Storage chests, display cases, trophy rooms
+
+#### Visual Polish 🎨
+
+**Priority**: Medium-High  
+**Effort**: ~3-4 weeks
+
+- **Dynamic Lighting**: Shadows, day/night transitions
+- **Skybox & Atmosphere**: "Skyrim-like mood" (design requirement)
+- **Weather System**: Rain, fog, wind effects
+- **Particle Effects**: Dust clouds, magic sparkles, impact VFX
+
+### Success Criteria
+
+- [ ] Players can build, customize, and decorate bases
+- [ ] Skill tree provides meaningful choices
+- [ ] Loot feels rewarding and collectible
+- [ ] World atmosphere is beautiful and inviting
+- [ ] 10+ hour playtest shows sustained engagement
+
+---
+
+## v2.1 - v2.3: Polish & Depth
+
+> **Theme**: "Make it beautiful and engaging long-term"
+
+**Status**: Planned (Milestone 4 completion)  
+**Target**: ~6-9 months (Est. Sep-Nov 2026)  
+**Goal**: Polish, optional modes, and advanced features
+
+### v2.1 - Visual Excellence 🎨
+
+- **Advanced Lighting**: God rays, ambient occlusion
+- **Improved Skyboxes**: Per-biome custom skies
+- **Seasonal Weather**: Storms, snow, clear skies
+- **Voxel Particle System**: Enhanced VFX library
+
+> [!NOTE]
+> **Difficulty Systems Deprioritized**: Adaptive difficulty and hardcore mode are not a strong focus currently. The game uses a casual-first approach with broad accessibility as the default stance. These features may be revisited in future versions based on player feedback.
+
+### v2.2 - Advanced Building 🏗️
+
+- **Prefab Palette**: 20+ pre-built structures
+- **Build Blueprints**: Share .json files with friends
+- **World Gen Integration**: Seed player builds into new worlds
+- **Advanced Materials**: Glass, metal, decorative blocks
+
+### v2.3 - Character Customization 🎨
+
+- **Texture Customization**: Paint your avatar
+- **Color Palettes**: Preset and custom colors
+- **Primitive Modeling**: Add parts to avatar (hats, capes)
+- **Asset Sharing**: Export/import skins
+
+### Success Criteria
+
+- [ ] Game looks and feels premium (Skyrim-like atmosphere achieved)
+- [ ] Building system rivals Fallout 4 (but better)
+- [ ] Character customization encourages self-expression
+- [ ] Visual polish supports the "Skyrim-like mood" design goal
+
+---
+
+## v3.0 - Full Release: "Living World"
+
+> **Theme**: "I live there, not just beat it"
+
+**Status**: Long-Term Vision (Milestone 6+)  
+**Target**: ~12+ months (Est. 2027+)  
+**Goal**: Realize full design vision with community ecosystem
+
+### Weirdness Content 🐉
+
+- **Fantasy + Futuristic Tech Mashup** (design requirement)
+  - Dragons with missile launchers 🚀🐉
+  - Unicorns, strange mounts
+  - RIFTS-style lore explanation
+- **Epic Encounters**: Dragon boss fights, mechs in fantasy ruins
+
+### Community Ecosystem 🌐
+
+- **Visual Level Editor**: Multiplayer collaborative world building (Milestone 3)
 - **Asset Marketplace**: Community-created content sharing
-- **Tutorials & Courses**: Video series and written guides
-- **Discord/Forums**: Active community support channels
+- **Build Gallery**: Showcase player creations
+- **Mod Support**: Lua/Python scripting
 
-### Technical Enhancements
+### Advanced Systems ⚙️
 
-- **Advanced Rendering**: Shaders, lighting, post-processing
-- **Audio System**: 3D spatial audio and music
-- **AI Framework**: Pathfinding, behavior trees, NPC systems
-- **Optimization**: LOD system, chunk streaming, GPU acceleration
+- **Advanced AI**: Pathfinding, behavior trees, NPC dialogue
+- **3D Spatial Audio**: Directional sound, dynamic music
+- **Optimization**: LOD system, GPU acceleration, proper frustum culling
 
 ---
 
@@ -147,21 +417,62 @@ This roadmap outlines the high-level milestones for MyCraft's development. Sprin
 
 ### Versioning
 
-- **Major versions** (1.0, 2.0): Breaking API changes, major features
-- **Minor versions** (1.1, 1.2): New features, backward compatible
-- **Patch versions** (1.1.1): Bug fixes, performance improvements
+- **Major versions** (v1.0, v2.0, v3.0): Aligned with design milestones (Alpha, Beta, Release)
+- **Minor versions** (v1.1, v1.2): New features, content additions, backward compatible
+- **Patch versions** (v1.0.1): Bug fixes, performance improvements
 
 ### Release Cadence
 
-- **Milestone releases**: When success criteria met (no fixed timeline)
-- **Sprint releases**: Every 2-4 weeks for active development
-- **Hotfixes**: As needed for critical bugs
+- **Major releases**: When milestone success criteria fully met (no fixed timeline)
+- **Minor releases**: Every 3-6 weeks during active development
+- **Patch releases**: As needed for critical bugs
 
 ### Stability Guarantee
 
-- Engine API stability prioritized after Milestone 2
+- Engine API stability prioritized after v1.0 Alpha
 - Deprecation warnings for 2 minor versions before removal
 - Migration guides for breaking changes
+- Save file compatibility maintained within major versions
+
+---
+
+## Design Alignment
+
+> [!NOTE]
+> This roadmap addresses gaps identified in Design Alignment Analysis (2025-12-31)
+
+### Critical Gaps Addressed
+
+1. **Building & Hoarding Pillar** → v2.0 Beta (Milestone 5)
+2. **Skill Progression System** → v2.0 Beta
+3. **Loot & Currency Economy** → v2.0 Beta
+4. **Visual Polish (Skyrim-like atmosphere)** → v2.0 + v2.1
+5. **Fantasy Biomes** → v1.3 Content Expansion
+6. **Advanced Building Features** → v2.2
+7. **Character Customization** → v2.3
+8. **Weirdness Content (dragons, tech)** → v3.0 Long-Term
+
+**Note**: Adaptive difficulty and hardcore mode deprioritized per casual-first design approach.
+
+### Philosophical Alignment Confirmed ✅
+
+- Non-linear exploration ✅ (Implemented)
+- Timing-based combat with optional parry ✅ (Implemented)
+- Casual-friendly first, hardcore optional ✅ (Casual-first approach)
+- Death = inconvenience, not punishment ✅ (v1.0 death system)
+- No forced linear quests ✅ (By design)
+- Multiplayer co-op ✅ (Implemented)
+
+---
+
+## Current Sprint
+
+See [`docs/tech_debt.md`](docs/tech_debt.md) for:
+
+- Active sprint goals (currently Sprint 6: Combat Prototype → v0.2)
+- Detailed task breakdown
+- Technical debt tracking
+- Completed features and next steps
 
 ---
 
@@ -175,16 +486,6 @@ Have ideas for MyCraft's future? We welcome:
 
 ---
 
-## Current Sprint
-
-See [`docs/tech_debt.md`](docs/tech_debt.md) for:
-
-- Active sprint goals (currently Sprint 6: Combat Polish & Animation)
-- Detailed task breakdown
-- Technical debt tracking
-- Completed features and next steps
-
----
-
-*Last Updated: 2025-12-28*  
-*Version: 1.1*
+*Last Updated: 2025-12-31*  
+*Version: v0.2 (Combat Prototype)*  
+*Extended with Semantic Versioning aligned to Design Vision*

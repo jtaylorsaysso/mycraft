@@ -20,6 +20,11 @@ from engine.voxel.block import Block
 from engine.input.manager import InputManager
 from engine.input.keybindings import KeyBindingManager
 
+# Animation registry (for future use)
+from engine.animation.animation_registry import get_animation_registry
+
+# Note: Editors have been moved to standalone suite - use run_editor.py
+
 # Panda3D imports
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import LVector3f, WindowProperties
@@ -52,7 +57,8 @@ class VoxelGame(ShowBase):
         # Window setup
         props = WindowProperties()
         props.setTitle(name)
-        self.win.requestProperties(props)
+        if self.win:
+            self.win.requestProperties(props)
         self.disableMouse() # Disable default camera controls
         
         self.name = name
@@ -73,6 +79,8 @@ class VoxelGame(ShowBase):
         
         # Core key bindings
         self.accept('f9', self.take_screenshot)
+        
+        # Note: Editors moved to standalone suite - run 'python run_editor.py'
         
         # Environment and Rendering
         from engine.rendering.environment import EnvironmentManager
@@ -223,6 +231,7 @@ class VoxelGame(ShowBase):
     def spawn_player(self, position: tuple = (0, 10, 0)):
         """Spawn the player character."""
         from engine.components.core import Transform, Health, Inventory, Stamina, CombatState, KinematicState, CameraState, CameraMode
+        from engine.components.avatar_colors import AvatarColors
         
         # Create entity WITHOUT tag first to prevent early system wakeup
         entity_id = self.world.create_entity() # tag="player" removed
@@ -243,6 +252,7 @@ class VoxelGame(ShowBase):
             distance=5.0,
             current_distance=5.0
         ))
+        self.world.add_component(entity_id, AvatarColors())  # Add color customization
         
         # Now register tag to wake up systems (PlayerControlSystem)
         self.world.register_tag(entity_id, "player")

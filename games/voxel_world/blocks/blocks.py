@@ -32,6 +32,8 @@ class Block:
     tile_side: Optional[int] = None
     tile_bottom: Optional[int] = None
     display_name: str = ""
+    solid: bool = True
+    transparent: bool = False
     
     def __post_init__(self):
         """Set display_name from name if not provided."""
@@ -204,7 +206,8 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.LEAVES,
     tile_side=TileRegistry.LEAVES,
     tile_bottom=TileRegistry.LEAVES,
-    display_name="Leaves"
+    display_name="Leaves",
+    transparent=True  # Can see through, but solid collision (by default)
 ))
 
 # Natural terrain variations for diverse biomes
@@ -242,7 +245,8 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.ICE_PACKED,
     tile_side=TileRegistry.ICE_PACKED,
     tile_bottom=TileRegistry.ICE_PACKED,
-    display_name="Ice"
+    display_name="Ice",
+    transparent=False  # Packed ice is usually opaque in this style? Or translucent? Let's say opaque for now.
 ))
 
 BlockRegistry.register(Block(
@@ -311,3 +315,106 @@ BlockRegistry.register(Block(
     tile_bottom=TileRegistry.DIRT,
     display_name="Mud"
 ))
+
+# Fluids
+BlockRegistry.register(Block(
+    name="water",
+    color=(0.2, 0.5, 0.8),
+    tile_top=TileRegistry.WATER,
+    tile_side=TileRegistry.WATER,
+    tile_bottom=TileRegistry.WATER,
+    display_name="Water",
+    solid=False,
+    transparent=True
+))
+
+# Vegetation (Non-solid)
+BlockRegistry.register(Block(
+    name="tall_grass",
+    color=(0.3, 0.6, 0.2),
+    tile_top=TileRegistry.LEAVES, # Reuse leaves texture for now
+    tile_side=TileRegistry.LEAVES,
+    tile_bottom=TileRegistry.LEAVES,
+    display_name="Tall Grass",
+    solid=False,
+    transparent=True
+))
+
+BlockRegistry.register(Block(
+    name="flower",
+    color=(0.9, 0.2, 0.2),
+    tile_top=TileRegistry.LEAVES, # Reuse leaves (red tinted in future?)
+    tile_side=TileRegistry.LEAVES,
+    tile_bottom=TileRegistry.LEAVES,
+    display_name="Flower",
+    solid=False,
+    transparent=True
+))
+
+BlockRegistry.register(Block(
+    name="fern",
+    color=(0.3, 0.5, 0.2),
+    tile_top=TileRegistry.LEAVES,
+    tile_side=TileRegistry.LEAVES,
+    tile_bottom=TileRegistry.LEAVES,
+    display_name="Fern",
+    solid=False,
+    transparent=True
+))
+
+BlockRegistry.register(Block(
+    name="mushroom",
+    color=(0.7, 0.5, 0.4),
+    tile_top=TileRegistry.LEAVES,
+    tile_side=TileRegistry.LEAVES,
+    tile_bottom=TileRegistry.LEAVES,
+    display_name="Mushroom",
+    solid=False,
+    transparent=True
+))
+
+BlockRegistry.register(Block(
+    name="dead_bush",
+    color=(0.5, 0.4, 0.3),
+    tile_top=TileRegistry.LEAVES,
+    tile_side=TileRegistry.LEAVES,
+    tile_bottom=TileRegistry.LEAVES,
+    display_name="Dead Bush",
+    solid=False,
+    transparent=True
+))
+
+BlockRegistry.register(Block(
+    name="cactus",
+    color=(0.2, 0.5, 0.2),
+    tile_top=TileRegistry.LEAVES, # Cactus texture missing? Reuse leaves or wood?
+    tile_side=TileRegistry.LEAVES,
+    tile_bottom=TileRegistry.LEAVES,
+    display_name="Cactus",
+    solid=True, # Cactus is solid
+    transparent=False
+))
+
+# Decorative/Special Blocks
+BlockRegistry.register(Block(
+    name="gold_block",
+    color=(1.0, 0.84, 0.0),  # Bright gold
+    tile_top=TileRegistry.BRICK,  # Placeholder - reuse brick texture
+    tile_side=TileRegistry.BRICK,
+    tile_bottom=TileRegistry.BRICK,
+    display_name="Gold Block",
+    solid=True,
+    transparent=False
+))
+
+BlockRegistry.register(Block(
+    name="cobblestone",
+    color=(0.4, 0.4, 0.4),
+    tile_top=TileRegistry.COBBLESTONE,
+    tile_side=TileRegistry.COBBLESTONE,
+    tile_bottom=TileRegistry.COBBLESTONE,
+    display_name="Cobblestone",
+    solid=True,
+    transparent=False
+))
+
