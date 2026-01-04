@@ -1,11 +1,12 @@
 import json
 import os
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional, Union, List
 from panda3d.core import NodePath
 
 from engine.animation.skeleton import Skeleton, HumanoidSkeleton
 from engine.animation.voxel_avatar import VoxelAvatar
 from engine.animation.core import AnimationClip
+from engine.assets.poi_template import POITemplate
 
 class AssetManager:
     """Manages loading and saving of game assets (avatars, animations)."""
@@ -84,3 +85,31 @@ class AssetManager:
             data = json.load(f)
             
         return AnimationClip.from_dict(data)
+
+    def save_poi_template(self, template: POITemplate, filename: str):
+        """Save POI template to .mcp file."""
+        self.ensure_dir("pois")
+        path = self.get_full_path(os.path.join("pois", filename), ".mcp")
+        
+        with open(path, 'w') as f:
+            json.dump(template.to_dict(), f, indent=2)
+            
+    def load_poi_template(self, filename: str) -> POITemplate:
+        """Load POI template from .mcp file."""
+        # Check if filename already includes directory or extension helper needed?
+        # get_full_path handles extension, but we need to ensure it looks in pois/ if not provided
+        if "pois" not in filename and not os.path.exists(os.path.join(self.asset_dir, filename)):
+             filename = os.path.join("pois", filename)
+             
+        path = self.get_full_path(filename, ".mcp")
+        
+        with open(path, 'r') as f:
+            data = json.load(f)
+        return POITemplate.from_dict(data)
+        
+    def list_poi_templates(self) -> List[str]:
+        """List available POI template files."""
+        pois_dir = os.path.join(self.asset_dir, "pois")
+        if not os.path.exists(pois_dir):
+            return []
+        return [f[:-4] for f in os.listdir(pois_dir) if f.endswith(".mcp")]

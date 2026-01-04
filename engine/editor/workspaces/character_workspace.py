@@ -1,6 +1,6 @@
 
 from typing import Optional
-from panda3d.core import NodePath, Point2, Vec3
+from panda3d.core import NodePath, Point2, Vec3, TextNode
 from direct.gui.DirectGui import DirectFrame, DirectButton, DirectLabel
 
 from engine.editor.workspace import Workspace
@@ -135,7 +135,6 @@ class CharacterWorkspace(Workspace):
         self.inspector_panel.frame.hide()
         
         # Hint Label (Bottom Center)
-        from direct.gui.DirectGui import TextNode
         self.hint_label = DirectLabel(
             parent=self.app.aspect2d,
             text="",
@@ -191,7 +190,7 @@ class CharacterWorkspace(Workspace):
         return task.cont
         
     def accept_shortcuts(self):
-        self.app.accept('g', self._set_mode, [DragMode.TRANSLATE])
+        self.app.accept('g', self._set_mode, [DragMode.MOVE])
         self.app.accept('r', self._set_mode, [DragMode.ROTATE])
         self.app.accept('s', self._set_mode, [DragMode.SCALE])
         self.app.accept('f', self._frame_selection)
@@ -199,8 +198,8 @@ class CharacterWorkspace(Workspace):
         self.app.accept("control-shift-z", self._on_redo)
         self.app.accept("mouse1", self._on_mouse_press)
         self.app.accept("mouse1-up", self._on_mouse_release)
-        self.app.accept("wheel_up", self._on_scroll, [1])
-        self.app.accept("wheel_down", self._on_scroll, [-1])
+        # No need to bind scroll here, OrbitCamera handles it in enable()
+        pass
         
     # ─────────────────────────────────────────────────────────────────
     # Interaction Logic (Ported)
@@ -240,7 +239,44 @@ class CharacterWorkspace(Workspace):
             self.drag_controller.end_drag(self.history)
             self._rebuild_avatar()
 
+    def _on_transform_changed(self):
+        """Called by DragController during active manipulation to sync visuals."""
+        if not self.avatar:
+            return
+            
+        # 1. Handle symmetry if enabled and dragging
+        if self.symmetry_enabled and self.drag_controller.is_dragging():
+            bone_name = self.drag_controller.drag_state.bone_name
+            self.symmetry_controller.sync_bone_to_pair(bone_name)
+            
+        # 2. Synchronize NodePaths to Skeleton data
+        # DragController only modifies skeleton data; we must push to Panda3D nodes
+        for name, bone in self.avatar.skeleton.bones.items():
+            if name in self.avatar.bone_nodes:
+                node = self.avatar.bone_nodes[name]
+                t = bone.local_transform
+                node.setPos(t.position)
+                node.setHpr(t.rotation.x, t.rotation.y, t.rotation.z)
+                
+                # Update visual geometry scale for length changes
+                visual = node.find(f"visual_{name}")
+                if not visual.isEmpty():
+                    thickness = VoxelAvatar.BONE_THICKNESS_MAP.get(name, 0.1)
+                    visual.setScale(thickness, bone.length, thickness)
+                    visual.setPos(0, bone.length / 2.0, 0)
+        
+        # 3. Refresh skeleton renderer lines
+        if self.skeleton_renderer:
+            self.skeleton_renderer._rebuild_visualization()
+            if self.selection and self.selection.bone:
+                self.skeleton_renderer.highlight_bone(self.selection.bone)
+                
+        # 4. Update Inspector UI
+        if self.inspector_panel:
+            self.inspector_panel.update()
+
     def _on_mouse_move(self):
+        """Handle mouse movement for dragging and hovering."""
         if not self.active or not self.app.mouseWatcherNode.hasMouse():
             return
         mpos = self.app.mouseWatcherNode.getMouse()
@@ -250,13 +286,13 @@ class CharacterWorkspace(Workspace):
             self.bone_picker.update_hover(Point2(mpos.x, mpos.y))
 
     def _on_scroll(self, direction):
-        # Todo: Implement scroll scale logic from ModelEditor
+        """Redundant, camera handles it."""
         pass
         
     def _set_mode(self, mode):
         self.current_mode = mode
         if self.transform_gizmo:
-            if mode == DragMode.TRANSLATE: self.transform_gizmo.set_mode(TransformGizmo.MODE_TRANSLATE)
+            if mode == DragMode.MOVE: self.transform_gizmo.set_mode(TransformGizmo.MODE_TRANSLATE)
             elif mode == DragMode.ROTATE: self.transform_gizmo.set_mode(TransformGizmo.MODE_ROTATE)
             elif mode == DragMode.SCALE: self.transform_gizmo.set_mode(TransformGizmo.MODE_SCALE)
             
@@ -284,9 +320,9 @@ class CharacterWorkspace(Workspace):
                 self.transform_gizmo.attach_to(self.avatar.bone_nodes[self.selection.bone])
 
     # Slider Callbacks (Simplified)
-    def _on_position_slider(self, val): pass
-    def _on_rotation_slider(self, val): pass
-    def _on_length_slider(self, val): pass
+    def _on_position_slider(self, axis, val=None): pass
+    def _on_rotation_slider(self, axis, val=None): pass
+    def _on_length_slider(self, val=None): pass
     
     def _on_spline_changed(self):
         pass # Todo implementation

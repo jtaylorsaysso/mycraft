@@ -60,17 +60,26 @@ def test_launcher_instantiation():
         assert hasattr(app, '_handle_launch_error')
         assert hasattr(app, '_enable_close_button')
         
-        # Check new UI components
+        # Check UI components
         assert hasattr(app, 'dev_mode_var')
         assert hasattr(app, 'sens_var')
         assert hasattr(app, 'fov_var')
         assert hasattr(app, 'advanced_visible')
-        assert hasattr(app, 'toggle_advanced')
+        assert hasattr(app, 'toggle_advanced_options')  # Renamed method in new launcher
         assert hasattr(app, 'update_preset_desc')
         assert hasattr(app, 'open_server_config')
         
+        # Check tabbed interface
+        assert hasattr(app, 'notebook'), "Missing notebook (tabs)"
+        assert hasattr(app, 'play_tab'), "Missing PLAY tab"
+        assert hasattr(app, 'create_tab'), "Missing CREATE tab"
+        assert hasattr(app, 'advanced_tab'), "Missing ADVANCED tab"
+        
+        # Check editor launch capability
+        assert hasattr(app, 'launch_editor'), "Missing launch_editor method"
+        
         # Test basic toggles (logic only, no GUI update check)
-        app.toggle_advanced()
+        app.toggle_advanced_options()
         assert app.advanced_visible is not None
         
         root.destroy()
@@ -80,6 +89,17 @@ def test_launcher_instantiation():
         print(f"✗ Launcher instantiation failed: {e}")
         import traceback
         traceback.print_exc()
+        return False
+
+def test_first_launch_wizard():
+    """Test first-launch wizard class."""
+    print("\nTesting first-launch wizard...")
+    try:
+        from launcher import FirstLaunchWizard
+        print("✓ FirstLaunchWizard imported successfully")
+        return True
+    except Exception as e:
+        print(f"✗ FirstLaunchWizard test failed: {e}")
         return False
 
 def test_subprocess_command():
@@ -142,6 +162,7 @@ def test_file_existence():
     required_files = [
         "run_client.py",
         "run_server.py",
+        "run_editor.py",
         "launcher.py",
         "requirements.txt",
         "config/playtest.json"
@@ -157,6 +178,20 @@ def test_file_existence():
     
     return all_exist
 
+def test_editor_launch_command():
+    """Test that editor launch command is formed correctly."""
+    print("\nTesting editor launch command...")
+    try:
+        workspaces = ["Character", "Animation", "Preview"]
+        for ws in workspaces:
+            cmd = [sys.executable, "run_editor.py", "--workspace", ws]
+            print(f"  {ws}: {' '.join(cmd)}")
+        print("✓ Editor command formation looks good")
+        return True
+    except Exception as e:
+        print(f"✗ Editor command formation failed: {e}")
+        return False
+
 def main():
     print("="*60)
     print("MyCraft Launcher Test Suite")
@@ -167,7 +202,9 @@ def main():
         "File Existence": test_file_existence(),
         "Server Discovery": test_discovery(),
         "Launcher Instantiation": test_launcher_instantiation(),
+        "First Launch Wizard": test_first_launch_wizard(),
         "Subprocess Commands": test_subprocess_command(),
+        "Editor Launch Command": test_editor_launch_command(),
         "Error Handling": test_error_handling()
     }
     

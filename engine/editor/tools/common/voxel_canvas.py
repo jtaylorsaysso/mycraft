@@ -1,4 +1,10 @@
 from panda3d.core import NodePath, GeomNode, GeomVertexFormat, GeomVertexData, GeomVertexWriter, GeomTriangles, Geom, Vec3, Vec4, LineSegs
+from typing import Optional, List, Tuple
+
+try:
+    from games.voxel_world.blocks.blocks import BlockRegistry
+except ImportError:
+    BlockRegistry = None
 
 class VoxelCanvas:
     """
@@ -13,6 +19,8 @@ class VoxelCanvas:
         
         # Voxel Data: {(x, y, z): (r, g, b, a)}
         self.voxels = {}
+        # Block Type Data: {(x, y, z): block_name}
+        self.block_types = {}
         
         # Setup visualization
         self._build_grid()
@@ -56,6 +64,22 @@ class VoxelCanvas:
         # Round position to nearest int
         grid_pos = (round(pos[0]), round(pos[1]), round(pos[2]))
         self.voxels[grid_pos] = color
+        # Regular add_voxel assumes generic block if not using add_voxel_with_type
+        if grid_pos not in self.block_types:
+            self.block_types[grid_pos] = "unknown"
+            
+        self.rebuild_mesh()
+        
+    def add_voxel_with_type(self, pos, block_name: str, color=None):
+        """Add voxel with block type metadata."""
+        grid_pos = (round(pos[0]), round(pos[1]), round(pos[2]))
+        
+        # Auto-resolve color if not provided
+        if color is None:
+            color = self._get_block_color(block_name)
+            
+        self.voxels[grid_pos] = color
+        self.block_types[grid_pos] = block_name
         self.rebuild_mesh()
         
     def remove_voxel(self, pos):
@@ -63,12 +87,51 @@ class VoxelCanvas:
         grid_pos = (round(pos[0]), round(pos[1]), round(pos[2]))
         if grid_pos in self.voxels:
             del self.voxels[grid_pos]
-            self.rebuild_mesh()
+        if grid_pos in self.block_types:
+            del self.block_types[grid_pos]
+        self.rebuild_mesh()
             
     def clear(self):
         """Clears all voxels."""
         self.voxels = {}
+        self.block_types = {}
         self.rebuild_mesh()
+
+    def get_block_at(self, pos) -> Optional[str]:
+        """Get block type at position."""
+        grid_pos = (round(pos[0]), round(pos[1]), round(pos[2]))
+        return self.block_types.get(grid_pos)
+        
+    def to_poi_blocks(self) -> List[Tuple[int, int, int, str]]:
+        """Export blocks in POIData format."""
+        return [(x, y, z, self.block_types[(x,y,z)]) 
+                for (x,y,z) in self.block_types.keys()]
+                
+    def from_poi_blocks(self, blocks: List[Tuple[int, int, int, str]]):
+        """Import blocks from POIData format."""
+        self.clear()
+        for x, y, z, block_name in blocks:
+            color = self._get_block_color(block_name)
+            self.add_voxel_with_type((x, y, z), block_name, color)
+            
+    def _get_block_color(self, block_name: str):
+        """Helper to look up block color from registry."""
+        default_color = (0.8, 0.8, 0.8, 1)
+        
+        if not BlockRegistry:
+             return default_color
+             
+        try:
+            if not BlockRegistry.exists(block_name):
+                return default_color
+            
+            block = BlockRegistry.get_block(block_name)
+            # block.color is usually 3-float tuple (r,g,b). Add alpha.
+            if len(block.color) == 3:
+                return (*block.color, 1.0)
+            return block.color
+        except Exception:
+            return default_color
 
     def rebuild_mesh(self):
         """Rebuilds the GeomNode from current voxel data."""

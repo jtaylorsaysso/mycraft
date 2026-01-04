@@ -58,7 +58,7 @@ class PreviewWorkspace(Workspace):
         
         self.play_btn = DirectButton(
             parent=self.controls_frame,
-            text="▶ Play",
+            text="> Play",
             scale=0.05,
             pos=(-0.2, 0, -0.015),
             frameColor=(0.2, 0.6, 0.2, 1),
@@ -68,7 +68,7 @@ class PreviewWorkspace(Workspace):
         
         DirectButton(
             parent=self.controls_frame,
-            text="↺ Reset",
+            text="Reset",
             scale=0.05,
             pos=(0.2, 0, -0.015),
             frameColor=(0.4, 0.4, 0.45, 1),
@@ -110,10 +110,10 @@ class PreviewWorkspace(Workspace):
     def _toggle_playback(self):
         if self.playing:
             self._stop_playback()
-            self.play_btn['text'] = "▶ Play"
+            self.play_btn['text'] = "> Play"
         else:
             self._start_playback()
-            self.play_btn['text'] = "⏸ Pause"
+            self.play_btn['text'] = "|| Pause"
             
     def _start_playback(self):
         # Find a clip from registry if none
@@ -139,7 +139,7 @@ class PreviewWorkspace(Workspace):
     def _reset_playback(self):
         self._stop_playback()
         self.current_time = 0.0
-        if self.play_btn: self.play_btn['text'] = "▶ Play"
+        if self.play_btn: self.play_btn['text'] = "> Play"
         
         # Reset pose
         if self.skeleton:
@@ -157,7 +157,7 @@ class PreviewWorkspace(Workspace):
         elif self.current_time >= self.current_clip.duration:
             self.current_time = self.current_clip.duration
             self.playing = False
-            self.play_btn['text'] = "▶ Play"
+            self.play_btn['text'] = "> Play"
             
         # Apply Pose
         pose = self.current_clip.get_pose(self.current_time)

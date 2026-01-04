@@ -28,10 +28,16 @@ class EditorApp(ShowBase):
     
     Runs without ECS, gameplay systems, or world generation.
     Provides shared resources for editor tools.
+    
+    Args:
+        initial_workspace: Name of workspace to open initially (e.g., 'Character', 'Animation', 'Preview').
+                          If None, defaults to "Character".
     """
     
-    def __init__(self):
+    def __init__(self, initial_workspace: str = None):
         ShowBase.__init__(self)
+        
+        self._initial_workspace = initial_workspace or "Character"
         
         # Window setup
         props = WindowProperties()
@@ -72,11 +78,17 @@ class EditorApp(ShowBase):
         from engine.editor.workspaces.character_workspace import CharacterWorkspace
         from engine.editor.workspaces.animation_workspace import AnimationWorkspace
         from engine.editor.workspaces.preview_workspace import PreviewWorkspace
+        from engine.editor.workspaces.poi_workspace import POIWorkspace
         
         # Create and register
         self.workspace_manager.add_workspace("Character", CharacterWorkspace(self))
         self.workspace_manager.add_workspace("Animation", AnimationWorkspace(self))
         self.workspace_manager.add_workspace("Preview", PreviewWorkspace(self))
+        self.workspace_manager.add_workspace("POI", POIWorkspace(self))
+        
+        # Switch to initial workspace if specified
+        if self._initial_workspace and self._initial_workspace in self.workspace_manager.workspaces:
+            self.workspace_manager.switch_to(self._initial_workspace)
         
     def _build_status_bar(self):
         """Build bottom status bar."""

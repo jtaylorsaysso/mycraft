@@ -67,6 +67,9 @@ class POISystem:
             "riverside_ruins": RiversideRuinsGenerator(seed=world_seed)
         }
         
+        # Load template-based generators
+        self._load_template_generators()
+        
     def should_place_poi_at_chunk(self, chunk_x: int, chunk_z: int) -> bool:
         """Determine if a POI should be placed at this chunk using noise."""
         # Use noise for sparse, natural distribution
@@ -110,3 +113,32 @@ class POISystem:
     def get_poi_generator(self, variant: str):
         """Get the structure generator for a POI variant."""
         return self._generators.get(variant)
+
+    def _load_template_generators(self):
+        """Scan for .mcp template files and create generators."""
+        from engine.assets.manager import AssetManager
+        from games.voxel_world.pois.template_poi_generator import TemplatePOIGenerator
+        from engine.core.logger import get_logger
+        
+        logger = get_logger(__name__)
+        am = AssetManager()
+        
+        # Ensure directory exists to avoid errors on first run
+        if not os.path.exists(os.path.join(am.asset_dir, "pois")):
+            return
+            
+        for template_name in am.list_poi_templates():
+            try:
+                # Avoid overwriting hardcoded ones unless intentional?
+                # Let's allow overwrite for customization
+                gen = TemplatePOIGenerator(self.world_seed, template_name)
+                # Register by template name (e.g. "my_shrine")
+                self._generators[template_name] = gen
+                
+                # Also, if it has a biome affinity, we might want to register it for that biome logic?
+                # Currently select_poi_variant is hardcoded map.
+                # TODO: Make select_poi_variant dynamic based on available generators.
+                
+                logger.debug(f"Loaded POI template: {template_name}")
+            except Exception as e:
+                logger.warning(f"Failed to load POI template {template_name}: {e}")

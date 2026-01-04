@@ -30,15 +30,15 @@ class TimelinePanel:
         
         # Playback
         DirectButton(
-            parent=self.frame, text="▶", scale=0.05, pos=(x_base, 0, y_controls),
+            parent=self.frame, text=">", scale=0.05, pos=(x_base, 0, y_controls),
             command=self.callbacks.get('play')
         )
         DirectButton(
-            parent=self.frame, text="⏸", scale=0.05, pos=(x_base+0.12, 0, y_controls),
+            parent=self.frame, text="||", scale=0.05, pos=(x_base+0.12, 0, y_controls),
             command=self.callbacks.get('pause')
         )
         DirectButton(
-            parent=self.frame, text="⏹", scale=0.05, pos=(x_base+0.24, 0, y_controls),
+            parent=self.frame, text="[]", scale=0.05, pos=(x_base+0.24, 0, y_controls),
             command=self.callbacks.get('stop')
         )
         
