@@ -49,6 +49,7 @@ class VoxelAvatar:
         """
         self.root = parent_node.attachNewNode("VoxelAvatar")
         self.body_color = body_color
+        self.bone_color_overrides: Dict[str, Tuple[float, float, float, float]] = {}
         
         self.skeleton = skeleton if skeleton else HumanoidSkeleton()
         self.bone_nodes: Dict[str, NodePath] = {}
@@ -148,6 +149,72 @@ class VoxelAvatar:
         # Pivot is at start of bone (0,0,0)
         # Geometry center is at length/2 along Y so cube spans from 0 to length
         geom_holder.setPos(0, length / 2.0, 0)
+    
+    # ========== Runtime Color Methods ==========
+    
+    def set_body_color(self, rgba: Tuple[float, float, float, float]) -> None:
+        """
+        Update base body color for all bones.
+        
+        Applies to all bones that don't have per-bone color overrides.
+        
+        Args:
+            rgba: Color tuple (r, g, b, a) with values in [0.0, 1.0]
+        """
+        self.body_color = rgba
+        
+        # Update all bones that don't have overrides
+        for bone_name, bone_node in self.bone_nodes.items():
+            if bone_name not in self.bone_color_overrides:
+                visual_node = bone_node.find(f"visual_{bone_name}")
+                if not visual_node.isEmpty():
+                    visual_node.setColorScale(rgba)
+    
+    def set_bone_color(self, bone_name: str, rgba: Tuple[float, float, float, float]) -> None:
+        """
+        Override specific bone color.
+        
+        Args:
+            bone_name: Name of the bone to color
+            rgba: Color tuple (r, g, b, a) with values in [0.0, 1.0]
+            
+        Raises:
+            ValueError: If bone_name doesn't exist in skeleton
+        """
+        if bone_name not in self.bone_nodes:
+            raise ValueError(f"Bone '{bone_name}' not found in skeleton. Available bones: {list(self.bone_nodes.keys())}")
+        
+        self.bone_color_overrides[bone_name] = rgba
+        
+        # Apply color to visual node
+        bone_node = self.bone_nodes[bone_name]
+        visual_node = bone_node.find(f"visual_{bone_name}")
+        if not visual_node.isEmpty():
+            visual_node.setColorScale(rgba)
+    
+    def clear_bone_colors(self) -> None:
+        """Reset all bones to body color (remove per-bone overrides)."""
+        self.bone_color_overrides.clear()
+        
+        # Reset all visual nodes to body color
+        for bone_name, bone_node in self.bone_nodes.items():
+            visual_node = bone_node.find(f"visual_{bone_name}")
+            if not visual_node.isEmpty():
+                visual_node.setColorScale(self.body_color)
+    
+    def get_effective_color(self, bone_name: str) -> Tuple[float, float, float, float]:
+        """
+        Get current display color for bone.
+        
+        Returns per-bone override if set, otherwise returns body color.
+        
+        Args:
+            bone_name: Name of the bone
+            
+        Returns:
+            RGBA tuple for the bone's current color
+        """
+        return self.bone_color_overrides.get(bone_name, self.body_color)
 
     def validate_avatar(self) -> None:
         """Validate skeleton structure and avatar integrity.

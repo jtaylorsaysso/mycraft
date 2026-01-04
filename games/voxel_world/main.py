@@ -35,6 +35,10 @@ def run(**kwargs):
     game.world.add_system(ParrySystem(game.world, game.world.event_bus))
     game.world.add_system(CombatSystem(game.world, game.world.event_bus))
     
+    # Register avatar color system (M2: Avatar Rendering)
+    from engine.systems.avatar_color_system import AvatarColorSystem
+    game.world.add_system(AvatarColorSystem(game.world, game.world.event_bus, game))
+    
     # Register blocks 
     # (Engine provides defaults in BlockRegistry, we can add game-specific ones here if needed)
     

@@ -231,6 +231,7 @@ class VoxelGame(ShowBase):
     def spawn_player(self, position: tuple = (0, 10, 0)):
         """Spawn the player character."""
         from engine.components.core import Transform, Health, Inventory, Stamina, CombatState, KinematicState, CameraState, CameraMode
+        from engine.components.avatar_colors import AvatarColors
         
         # Create entity WITHOUT tag first to prevent early system wakeup
         entity_id = self.world.create_entity() # tag="player" removed
@@ -251,6 +252,7 @@ class VoxelGame(ShowBase):
             distance=5.0,
             current_distance=5.0
         ))
+        self.world.add_component(entity_id, AvatarColors())  # Add color customization
         
         # Now register tag to wake up systems (PlayerControlSystem)
         self.world.register_tag(entity_id, "player")
