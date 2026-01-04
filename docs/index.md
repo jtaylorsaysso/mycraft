@@ -41,6 +41,7 @@ Welcome to MyCraft! Whether you're just starting out or diving deep into the eng
 | Document | Description |
 |----------|-------------|
 | [Customization Basics](guides/customization_basics.md) | Change textures, colors, and more *(Coming Soon)* |
+| [Model Editor Guide](guides/model_editor_guide.md) | Create and customize voxel avatars ✅ |
 | [Visual Editor Guide](guides/visual_editor.md) | Build worlds collaboratively *(Milestone 3)* |
 
 ### Sharing Your Work
@@ -60,7 +61,9 @@ Want to go deeper? These docs cover the technical details.
 | Document | Description |
 |----------|-------------|
 | [Architecture Overview](engine/ARCHITECTURE.md) | How MyCraft works under the hood |
+| [Editor Architecture](engine/EDITOR_ARCHITECTURE.md) | Standalone tools architecture ✅ |
 | [Animation System](engine/ANIMATION_SYSTEM.md) | Procedural + keyframe animations ✅ |
+| [Equipment System](engine/EQUIPMENT_SYSTEM.md) | Sockets and attachment points ✅ |
 | [Combat Architecture](engine/COMBAT_ARCHITECTURE.md) | Combat systems and state flow ✅ |
 | [State Management](engine/STATE_MANAGEMENT.md) | ECS component state patterns ✅ |
 | [Player Mechanics](engine/player_mechanics.md) | Priority-based control system ✅ |

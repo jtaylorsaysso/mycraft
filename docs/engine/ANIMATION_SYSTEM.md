@@ -442,193 +442,58 @@ delta = root_motion_applicator.extract_and_apply(
 
 ---
 
-## Foot IK
+---
 
-The `FootIKController` adjusts foot positions to match terrain height.
+## IK System
 
-### Algorithm
+The IK (Inverse Kinematics) system adapts bone positions to the environment (terrain, walls).
 
-```python
-class FootIKController:
-    def update(self, dt: float):
-        # 1. Raycast from toe position downward
-        toe_world_pos = skeleton.get_bone_world_pos('shin_left')
-        hit = raycast_terrain(toe_world_pos, down_vector)
-        
-        if hit:
-            terrain_height = hit.z
-            current_height = toe_world_pos.z
-            offset = terrain_height - current_height
-            
-            # 2. Apply offset to shin rotation (bend knee)
-            ik_angle = math.atan2(offset, shin_length) * 57.3  # radians to degrees
-            shin_transform.rotation.x += ik_angle
-```
+### Foot IK
 
-### Performance Optimization
+The `FootIKController` adjusts feet to match terrain height.
 
-**Phase 1 (Implemented)**:
+**Algorithm**:
 
-- 30Hz updates (instead of 60Hz)
-- ~42 raycasts/sec per player
-- 60% reduction vs. naive approach
+1. **Raycast**: Cast down from above the foot position.
+2. **Offset**: Calculate vertical difference between foot bone and terrain.
+3. **Adjustment**: Apply rotation to the shin/thigh to lift or lower the foot.
 
-**Future phases** (optional):
+### Hand IK
 
-- Spatial caching (~85% reduction)
-- Async raycasting (off main thread)
-- Heightmap system (~95% reduction)
+The `HandIKController` (used in climbing mode) places hands on surface geometry.
+
+**Algorithm**:
+
+1. **Raycast**: Cast forward from the shoulder/chest.
+2. **Target**: If a wall is found, set the hand target position to the surface point.
+3. **Solver**: Use a 2-bone IK solver (Upper Arm, Lower Arm) to reach the target.
 
 ---
 
-## VoxelAvatar Rendering
+## Avatar Implementations
 
-The `VoxelAvatar` class visualizes the skeleton as 5 blocky parts.
+The system supports multiple visual backends for the skeleton.
 
-### Part Structure
+### VoxelAvatar (Procedural)
 
-```python
-class VoxelAvatar:
-    def __init__(self, parent: NodePath):
-        self.root = parent.attachNewNode('avatar')
-        
-        # Create 5 parts
-        self.head = self._create_cube(size=0.32, color=(1, 0.8, 0.6, 1))
-        self.torso = self._create_cube(size=(0.32, 0.16, 0.48), color=(0.5, 0.5, 0.8, 1))
-        self.arm_left = self._create_cube(size=(0.12, 0.12, 0.48), color=(1, 0.8, 0.6, 1))
-        self.arm_right = ...
-        self.leg_left = ...
-        
-        # Attach to skeleton bones
-        self.bone_nodes = {
-            'head': skeleton.bones['head'],
-            'chest': skeleton.bones['chest'],
-            'upper_arm_left': skeleton.bones['upper_arm_left'],
-            ...
-        }
-```
+The `VoxelAvatar` constructs a visual character using Panda3D primitives (CardMaker cubes).
 
-### Transform Application
+- **Structure**: Recursive NodePath hierarchy matching the Skeleton bones.
+- **Visuals**: simple colored boxes scaled to bone lengths.
+- **Usage**: Fallback or aesthetic choice for pure voxel look.
 
-```python
-# AnimationMechanic applies skeleton transforms to avatar
-for bone_name, node_path in avatar.bone_nodes.items():
-    if bone_name in skeleton_pose:
-        transform = skeleton_pose[bone_name]
-        transform.apply_to_node(node_path)
-```
+### GLBAvatar (Mesh-Based)
 
----
+The `GLBAvatar` loads a `.glb` or `.gltf` mesh and articulates it.
 
-## JSON Serialization
+**Named Part Matching**:
+Instead of using skinning (weighted vertices), this system uses "Rigid Part Parenting":
 
-All animation data can be exported to / imported from JSON for editor workflows.
+1. The GLB model is inspected for child nodes named after bones (e.g., "head", "chest", "hand_left").
+2. Matching nodes are reparented to the corresponding skeleton bone `NodePath`.
+3. Unmatched nodes are parented to the "hips" (root).
 
-### AnimationClip JSON Format
-
-```json
-{
-  "name": "attack_light",
-  "duration": 0.5,
-  "looping": false,
-  "keyframes": [
-    {
-      "time": 0.0,
-      "transforms": {
-        "upper_arm_right": {
-          "position": [0, 0, 0],
-          "rotation": [0, -90, 0],
-          "scale": [1, 1, 1]
-        }
-      }
-    }
-  ],
-  "events": [
-    {
-      "time": 0.12,
-      "event_name": "hit_start",
-      "data": {}
-    }
-  ],
-  "combat_metadata": {
-    "hit_windows": [
-      {"start_time": 0.12, "end_time": 0.18, "damage_multiplier": 1.0}
-    ],
-    "can_cancel_after": 0.35
-  }
-}
-```
-
-See [AnimationRegistry](ANIMATION_EDITOR.md#animation-registry) for save/load API.
-
----
-
-## Integration with Player Mechanics
-
-The `AnimationMechanic` (priority 5) integrates into the player control pipeline:
-
-```python
-class AnimationMechanic(PlayerMechanic):
-    def initialize(self, player_id, world):
-        # Create avatar and skeleton
-        self.skeleton = HumanoidSkeleton()
-        self.avatar = VoxelAvatar(parent=world.base.render)
-        
-        # Create layered animator
-        self.animator = LayeredAnimator(self.skeleton)
-        
-        # Add layers
-        self.animator.add_layer('locomotion', ProceduralWalkSource(), priority=0)
-        self.animator.add_layer('combat', CombatAnimationSource(), priority=10, mask=BoneMask.upper_body())
-        self.animator.add_layer('ik', FootIKSource(), priority=20)
-        
-    def update(self, ctx: PlayerContext):
-        # Update animator
-        self.animator.update(ctx.dt)
-        
-        # Apply to avatar
-        pose = self.animator.get_last_pose()
-        self.skeleton.apply_pose(pose)
-        
-        for bone_name, transform in pose.items():
-            if bone_name in self.avatar.bone_nodes:
-                transform.apply_to_node(self.avatar.bone_nodes[bone_name])
-```
-
-See [Player Mechanics](player_mechanics.md#animationmechanic) for full details.
-
----
-
-## Common Patterns
-
-### Blending Between States
-
-```python
-# Fade in new animation over 0.2s
-combat_layer.set_weight(0.0)
-# ... over time
-combat_layer.set_weight(combat_layer.weight + dt / 0.2)
-```
-
-### Querying Animation State
-
-```python
-# Check if combat animation is playing
-if animator.get_layer('combat').enabled:
-    # Block movement during attack
-    ctx.state.velocity *= 0.0
-```
-
-### Custom Animation Sources
-
-```python
-class CustomSource(AnimationSource):
-    def update(self, dt: float, skeleton: Skeleton) -> Dict[str, Transform]:
-        # Return bone transforms
-        return {
-            'chest': Transform(rotation=LVector3f(0, math.sin(time) * 10, 0))
-        }
-```
+**Benefit**: This allows using standard 3D modeling tools (Blender) to create voxel-style characters where limbs are separate objects, preserving the rigid aesthetics while using standard animation pipelines.
 
 ---
 
@@ -659,9 +524,10 @@ print(f"Animator: {elapsed:.2f}ms")
 
 - [Combat Architecture](COMBAT_ARCHITECTURE.md) - How animations integrate with combat
 - [Animation Editor](ANIMATION_EDITOR.md) - Visual editing tools
+- [Equipment System](EQUIPMENT_SYSTEM.md) - Sockets and item attachment
 - [Player Mechanics](player_mechanics.md) - Control system integration
 
 ---
 
-*Last Updated: 2025-12-30*  
-*Version: 1.0*
+*Last Updated: 2026-01-04*  
+*Version: 1.1*
