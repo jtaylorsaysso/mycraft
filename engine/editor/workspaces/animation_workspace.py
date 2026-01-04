@@ -9,7 +9,7 @@ from engine.editor.panels.timeline_panel import TimelinePanel
 
 from engine.animation.skeleton import HumanoidSkeleton
 from engine.animation.voxel_avatar import VoxelAvatar
-from engine.animation.core import AnimationClip, Keyframe, Transform
+from engine.animation.core import AnimationClip, Keyframe, Transform, VoxelAnimator, VoxelRig
 from engine.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -40,6 +40,15 @@ class AnimationWorkspace(Workspace):
         
         self.update_task = None
         
+        # Core Animator
+        self.animator: Optional[VoxelAnimator] = None
+        self.preview_rig: Optional[VoxelRig] = None
+        
+        # Debug Visualization
+        self.event_log_label = None
+        self.last_event_text = ""
+        self.event_display_timer = 0.0
+        
         self._setup_scene()
         self._build_ui()
         
@@ -55,6 +64,21 @@ class AnimationWorkspace(Workspace):
             skeleton=self.preview_skeleton,
             body_color=(0.3, 0.7, 1.0, 1.0)
         )
+        
+        # Setup VoxelAnimator
+        # VoxelAnimator requires a VoxelRig. 
+        # VoxelAvatar creates visual nodes but doesn't expose a VoxelRig directly.
+        # We wrap the avatar's nodes in a VoxelRig adapter.
+        self.preview_rig = VoxelRig(self.preview_avatar.root)
+        self.preview_rig.bones = self.preview_avatar.bone_nodes # Map visual nodes to rig
+        self.animator = VoxelAnimator(self.preview_rig)
+        
+        # Hook up debug events
+        self.animator.register_event_callback("footstep", lambda d: self._log_event("footstep", d))
+        self.animator.register_event_callback("hit", lambda d: self._log_event("hit", d))
+        self.animator.register_event_callback("vfx", lambda d: self._log_event("vfx", d))
+        # Catch-all? VoxelAnimator doesn't support catch-all yet, but we can register for known ones.
+        # For general debugging, we might want to patch _trigger_event in VoxelAnimator or just register common ones.
         
     def _build_ui(self):
         """Build workspace UI."""
@@ -103,6 +127,7 @@ class AnimationWorkspace(Workspace):
         self.preview_root.hide()
         self.browser_panel.frame.hide()
         self.timeline_panel.frame.hide()
+        self.event_log_label.hide()
         self._stop_playback()
         
     def accept_shortcuts(self):
@@ -118,13 +143,35 @@ class AnimationWorkspace(Workspace):
         else: self._on_play()
 
     def _on_play(self):
-        if not self.current_clip: return
+        if not self.current_clip or not self.animator: return
         self.playing = True
+        
+        # Ensure clip is loaded in animator
+        self.animator.add_clip(self.current_clip)
+        
+        # Use animator's play state
+        # If we were paused, we might want to resume. 
+        # But VoxelAnimator.play() resets time usually?
+        # Check core.py: play(clip_name, blend) -> resets current_time = 0.0
+        # This prevents Resume behavior.
+        # We should modify VoxelAnimator or just rely on 'playing' flag if clip is same.
+        
+        if self.animator.current_clip == self.current_clip.name and not self.animator.playing:
+            # Resuming
+            self.animator.playing = True
+            # Sync time just in case editor time was scrubbing
+            self.animator.current_time = self.current_time 
+        else:
+            # New play
+            self.animator.play(self.current_clip.name, blend=False)
+            
         if not self.update_task:
             self.update_task = self.app.taskMgr.add(self._update_playback, "AnimWSUpdate")
             
     def _on_pause(self):
         self.playing = False
+        if self.animator:
+            self.animator.playing = False
         
     def _on_stop(self):
         self._stop_playback()
@@ -136,22 +183,36 @@ class AnimationWorkspace(Workspace):
         if self.update_task:
             self.app.taskMgr.remove(self.update_task)
             self.update_task = None
+        if self.animator:
+            self.animator.playing = False
+            self.animator.current_time = 0.0
             
     def _update_playback(self, task):
-        if not self.playing or not self.current_clip:
+        dt = ClockObject.getGlobalClock().getDt()
+        
+        # Debug Log Update
+        if self.event_display_timer > 0:
+            self.event_display_timer -= dt
+            if self.event_display_timer <= 0:
+                self.event_log_label['text'] = ""
+                self.event_log_label.hide()
+                
+        if not self.playing or not self.current_clip or not self.animator:
             return task.cont
         
-        dt = ClockObject.getGlobalClock().getDt()
-        self.current_time += dt
+        # Delegate to VoxelAnimator
+        self.animator.update(dt)
         
-        if self.current_clip.looping:
-            self.current_time %= self.current_clip.duration
-        elif self.current_time >= self.current_clip.duration:
-            self.current_time = self.current_clip.duration
+        # Sync Editor Time
+        self.current_time = self.animator.current_time
+        
+        # Check if finished (if not looping)
+        if not self.animator.playing:
             self.playing = False
             
         self._update_timeline_ui()
-        self._apply_pose()
+        # self._apply_pose() # VoxelAnimator applies pose automatically to VoxelRig!
+        
         return task.cont
         
     def _update_timeline_ui(self):
@@ -159,9 +220,13 @@ class AnimationWorkspace(Workspace):
         self.timeline_panel.update_time(self.current_time, dur)
         
     def _apply_pose(self):
-        if self.preview_skeleton and self.current_clip:
+        # Fallback for when NOT playing (scrubbing/seeking)
+        # VoxelAnimator updates rig when update() is called.
+        # But if we assume VoxelAnimator is stateful, we can just set its time and force update?
+        if self.preview_rig and self.current_clip:
+            # Direct application for scrubbing (bypassing animator's blend state)
             pose = self.current_clip.get_pose(self.current_time)
-            self.preview_skeleton.apply_pose(pose)
+            self.preview_rig.apply_pose(pose)
 
     def _on_clip_selected(self, clip_name):
         if clip_name == "(no clips)": return
@@ -301,8 +366,17 @@ class AnimationWorkspace(Workspace):
         except Exception as e:
             logger.error(f"Failed to load clip '{name}': {e}")
 
+    def _log_event(self, name, data):
+        """Callback for animation events."""
+        text = f"EVENT: {name} | {data}"
+        self.event_log_label['text'] = text
+        self.event_log_label.show()
+        self.event_display_timer = 2.0 # Show for 2 seconds
+        # logger.info(text)
+
     def cleanup(self):
         super().cleanup()
         if self.preview_root: self.preview_root.removeNode()
         if self.browser_panel: self.browser_panel.cleanup()
         if self.timeline_panel: self.timeline_panel.cleanup()
+        if self.event_log_label: self.event_log_label.destroy()

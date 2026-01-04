@@ -7,6 +7,7 @@ gui_mock = MagicMock()
 sys.modules['direct'] = MagicMock()
 sys.modules['direct.showbase'] = MagicMock()
 sys.modules['direct.showbase.DirectObject'] = MagicMock()
+sys.modules['direct.showbase.ShowBase'] = MagicMock()
 sys.modules['direct.gui'] = MagicMock()
 sys.modules['direct.gui.DirectGui'] = gui_mock
 

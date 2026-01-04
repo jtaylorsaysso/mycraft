@@ -3,6 +3,8 @@
 Hybrid keyframe + procedural animation system designed for pure-voxel characters.
 """
 
+
+from bisect import bisect_right
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 from panda3d.core import NodePath, LVector3f, LQuaternionf, LMatrix4f
@@ -171,28 +173,76 @@ class AnimationClip:
         Returns:
             Dictionary of bone name -> Transform
         """
-        if self.looping:
+        if not self.keyframes:
+            return {}
+
+        if self.looping and self.duration > 0:
             time = time % self.duration
         else:
             time = min(time, self.duration)
         
-        # Find surrounding keyframes
-        prev_kf = self.keyframes[0]
-        next_kf = self.keyframes[-1]
+        # Optimize: Binary search for the keyframe
+        # Keyframes track (time)
+        times = [k.time for k in self.keyframes]
+        idx = bisect_right(times, time)
         
-        for i, kf in enumerate(self.keyframes):
-            if kf.time <= time:
-                prev_kf = kf
-                if i + 1 < len(self.keyframes):
-                    next_kf = self.keyframes[i + 1]
-                else:
-                    next_kf = self.keyframes[0] if self.looping else kf
+        # idx is the insertion point. 
+        # The keyframe active at 'time' is usually at idx-1 (previous keyframe).
+        # The next keyframe is at idx.
+        
+        prev_idx = idx - 1
+        next_idx = idx
+        
+        # Handle wrap-around and boundary conditions
+        if prev_idx < 0:
+            if self.looping and len(self.keyframes) > 1:
+                # Wrap to last keyframe
+                prev_idx = len(self.keyframes) - 1
+                next_idx = 0
+            else:
+                # Clamped at start
+                prev_idx = 0
+                next_idx = 0
+        elif next_idx >= len(self.keyframes):
+            if self.looping:
+                next_idx = 0
+            else:
+                next_idx = prev_idx # Clamped at end
+
+        prev_kf = self.keyframes[prev_idx]
+        next_kf = self.keyframes[next_idx]
         
         # Interpolate between keyframes
-        if prev_kf.time == next_kf.time:
+        # Special case: exact match or clamped
+        if prev_kf is next_kf or prev_kf.time == next_kf.time:
             return prev_kf.transforms.copy()
+            
+        # Calculate t (0.0 to 1.0)
+        # Note: if looping and wrapping around (last -> first), time calc is different
+        if next_kf.time < prev_kf.time:
+            # Wrapping around
+            # Duration segment calculation
+            # Time from prev to end: (duration - prev.time)
+            # Time from start to cur: time
+            # Time from start to next: next.time
+            # Total segment: (duration - prev.time) + next.time
+            segment_duration = (self.duration - prev_kf.time) + next_kf.time
+            if segment_duration <= 0.0001: 
+                return prev_kf.transforms.copy()
+                
+            elapsed = 0.0
+            if time >= prev_kf.time:
+                elapsed = time - prev_kf.time
+            else:
+                elapsed = (self.duration - prev_kf.time) + time
+                
+            t = elapsed / segment_duration
+        else:
+            # Normal segment
+            t = (time - prev_kf.time) / (next_kf.time - prev_kf.time)
         
-        t = (time - prev_kf.time) / (next_kf.time - prev_kf.time)
+        # Clamp t for safety
+        t = max(0.0, min(1.0, t))
         
         result = {}
         for bone_name in prev_kf.transforms:
@@ -360,47 +410,63 @@ class VoxelAnimator:
         self.current_time += dt
         
         # Handle events
+        # Optimize event processing
+        # Instead of sorting/indexing which might be complex to maintain with mutable clips,
+        # we stick to checking range, but we first sort events by time if they aren't sorted.
+        # Assuming events are relatively few per clip (usually < 20), linear scan is actually okay-ish
+        # IF we only check relevant ones. 
+        # But iterating ALL events just to check "is t inside" is what we want to avoid if N is large.
+        
+        # For now, let's keep the logic robust but clean it up.
+        # To truly optimize for large N, we'd keep a 'next_event_index' and sort events.
+        
+        # Standard approach for game engines:
         for event in clip.events:
-            event_key = f"{self.current_clip}_{event.time}"
+            # Helper to check if time 't' is in range (start, end] dealing with wrapping
+            def in_range(t_check, start, end, loop_dur=None):
+                if loop_dur: # Looping case
+                    # Wrapped forward?
+                    # Interval crosses loop boundary?
+                    # Current logic (prev -> curr)
+                    # 1. Normal: start < t <= end
+                    # 2. Wrapped: end < start.
+                    #    Then t in (start, dur] OR t in [0, end]
+                     
+                    start_mod = start % loop_dur
+                    end_mod = end % loop_dur
+                    
+                    if end_mod < start_mod:
+                        # Wrapped
+                        return (start_mod < t_check <= loop_dur) or (0 <= t_check <= end_mod)
+                    else:
+                        # Normal
+                        return start_mod < t_check <= end_mod
+                else:
+                    # Non-looping
+                    return start < t_check <= end
             
-            # Check if event time was crossed this frame
-            # Use wrapped time equality if within a small epsilon to catch exact start times?
-            # Or just check if event.time is between prev_time and current_time.
-            # For looping animations, we need to handle wrapping.
+            # Use robust range check
+            # Event fires if its time is strictly greater than prev_time and <= current_time
+            # Handling wrapping logic from before
             
             should_trigger = False
             
             if clip.looping:
-                # Handle wrapping
-                prev_t_mod = prev_time % clip.duration
-                curr_t_mod = self.current_time % clip.duration
+                curr_mod = self.current_time % clip.duration
+                prev_mod = prev_time % clip.duration
                 
-                if curr_t_mod < prev_t_mod:
-                    # Wrapped around
-                    if prev_t_mod < event.time <= clip.duration or 0 <= event.time <= curr_t_mod:
+                if curr_mod < prev_mod:
+                    # Wrapped
+                    if prev_mod < event.time <= clip.duration or 0 <= event.time <= curr_mod:
                         should_trigger = True
-                        # If wrapped, we might need to reset triggered events for this loop?
-                        # For simple implementation, let's just trigger.
-                        # Ideally triggered_events should be cleared on loop.
                 else:
-                    if prev_t_mod < event.time <= curr_t_mod:
+                    if prev_mod < event.time <= curr_mod:
                         should_trigger = True
             else:
-                if prev_time < event.time <= self.current_time:
+                 if prev_time < event.time <= self.current_time:
                     should_trigger = True
             
             if should_trigger:
-                # Simple deduplication: if not looping, only fire once.
-                # If looping, we want to fire every loop.
-                # But 'set' approach only works for one-shot unless we clear it.
-                
-                # For now, let's just fire if condition met.
-                # The 'triggered_events' set is good for ensuring we don't double-fire if dt is small and we check ranges?
-                # Actually checking range (prev < t <= curr) is sufficient to fire exactly once per crossing.
-                # So we don't strictly need triggered_events set for the range check approach,
-                # UNLESS we want to prevent re-firing when scrubbing/seeking.
-                # But here we just advance time.
-                
                 self._trigger_event(event)
         
         # Get current pose
