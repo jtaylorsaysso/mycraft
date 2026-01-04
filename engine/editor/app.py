@@ -9,6 +9,7 @@ from panda3d.core import WindowProperties, loadPrcFileData
 from direct.gui.DirectGui import DirectLabel
 
 from engine.editor.manager import EditorSuiteManager
+from engine.assets.manager import AssetManager
 from engine.animation.animation_registry import get_animation_registry
 from engine.core.logger import get_logger
 
@@ -42,6 +43,8 @@ class EditorApp(ShowBase):
         
         # Shared resources
         self.anim_registry = get_animation_registry()
+        self.asset_manager = AssetManager("assets") # Default asset directory
+        self.asset_manager.ensure_dir()
         
         # Editor suite management
         self.suite_manager = EditorSuiteManager(self)

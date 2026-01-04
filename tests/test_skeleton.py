@@ -21,7 +21,7 @@ sys.modules['panda3d'] = mock_panda
 sys.modules['panda3d.core'] = mock_core
 
 # Import after mocking
-from engine.animation.skeleton import Bone, Skeleton, HumanoidSkeleton, BoneConstraints
+from engine.animation.skeleton import Bone, Skeleton, HumanoidSkeleton, BoneConstraints, Socket
 
 
 class TestBoneConstraints(unittest.TestCase):
@@ -262,6 +262,80 @@ class TestHumanoidSkeletonValidation(unittest.TestCase):
         # All actual bones should be expected
         for bone_name in skeleton.bones.keys():
             self.assertIn(bone_name, HumanoidSkeleton.EXPECTED_BONE_NAMES)
+
+
+class TestSocket(unittest.TestCase):
+    """Test socket system for equipment attachment."""
+    
+    def test_skeleton_can_add_socket(self):
+        """Skeleton should allow adding sockets to bones."""
+        skeleton = Skeleton()
+        skeleton.add_bone("hand", "root", length=0.2)
+        
+        socket = skeleton.add_socket(
+            "hand_socket",
+            "hand",
+            offset_position=MockVector3(0, 0.1, 0),
+            offset_rotation=MockVector3(0, 0, 0)
+        )
+        
+        self.assertEqual(socket.name, "hand_socket")
+        self.assertEqual(socket.parent_bone_name, "hand")
+        self.assertIn("hand_socket", skeleton.sockets)
+    
+    def test_add_socket_with_invalid_bone_raises(self):
+        """add_socket should raise if parent bone doesn't exist."""
+        skeleton = Skeleton()
+        
+        with self.assertRaises(ValueError):
+            skeleton.add_socket("socket", "nonexistent", MockVector3(0, 0, 0))
+    
+    def test_add_duplicate_socket_raises(self):
+        """add_socket should raise if socket name already exists."""
+        skeleton = Skeleton()
+        skeleton.add_bone("hand", "root", length=0.2)
+        skeleton.add_socket("hand_socket", "hand")
+        
+        with self.assertRaises(ValueError):
+            skeleton.add_socket("hand_socket", "hand")
+    
+    def test_get_socket_retrieves_by_name(self):
+        """get_socket should retrieve socket by name."""
+        skeleton = Skeleton()
+        skeleton.add_bone("hand", "root", length=0.2)
+        socket = skeleton.add_socket("hand_socket", "hand")
+        
+        retrieved = skeleton.get_socket("hand_socket")
+        self.assertEqual(retrieved, socket)
+    
+    def test_get_socket_returns_none_for_missing(self):
+        """get_socket should return None if socket doesn't exist."""
+        skeleton = Skeleton()
+        self.assertIsNone(skeleton.get_socket("missing"))
+    
+    def test_humanoid_skeleton_has_standard_sockets(self):
+        """HumanoidSkeleton should create standard equipment sockets."""
+        skeleton = HumanoidSkeleton()
+        
+        expected_sockets = [
+            "hand_r_socket",
+            "hand_l_socket",
+            "back_socket",
+            "belt_r_socket",
+            "belt_l_socket"
+        ]
+        
+        for socket_name in expected_sockets:
+            self.assertIn(socket_name, skeleton.sockets,
+                         f"Missing socket: {socket_name}")
+        
+        # Verify socket parent bones are correct
+        self.assertEqual(skeleton.sockets["hand_r_socket"].parent_bone_name, "hand_right")
+        self.assertEqual(skeleton.sockets["hand_l_socket"].parent_bone_name, "hand_left")
+        self.assertEqual(skeleton.sockets["back_socket"].parent_bone_name, "chest")
+        self.assertEqual(skeleton.sockets["belt_r_socket"].parent_bone_name, "hips")
+        self.assertEqual(skeleton.sockets["belt_l_socket"].parent_bone_name, "hips")
+
 
 
 if __name__ == '__main__':

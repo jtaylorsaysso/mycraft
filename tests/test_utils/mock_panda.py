@@ -212,6 +212,9 @@ class MockNodePath:
     def setColorScale(self, *args):
         pass
         
+    def setTwoSided(self, value):
+        pass
+
     def setQuat(self, quat):
         pass
 

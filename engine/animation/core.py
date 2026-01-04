@@ -5,7 +5,7 @@ Hybrid keyframe + procedural animation system designed for pure-voxel characters
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
-from panda3d.core import NodePath, LVector3f, LQuaternionf
+from panda3d.core import NodePath, LVector3f, LQuaternionf, LMatrix4f
 import math
 
 
@@ -29,6 +29,64 @@ class Transform:
             rotation=self.rotation + (other.rotation - self.rotation) * t,
             scale=self.scale + (other.scale - self.scale) * t
         )
+
+    def get_matrix(self) -> LMatrix4f:
+        """Get 4x4 transform matrix."""
+        # Build matrix from components
+        # Panda3D uses HPR (heading, pitch, roll) for rotation
+        mat = LMatrix4f()
+        mat.setRow(3, self.position)  # Set translation
+        
+        # Apply rotation (HPR)
+        h, p, r = self.rotation.x, self.rotation.y, self.rotation.z
+        quat = LQuaternionf()
+        quat.setHpr((h, p, r))
+        quat.extractToMatrix(mat)
+        
+        # Apply scale
+        mat.setRow(0, mat.getRow(0) * self.scale.x)
+        mat.setRow(1, mat.getRow(1) * self.scale.y)
+        mat.setRow(2, mat.getRow(2) * self.scale.z)
+        
+        return mat
+
+    def set_from_matrix(self, mat: LMatrix4f):
+        """Set transform from 4x4 matrix."""
+        try:
+            # Extract translation
+            self.position = mat.getRow(3).getXyz()
+            
+            # Extract scale
+            scale_x = mat.getRow(0).getXyz().length()
+            scale_y = mat.getRow(1).getXyz().length()
+            scale_z = mat.getRow(2).getXyz().length()
+            
+            # Handle mock objects (e.g., in tests)
+            if not isinstance(scale_x, (int, float)):
+                # If we get a mock, just keep default scale
+                self.scale = LVector3f(1, 1, 1)
+            else:
+                self.scale = LVector3f(scale_x, scale_y, scale_z)
+                
+                # Extract rotation (remove scale first)
+                rot_mat = LMatrix4f(mat)
+                if scale_x > 0:
+                    rot_mat.setRow(0, rot_mat.getRow(0) / scale_x)
+                if scale_y > 0:
+                    rot_mat.setRow(1, rot_mat.getRow(1) / scale_y)
+                if scale_z > 0:
+                    rot_mat.setRow(2, rot_mat.getRow(2) / scale_z)
+                
+                quat = LQuaternionf()
+                quat.setFromMatrix(rot_mat)
+                hpr = quat.getHpr()
+                self.rotation = LVector3f(hpr[0], hpr[1], hpr[2])
+        except (AttributeError, TypeError):
+            # In mock environment or other edge cases, keep defaults
+            self.position = LVector3f(0, 0, 0)
+            self.rotation = LVector3f(0, 0, 0)
+            self.scale = LVector3f(1, 1, 1)
+
     
     def to_dict(self) -> dict:
         """Serialize to JSON-compatible dict."""

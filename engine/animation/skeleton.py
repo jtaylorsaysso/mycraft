@@ -42,6 +42,56 @@ class BoneConstraints:
             max(self.min_r, min(self.max_r, r))
         )
 
+    def to_dict(self) -> dict:
+        """Serialize constraints to dictionary."""
+        return {
+            "min_h": self.min_h, "max_h": self.max_h,
+            "min_p": self.min_p, "max_p": self.max_p,
+            "min_r": self.min_r, "max_r": self.max_r
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "BoneConstraints":
+        """Deserialize constraints from dictionary."""
+        return cls(**data)
+
+
+@dataclass
+class Socket:
+    """Attachment point for equipment on a bone.
+    
+    Sockets define where items (weapons, tools, etc.) can be attached
+    to the skeleton, with position/rotation offsets relative to the parent bone.
+    """
+    name: str
+    parent_bone_name: str
+    offset_position: LVector3f = field(default_factory=lambda: LVector3f(0, 0, 0))
+    offset_rotation: LVector3f = field(default_factory=lambda: LVector3f(0, 0, 0))
+
+    def to_dict(self) -> dict:
+        """Serialize socket to dictionary."""
+        return {
+            "name": self.name,
+            "parent_bone_name": self.parent_bone_name,
+            "offset_position": [self.offset_position.x, self.offset_position.y, self.offset_position.z],
+            "offset_rotation": [self.offset_rotation.x, self.offset_rotation.y, self.offset_rotation.z]
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Socket":
+        """Deserialize socket from dictionary."""
+        socket = cls(
+            name=data["name"],
+            parent_bone_name=data["parent_bone_name"]
+        )
+        if "offset_position" in data:
+            pos = data["offset_position"]
+            socket.offset_position = LVector3f(pos[0], pos[1], pos[2])
+        if "offset_rotation" in data:
+            rot = data["offset_rotation"]
+            socket.offset_rotation = LVector3f(rot[0], rot[1], rot[2])
+        return socket
+
 
 # Import Transform from core
 from engine.animation.core import Transform
@@ -61,7 +111,8 @@ class Bone:
         parent: Optional['Bone'] = None,
         constraints: Optional[BoneConstraints] = None
     ):
-        """Initialize bone.
+        """
+        Initialize bone.
         
         Args:
             name: Unique bone identifier (e.g., 'upper_arm_left')
@@ -73,18 +124,75 @@ class Bone:
         self.length = length
         self.parent = parent
         self.children: List['Bone'] = []
-        self.constraints = constraints or BoneConstraints()
+        self.constraints = constraints
         
-        # Transforms
-        # Transforms
-        self.local_transform = Transform()  # Relative to parent
-        self.world_transform = Transform()  # Absolute position
-        self.rest_transform = Transform()   # T-Pose configuration
+        # Local transform (relative to parent)
+        # Position is usually (0, length_of_parent, 0) for chain
+        self.local_transform = Transform()
         
-        # Auto-register with parent
+        # World transform (calculated iteratively)
+        self.world_transform = Transform()
+        
+        # Register with parent
         if parent:
             parent.children.append(self)
-    
+            # Default position is at end of parent bone
+            self.local_transform.position = LVector3f(0, parent.length, 0)
+            
+        # Initial pose (bind pose)
+        self.bind_transform = Transform()
+        
+        # Rest pose (T-Pose) used for resetting
+        self.rest_transform = Transform()
+        
+    def to_dict(self) -> dict:
+        """Serialize bone definition to dictionary (recursive for hierarchy)."""
+        data = {
+            "name": self.name,
+            "length": self.length,
+            "local_pos": [self.local_transform.position.x, self.local_transform.position.y, self.local_transform.position.z],
+            "rest_pos": [self.rest_transform.position.x, self.rest_transform.position.y, self.rest_transform.position.z],
+            "rest_rot": [self.rest_transform.rotation.x, self.rest_transform.rotation.y, self.rest_transform.rotation.z],
+            # Constraints
+            "constraints": self.constraints.to_dict() if self.constraints else None,
+            # Recursive children
+            "children": [child.to_dict() for child in self.children]
+        }
+        return data
+
+    @classmethod
+    def from_dict(cls, data: dict, parent: Optional['Bone'] = None) -> "Bone":
+        """Deserialize bone hierarchy from dictionary."""
+        constraints = None
+        if data.get("constraints"):
+            constraints = BoneConstraints.from_dict(data["constraints"])
+            
+        bone = cls(
+            name=data["name"],
+            length=data["length"],
+            parent=parent,
+            constraints=constraints
+        )
+        
+        # Restore local position if present (overrides default parent-end logic)
+        if "local_pos" in data:
+            pos = data["local_pos"]
+            bone.local_transform.position = LVector3f(pos[0], pos[1], pos[2])
+            
+        # Restore rest transform if present
+        if "rest_pos" in data:
+            pos = data["rest_pos"]
+            bone.rest_transform.position = LVector3f(pos[0], pos[1], pos[2])
+        if "rest_rot" in data:
+            rot = data["rest_rot"]
+            bone.rest_transform.rotation = LVector3f(rot[0], rot[1], rot[2])
+            
+        # Recursively create children
+        for child_data in data.get("children", []):
+            cls.from_dict(child_data, parent=bone)
+            
+        return bone
+
     def set_local_rotation(self, h: float, p: float, r: float, apply_constraints: bool = True):
         """Set local rotation with optional constraint clamping.
         
@@ -94,51 +202,51 @@ class Bone:
             r: Roll in degrees
             apply_constraints: Whether to apply joint constraints
         """
-        if apply_constraints:
+        if apply_constraints and self.constraints:
             h, p, r = self.constraints.clamp(h, p, r)
-        
+            
         self.local_transform.rotation = LVector3f(h, p, r)
-    
+        self.update_world_transform()
+
     def update_world_transform(self):
         """Update world transform from parent chain (FK).
         
         Call this after modifying local transforms to propagate
         changes down the hierarchy.
         """
-        if self.parent:
-            # Combine parent world transform with our local transform
-            # This is simplified - in production you'd use proper matrix multiplication
-            parent_pos = self.parent.world_transform.position
-            parent_rot = self.parent.world_transform.rotation
-            
-            # Apply parent rotation to our local position offset
-            # For now, simple addition (proper implementation would rotate the offset)
-            self.world_transform.position = parent_pos + self.local_transform.position
-            self.world_transform.rotation = parent_rot + self.local_transform.rotation
-            self.world_transform.scale = self.local_transform.scale
-        else:
-            # Root bone - world = local (copy values, not reference)
-            pos = self.local_transform.position
-            rot = self.local_transform.rotation
-            scl = self.local_transform.scale
-            self.world_transform.position = LVector3f(pos.x, pos.y, pos.z)
-            self.world_transform.rotation = LVector3f(rot.x, rot.y, rot.z)
-            self.world_transform.scale = LVector3f(scl.x, scl.y, scl.z)
+        # Calculate local matrix
+        local_mat = self.local_transform.get_matrix()
         
-        # Recursively update children
+        if self.parent:
+            # Multiply by parent's world matrix
+            parent_mat = self.parent.world_transform.get_matrix()
+            world_mat = local_mat * parent_mat
+        else:
+            # Root bone
+            world_mat = local_mat
+            
+        self.world_transform.set_from_matrix(world_mat)
+        
+        # Propagate to children
         for child in self.children:
             child.update_world_transform()
-    
+
     def get_end_position(self) -> LVector3f:
         """Get world position of bone end (tip).
         
         Returns:
             World position of bone end point
         """
-        # Bone extends along local +Y axis
-        # In proper implementation, this would be rotated by world rotation
-        offset = LVector3f(0, self.length, 0)
-        return self.world_transform.position + offset
+        # End point in local space is (0, length, 0)
+        # We transform this by the bone's world matrix
+        start_pos = self.world_transform.position
+        
+        # Direction vector (Y axis of rotation)
+        quat = LQuaternionf()
+        quat.setHpr(self.world_transform.rotation)
+        direction = quat.xform(LVector3f(0, 1, 0))
+        
+        return start_pos + (direction * self.length)
 
 
 class Skeleton:
@@ -153,9 +261,113 @@ class Skeleton:
         Args:
             root_name: Name for root bone
         """
-        self.root = Bone(root_name, length=0.0)  # Root has no length
+        self.root = Bone(root_name, 0.0)
         self.bones: Dict[str, Bone] = {root_name: self.root}
-    
+        self.sockets: Dict[str, Socket] = {}
+
+    def to_dict(self) -> dict:
+        """Serialize skeleton to dictionary."""
+        return {
+            "root_bone": self.root.to_dict(),
+            "sockets": [socket.to_dict() for socket in self.sockets.values()]
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Skeleton":
+        """Deserialize skeleton from dictionary."""
+        # Create skeleton instance (with temp root, will be replaced)
+        skeleton = cls()
+        
+        # Rebuild bone hierarchy
+        root_data = data["root_bone"]
+        skeleton.root = Bone.from_dict(root_data)
+        
+        # Rebuild bone map
+        skeleton.bones = {}
+        skeleton._index_bones(skeleton.root)
+        
+        # Rebuild sockets
+        for socket_data in data.get("sockets", []):
+            socket = Socket.from_dict(socket_data)
+            skeleton.sockets[socket.name] = socket
+            
+        return skeleton
+        
+    def _index_bones(self, bone: Bone):
+        """Helper to rebuild flat bone map from hierarchy."""
+        self.bones[bone.name] = bone
+        for child in bone.children:
+            self._index_bones(child)
+
+    def add_socket(
+        self, 
+        name: str, 
+        parent_bone_name: str, 
+        offset_position: LVector3f = LVector3f(0, 0, 0),
+        offset_rotation: LVector3f = LVector3f(0, 0, 0)
+    ) -> Optional[Socket]:
+        """Add an equipment socket to the skeleton.
+        
+        Args:
+            name: Unique socket identifier (e.g., 'hand_r_socket')
+            parent_bone_name: Name of bone this socket is attached to
+            offset_position: Position offset from bone origin
+            offset_rotation: Rotation offset (HPR)
+            
+        Returns:
+            Created Socket object or None if bone not found
+        """
+        if parent_bone_name not in self.bones:
+            print(f"Error: Cannot add socket '{name}', parent bone '{parent_bone_name}' not found")
+            return None
+            
+        socket = Socket(name, parent_bone_name, offset_position, offset_rotation)
+        self.sockets[name] = socket
+        return socket
+
+    def get_chain(self, start_bone: str, end_bone: str) -> List[Bone]:
+        """Get list of bones in a chain from start to end (inclusive).
+        
+        Args:
+            start_bone: Name of start bone (ancestor)
+            end_bone: Name of end bone (descendant)
+            
+        Returns:
+            List of Bone objects from start to end
+            
+        Raises:
+            ValueError: If bones not found or not connected
+        """
+        if start_bone not in self.bones:
+            raise ValueError(f"Start bone '{start_bone}' not found")
+        if end_bone not in self.bones:
+            raise ValueError(f"End bone '{end_bone}' not found")
+            
+        chain = []
+        current = self.bones[end_bone]
+        
+        while current and current.name != start_bone:
+            chain.append(current)
+            current = current.parent
+            
+        if not current:
+             raise ValueError(f"Bone '{end_bone}' is not a descendant of '{start_bone}'")
+             
+        chain.append(current) # Add start bone
+        chain.reverse() # Start -> End
+        return chain
+
+    def get_socket(self, name: str) -> Optional[Socket]:
+        """Get socket by name.
+        
+        Args:
+            name: Socket name
+            
+        Returns:
+            Socket if found, None otherwise
+        """
+        return self.sockets.get(name)
+
     def add_bone(
         self,
         name: str,
@@ -172,22 +384,23 @@ class Skeleton:
             constraints: Optional rotation constraints
             
         Returns:
-            Created bone
+            The created Bone object
             
         Raises:
             ValueError: If parent doesn't exist or name already used
         """
         if name in self.bones:
             raise ValueError(f"Bone '{name}' already exists")
-        
-        if parent_name not in self.bones:
+            
+        parent = self.bones.get(parent_name)
+        if not parent:
             raise ValueError(f"Parent bone '{parent_name}' not found")
-        
-        parent = self.bones[parent_name]
+            
         bone = Bone(name, length, parent, constraints)
         self.bones[name] = bone
+        
         return bone
-    
+
     def get_bone(self, name: str) -> Optional[Bone]:
         """Get bone by name.
         
@@ -198,28 +411,6 @@ class Skeleton:
             Bone if found, None otherwise
         """
         return self.bones.get(name)
-    
-    def get_chain(self, from_bone: str, to_bone: str) -> List[Bone]:
-        """Get bone chain from one bone to another.
-        
-        Used for IK solving - returns path through hierarchy.
-        
-        Args:
-            from_bone: Start bone name (typically closer to root)
-            to_bone: End bone name (end effector)
-            
-        Returns:
-            List of bones from start to end (inclusive)
-            
-        Raises:
-            ValueError: If bones don't exist or aren't connected
-        """
-        start = self.bones.get(from_bone)
-        end = self.bones.get(to_bone)
-        
-        if not start or not end:
-            raise ValueError("Bone not found")
-        
         # Walk from end to start, building chain backward
         chain = []
         current = end
@@ -351,6 +542,49 @@ class HumanoidSkeleton(Skeleton):
         
         # Set initial local positions (offsets from parent)
         self._set_default_pose()
+        
+        # Add standard equipment sockets
+        self._add_standard_sockets()
+    
+    def _add_standard_sockets(self):
+        """Add standard equipment attachment sockets."""
+        # Hand sockets for weapon/tool grips
+        # Offset slightly forward from wrist for natural grip
+        self.add_socket(
+            "hand_r_socket",
+            "hand_right",
+            offset_position=LVector3f(0, self.HAND_LENGTH * 0.5, 0),
+            offset_rotation=LVector3f(0, 0, 0)
+        )
+        self.add_socket(
+            "hand_l_socket",
+            "hand_left",
+            offset_position=LVector3f(0, self.HAND_LENGTH * 0.5, 0),
+            offset_rotation=LVector3f(0, 0, 0)
+        )
+        
+        # Back socket for sheathed weapons (swords, staffs)
+        # Positioned at upper back, angled for over-shoulder draw
+        self.add_socket(
+            "back_socket",
+            "chest",
+            offset_position=LVector3f(0, self.CHEST_LENGTH * 0.7, -0.15),
+            offset_rotation=LVector3f(0, -15, 0)  # Slight backward tilt
+        )
+        
+        # Belt sockets for hip-mounted items (daggers, potions)
+        self.add_socket(
+            "belt_r_socket",
+            "hips",
+            offset_position=LVector3f(0.15, self.HIPS_LENGTH * 0.3, 0),
+            offset_rotation=LVector3f(90, 0, 0)  # Point downward
+        )
+        self.add_socket(
+            "belt_l_socket",
+            "hips",
+            offset_position=LVector3f(-0.15, self.HIPS_LENGTH * 0.3, 0),
+            offset_rotation=LVector3f(90, 0, 0)
+        )
     
     def _set_default_pose(self):
         """Set T-pose as default skeleton configuration.

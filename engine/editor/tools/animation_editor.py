@@ -5,11 +5,11 @@ Ported from engine/ui/animation_editor.py to work with EditorApp.
 
 from direct.gui.DirectGui import (
     DirectFrame, DirectLabel, DirectButton, DirectSlider,
-    DirectOptionMenu, DGG, DirectCheckButton
+    DirectOptionMenu, DGG, DirectCheckButton, DirectEntry
 )
 from panda3d.core import TextNode, DSearchPath, Filename, Vec4
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Callable
 
 from engine.editor.tools.common.timeline_widget import TimelineWidget
 from engine.animation.core import AnimationClip, AnimationEvent
@@ -124,6 +124,70 @@ class AnimationEditor:
         if self.main_frame:
             self.main_frame.destroy()
             
+    def _show_io_dialog(self, title: str, on_confirm: 'Callable[[str], None]', on_cancel: 'Callable[[], None]'):
+        """Show a simple modal dialog for filename input."""
+        # Dim background
+        bg = DirectFrame(
+            parent=self.main_frame,
+            frameColor=(0, 0, 0, 0.5),
+            frameSize=(-2, 2, -2, 2),
+            pos=(0, 0, 0),
+            state=DGG.NORMAL
+        )
+        
+        frame = DirectFrame(
+            parent=bg,
+            frameColor=self.bg_color,
+            frameSize=(-0.5, 0.5, -0.3, 0.3),
+            pos=(0, 0, 0)
+        )
+        
+        DirectLabel(
+            parent=frame,
+            text=title,
+            scale=0.05,
+            pos=(0, 0, 0.15),
+            text_fg=(1, 1, 1, 1),
+            frameColor=(0,0,0,0)
+        )
+        
+        entry = DirectEntry(
+            parent=frame,
+            scale=0.04,
+            width=20,
+            pos=(-0.4, 0, 0.0),
+            text_fg=(0,0,0,1),
+            initialText=self.current_clip_name if self.current_clip_name else "new_clip",
+            focus=1
+        )
+        
+        def _cleanup():
+            bg.destroy()
+            
+        def _on_ok():
+            text = entry.get()
+            _cleanup()
+            on_confirm(text)
+            
+        def _on_cancel():
+            _cleanup()
+            on_cancel()
+            
+        DirectButton(
+            parent=frame,
+            text="Confirm",
+            scale=0.04,
+            pos=(0.2, 0, -0.15),
+            command=_on_ok
+        )
+        DirectButton(
+            parent=frame,
+            text="Cancel",
+            scale=0.04,
+            pos=(-0.2, 0, -0.15),
+            command=_on_cancel
+        )
+
     # UI Building
     
     def _build_clip_selector(self):
@@ -319,11 +383,22 @@ class AnimationEditor:
         # Save button
         DirectButton(
             text="💾 Save Clip",
-            scale=0.05,
-            pos=(0.0, 0, -0.8),
+            scale=0.045,
+            pos=(-0.2, 0, -0.8),
             frameColor=self.btn_color,
             text_fg=(1, 1, 1, 1),
             command=self._on_save,
+            parent=self.main_frame
+        )
+        
+        # Load button
+        DirectButton(
+            text="📂 Load Clip",
+            scale=0.045,
+            pos=(0.2, 0, -0.8),
+            frameColor=(0.5, 0.5, 0.5, 1),
+            text_fg=(1, 1, 1, 1),
+            command=self._on_load,
             parent=self.main_frame
         )
         
@@ -422,12 +497,50 @@ class AnimationEditor:
         self.current_clip.looping = bool(value)
         
     def _on_save(self):
-        if not self.current_clip_name or not self.current_clip:
+        """Handle save request."""
+        if not self.current_clip:
             return
-        
-        output_path = Path("data/animations") / f"{self.current_clip_name}.json"
+        self._show_io_dialog("Save Clip As:", self._execute_save, lambda: None)
+            
+    def _execute_save(self, filename: str):
+        """Execute save."""
+        if not filename or not self.current_clip:
+            return
+            
         try:
-            self.registry.save_to_json(self.current_clip_name, output_path)
-            logger.info(f"Saved clip {self.current_clip_name}")
+            # Update clip name if changed
+            self.current_clip.name = filename
+            self.current_clip_name = filename
+            
+            # Save via asset manager
+            self.app.asset_manager.save_animation_clip(self.current_clip, filename)
+            logger.info(f"Saved clip {filename}")
+            
+            # Update registry
+            self.registry.register_clip(self.current_clip)
+            self._refresh_clip_list()
+            
         except Exception as e:
             logger.error(f"Failed to save clip: {e}")
+
+    def _on_load(self):
+        """Handle load request."""
+        self._show_io_dialog("Load Clip:", self._execute_load, lambda: None)
+        
+    def _execute_load(self, filename: str):
+        """Execute load."""
+        if not filename:
+            return
+            
+        try:
+            clip = self.app.asset_manager.load_animation_clip(filename)
+            self.registry.register_clip(clip)
+            self.current_clip = clip
+            self.current_clip_name = clip.name
+            
+            self._refresh_clip_list()
+            self._on_clip_selected(clip.name)
+            logger.info(f"Loaded clip {filename}")
+            
+        except Exception as e:
+            logger.error(f"Failed to load clip: {e}")

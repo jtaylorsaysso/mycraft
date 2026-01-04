@@ -8,7 +8,7 @@ Designed to be animated by the LayeredAnimator system.
 from typing import Dict, Optional, Tuple
 from panda3d.core import NodePath, LVector3f, CardMaker
 
-from engine.animation.skeleton import HumanoidSkeleton, Bone
+from engine.animation.skeleton import HumanoidSkeleton, Skeleton, Bone
 
 class VoxelAvatar:
     """
@@ -168,6 +168,51 @@ class VoxelAvatar:
         
         if missing_thickness:
             print(f"⚠️ Warning: Bones missing thickness values (will use default 0.1): {', '.join(missing_thickness)}")
+    
+    def to_dict(self) -> dict:
+        """Serialize avatar to dictionary."""
+        # Determine skeleton type
+        skel_type = "HumanoidSkeleton" if isinstance(self.skeleton, HumanoidSkeleton) else "Skeleton"
+        
+        return {
+            "version": "1.0",
+            "type": "avatar", 
+            "skeleton_type": skel_type,
+            "skeleton": self.skeleton.to_dict(),
+            "body_color": [self.body_color[0], self.body_color[1], self.body_color[2], self.body_color[3]]
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict, parent_node: NodePath) -> "VoxelAvatar":
+        """Deserialize avatar from dictionary.
+        
+        Args:
+            data: Dictionary containing avatar data
+            parent_node: Parent Panda3D node
+            
+        Returns:
+            New VoxelAvatar instance
+        """
+        # Parse skeleton
+        skel_type = data.get("skeleton_type", "Skeleton")
+        skel_data = data["skeleton"]
+        
+        if skel_type == "HumanoidSkeleton":
+            skeleton = HumanoidSkeleton.from_dict(skel_data)
+        else:
+            skeleton = Skeleton.from_dict(skel_data)
+            
+        # Parse color
+        color_list = data.get("body_color", [0.2, 0.8, 0.2, 1.0])
+        # Ensure it's a tuple of 4 floats
+        body_color = (
+            float(color_list[0]), 
+            float(color_list[1]), 
+            float(color_list[2]), 
+            float(color_list[3])
+        )
+        
+        return cls(parent_node, skeleton=skeleton, body_color=body_color)
     
     def cleanup(self):
         self.root.removeNode()
