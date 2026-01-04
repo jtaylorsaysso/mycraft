@@ -94,7 +94,9 @@ class AnimationRegistry:
         path.parent.mkdir(parents=True, exist_ok=True)
         
         # Serialize clip
-        data = clip.to_dict()
+        # Use AnimationClip.to_dict explicitly to get base fields,
+        # as CombatClip.to_dict stores only metadata.
+        data = AnimationClip.to_dict(clip)
         
         # Add combat metadata if applicable
         if name in self.combat_clips:

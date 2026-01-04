@@ -8,7 +8,7 @@ water handling, and mesh creation for voxel worlds.
 from typing import Dict, Tuple, Optional, Any
 from panda3d.core import (
     NodePath, CollisionNode, CollisionPolygon, LVector3f,
-    BitMask32, TransparencyAttrib
+    BitMask32, TransparencyAttrib, BoundingSphere, Point3
 )
 
 from engine.ecs.system import System
@@ -39,7 +39,8 @@ class ChunkManager(System):
         load_radius: int = 6,
         unload_radius: int = 8,
         max_chunks_per_frame: int = 3,
-        sea_level: int = 0
+        sea_level: int = 0,
+        complex_water: bool = False
     ):
         """Initialize chunk manager.
         
@@ -54,6 +55,7 @@ class ChunkManager(System):
             unload_radius: Unload chunks beyond this radius (in chunks)
             max_chunks_per_frame: Throttle chunk loading per frame
             sea_level: Y level for water generation (blocks below get water)
+            complex_water: If True, uses shaders and physics for water. If False, renders as simple blocks.
         """
         super().__init__(world, event_bus)
         
@@ -65,6 +67,7 @@ class ChunkManager(System):
         self.unload_radius = unload_radius
         self.max_chunks_per_frame = max_chunks_per_frame
         self.sea_level = sea_level
+        self.complex_water = complex_water
         
         # Loaded chunks: (chunk_x, chunk_z) -> NodePath
         self.chunks: Dict[Tuple[int, int], NodePath] = {}
@@ -77,6 +80,10 @@ class ChunkManager(System):
         
         # Water animation time
         self.water_time: float = 0.0
+        
+        # Frustum culling settings
+        # Chunks within this radius (in chunks) are ALWAYS visible to prevent spawn issues
+        self.frustum_culling_min_radius: int = 2
     
     def get_height(self, x: float, z: float) -> float:
         """Get terrain height at world position.
@@ -111,10 +118,13 @@ class ChunkManager(System):
         # 3. Separate water blocks from solid blocks
         water_blocks = []
         solid_grid = {}
+        water_blocks = []
+        solid_grid = {}
         for pos, block_name in voxel_grid.items():
-            if block_name == "water":
+            if block_name == "water" and self.complex_water:
                 water_blocks.append(pos)
             else:
+                # If complex water is off, treat water as a normal solid block (it will use fallback color/texture)
                 solid_grid[pos] = block_name
         
         # 4. Build solid terrain mesh
@@ -335,6 +345,87 @@ class ChunkManager(System):
         cnode.addSolid(CollisionPolygon(v0, v1, v2))
         cnode.addSolid(CollisionPolygon(v0, v2, v3))
     
+    def _update_frustum_culling(self, player_chunk_x: int, player_chunk_z: int):
+        """Update chunk visibility based on camera frustum.
+        
+        Hides chunks that are outside the camera's view to reduce draw calls.
+        Chunks within minimum radius are always visible to prevent spawn issues.
+        
+        Args:
+            player_chunk_x: Player's current chunk X
+            player_chunk_z: Player's current chunk Z
+        """
+        # Get camera node for frustum checking
+        if not hasattr(self.base, 'cam') or self.base.cam is None:
+            return
+            
+        cam = self.base.cam
+        lens = self.base.camLens
+        
+        # Create a frustum-based visibility check
+        # Use the lens to check if chunk center is in view
+        for (cx, cz), chunk_np in self.chunks.items():
+            if chunk_np.isEmpty():
+                continue
+                
+            # Distance check: always show chunks within minimum radius
+            dx = cx - player_chunk_x
+            dz = cz - player_chunk_z
+            distance_sq = dx * dx + dz * dz
+            
+            if distance_sq <= self.frustum_culling_min_radius * self.frustum_culling_min_radius:
+                # Always visible when close to player
+                if chunk_np.isHidden():
+                    chunk_np.show()
+                continue
+            
+            # Calculate chunk center in world coordinates
+            # Chunk spans from (cx * chunk_size) to ((cx + 1) * chunk_size)
+            center_x = (cx + 0.5) * self.chunk_size
+            center_z = (cz + 0.5) * self.chunk_size
+            center_y = 0  # Ground level (Z in Panda3D)
+            
+            # World position (X, Z_depth, Y_height in Panda3D)
+            world_pos = Point3(center_x, center_z, center_y)
+            
+            # Transform to camera-relative coordinates
+            try:
+                cam_pos = cam.getRelativePoint(self.base.render, world_pos)
+            except Exception:
+                # If transform fails, keep visible
+                if chunk_np.isHidden():
+                    chunk_np.show()
+                continue
+            
+            # Check if point is in front of camera (positive Y in camera space)
+            # In Panda3D camera space, +Y is forward
+            if cam_pos.y <= 0:
+                # Behind camera - hide
+                if not chunk_np.isHidden():
+                    chunk_np.hide()
+                continue
+            
+            # Check if within frustum using lens FOV
+            # Use a generous margin to avoid popping
+            fov_h = lens.getFov()  # Returns (horizontal, vertical) or single value
+            if isinstance(fov_h, tuple):
+                fov_margin = fov_h[0] * 0.7  # Use 70% of FOV for margin
+            else:
+                fov_margin = fov_h * 0.7
+            
+            # Calculate angle from camera forward to chunk
+            import math
+            angle_h = math.degrees(math.atan2(abs(cam_pos.x), cam_pos.y))
+            
+            if angle_h > fov_margin:
+                # Outside horizontal FOV - hide
+                if not chunk_np.isHidden():
+                    chunk_np.hide()
+            else:
+                # Visible
+                if chunk_np.isHidden():
+                    chunk_np.show()
+    
     def unload_chunk(self, chunk_x: int, chunk_z: int):
         """Remove a chunk from the scene.
         
@@ -392,7 +483,10 @@ class ChunkManager(System):
         player_chunk_z = int(transform.position.y // self.chunk_size)  # Y is depth in Panda3D
         player_chunk = (player_chunk_x, player_chunk_z)
         
-        # Skip if player hasn't moved to a new chunk
+        # Update frustum culling every frame (for camera rotation)
+        self._update_frustum_culling(player_chunk_x, player_chunk_z)
+        
+        # Skip chunk loading/unloading if player hasn't moved to a new chunk
         if player_chunk == self.last_player_chunk:
             return
         

@@ -298,7 +298,7 @@ class MeshBuilder:
                 tris.addVertices(index, index + 2, index + 3)
                 index += 4
         
-        # --- Side faces (non-greedy) ---
+        # --- Side faces (GREEDY: single merged quad per height difference) ---
         for x in range(chunk_size):
             for z in range(chunk_size):
                 h = heights[x][z]
@@ -330,146 +330,147 @@ class MeshBuilder:
                 surface_block = block_registry.get_block(biome.surface_block)
                 tile_index = surface_block.get_face_tile('side')
                 
-                # --- East side (+X) ---
+                # --- East side (+X) --- GREEDY: single merged quad for full height
                 if h_east < h:
-                    for y0 in range(h_east + 1, h + 1):
-                        y_bottom = y0 - 1
-                        y_top = y0
-                        
-                        sv0 = LVector3f(world_x + 1, world_z, y_bottom)
-                        sv1 = LVector3f(world_x + 1, world_z + 1, y_bottom)
-                        sv2 = LVector3f(world_x + 1, world_z + 1, y_top)
-                        sv3 = LVector3f(world_x + 1, world_z, y_top)
-                        
-                        vertex.addData3(sv0)
-                        vertex.addData3(sv1)
-                        vertex.addData3(sv2)
-                        vertex.addData3(sv3)
-                        
-                        # Side AO (simplified: bottom is darker)
-                        color_writer.addData4(0.7, 0.7, 0.7, 1.0)
-                        color_writer.addData4(0.7, 0.7, 0.7, 1.0)
-                        color_writer.addData4(1.0, 1.0, 1.0, 1.0)
-                        color_writer.addData4(1.0, 1.0, 1.0, 1.0)
-                        
-                        if tile_index is not None and texture_atlas and texture_atlas.is_loaded():
-                            tile_uvs = texture_atlas.get_tile_uvs(tile_index)
-                            for uv in tile_uvs:
-                                texcoord.addData2(uv)
-                        else:
-                            texcoord.addData2(LVector2f(0, 0))
-                            texcoord.addData2(LVector2f(1, 0))
-                            texcoord.addData2(LVector2f(1, 1))
-                            texcoord.addData2(LVector2f(0, 1))
-                        
-                        tris.addVertices(index, index + 1, index + 2)
-                        tris.addVertices(index, index + 2, index + 3)
-                        index += 4
+                    face_height = h - h_east
+                    y_bottom = h_east
+                    y_top = h
+                    
+                    sv0 = LVector3f(world_x + 1, world_z, y_bottom)
+                    sv1 = LVector3f(world_x + 1, world_z + 1, y_bottom)
+                    sv2 = LVector3f(world_x + 1, world_z + 1, y_top)
+                    sv3 = LVector3f(world_x + 1, world_z, y_top)
+                    
+                    vertex.addData3(sv0)
+                    vertex.addData3(sv1)
+                    vertex.addData3(sv2)
+                    vertex.addData3(sv3)
+                    
+                    # Side AO (simplified: bottom is darker)
+                    color_writer.addData4(0.7, 0.7, 0.7, 1.0)
+                    color_writer.addData4(0.7, 0.7, 0.7, 1.0)
+                    color_writer.addData4(1.0, 1.0, 1.0, 1.0)
+                    color_writer.addData4(1.0, 1.0, 1.0, 1.0)
+                    
+                    # Use tiled UVs so texture repeats vertically
+                    if tile_index is not None and texture_atlas and texture_atlas.is_loaded():
+                        tile_uvs = texture_atlas.get_tiled_uvs(tile_index, 1, face_height)
+                        for uv in tile_uvs:
+                            texcoord.addData2(uv)
+                    else:
+                        texcoord.addData2(LVector2f(0, 0))
+                        texcoord.addData2(LVector2f(1, 0))
+                        texcoord.addData2(LVector2f(1, face_height))
+                        texcoord.addData2(LVector2f(0, face_height))
+                    
+                    tris.addVertices(index, index + 1, index + 2)
+                    tris.addVertices(index, index + 2, index + 3)
+                    index += 4
                 
-                # --- West side (-X) ---
+                # --- West side (-X) --- GREEDY: single merged quad for full height
                 if h_west < h:
-                    for y0 in range(h_west + 1, h + 1):
-                        y_bottom = y0 - 1
-                        y_top = y0
-                        
-                        sv0 = LVector3f(world_x, world_z + 1, y_bottom)
-                        sv1 = LVector3f(world_x, world_z, y_bottom)
-                        sv2 = LVector3f(world_x, world_z, y_top)
-                        sv3 = LVector3f(world_x, world_z + 1, y_top)
-                        
-                        vertex.addData3(sv0)
-                        vertex.addData3(sv1)
-                        vertex.addData3(sv2)
-                        vertex.addData3(sv3)
-                        
-                        color_writer.addData4(0.7, 0.7, 0.7, 1.0)
-                        color_writer.addData4(0.7, 0.7, 0.7, 1.0)
-                        color_writer.addData4(1.0, 1.0, 1.0, 1.0)
-                        color_writer.addData4(1.0, 1.0, 1.0, 1.0)
-                        
-                        if tile_index is not None and texture_atlas and texture_atlas.is_loaded():
-                            tile_uvs = texture_atlas.get_tile_uvs(tile_index)
-                            for uv in tile_uvs:
-                                texcoord.addData2(uv)
-                        else:
-                            texcoord.addData2(LVector2f(0, 0))
-                            texcoord.addData2(LVector2f(1, 0))
-                            texcoord.addData2(LVector2f(1, 1))
-                            texcoord.addData2(LVector2f(0, 1))
-                        
-                        tris.addVertices(index, index + 1, index + 2)
-                        tris.addVertices(index, index + 2, index + 3)
-                        index += 4
+                    face_height = h - h_west
+                    y_bottom = h_west
+                    y_top = h
+                    
+                    sv0 = LVector3f(world_x, world_z + 1, y_bottom)
+                    sv1 = LVector3f(world_x, world_z, y_bottom)
+                    sv2 = LVector3f(world_x, world_z, y_top)
+                    sv3 = LVector3f(world_x, world_z + 1, y_top)
+                    
+                    vertex.addData3(sv0)
+                    vertex.addData3(sv1)
+                    vertex.addData3(sv2)
+                    vertex.addData3(sv3)
+                    
+                    color_writer.addData4(0.7, 0.7, 0.7, 1.0)
+                    color_writer.addData4(0.7, 0.7, 0.7, 1.0)
+                    color_writer.addData4(1.0, 1.0, 1.0, 1.0)
+                    color_writer.addData4(1.0, 1.0, 1.0, 1.0)
+                    
+                    if tile_index is not None and texture_atlas and texture_atlas.is_loaded():
+                        tile_uvs = texture_atlas.get_tiled_uvs(tile_index, 1, face_height)
+                        for uv in tile_uvs:
+                            texcoord.addData2(uv)
+                    else:
+                        texcoord.addData2(LVector2f(0, 0))
+                        texcoord.addData2(LVector2f(1, 0))
+                        texcoord.addData2(LVector2f(1, face_height))
+                        texcoord.addData2(LVector2f(0, face_height))
+                    
+                    tris.addVertices(index, index + 1, index + 2)
+                    tris.addVertices(index, index + 2, index + 3)
+                    index += 4
                 
-                # --- South side (+Z) ---
+                # --- South side (+Z) --- GREEDY: single merged quad for full height
                 if h_south < h:
-                    for y0 in range(h_south + 1, h + 1):
-                        y_bottom = y0 - 1
-                        y_top = y0
-                        
-                        sv0 = LVector3f(world_x + 1, world_z + 1, y_bottom)
-                        sv1 = LVector3f(world_x, world_z + 1, y_bottom)
-                        sv2 = LVector3f(world_x, world_z + 1, y_top)
-                        sv3 = LVector3f(world_x + 1, world_z + 1, y_top)
-                        
-                        vertex.addData3(sv0)
-                        vertex.addData3(sv1)
-                        vertex.addData3(sv2)
-                        vertex.addData3(sv3)
-                        
-                        color_writer.addData4(0.7, 0.7, 0.7, 1.0)
-                        color_writer.addData4(0.7, 0.7, 0.7, 1.0)
-                        color_writer.addData4(1.0, 1.0, 1.0, 1.0)
-                        color_writer.addData4(1.0, 1.0, 1.0, 1.0)
-                        
-                        if tile_index is not None and texture_atlas and texture_atlas.is_loaded():
-                            tile_uvs = texture_atlas.get_tile_uvs(tile_index)
-                            for uv in tile_uvs:
-                                texcoord.addData2(uv)
-                        else:
-                            texcoord.addData2(LVector2f(0, 0))
-                            texcoord.addData2(LVector2f(1, 0))
-                            texcoord.addData2(LVector2f(1, 1))
-                            texcoord.addData2(LVector2f(0, 1))
-                        
-                        tris.addVertices(index, index + 1, index + 2)
-                        tris.addVertices(index, index + 2, index + 3)
-                        index += 4
+                    face_height = h - h_south
+                    y_bottom = h_south
+                    y_top = h
+                    
+                    sv0 = LVector3f(world_x + 1, world_z + 1, y_bottom)
+                    sv1 = LVector3f(world_x, world_z + 1, y_bottom)
+                    sv2 = LVector3f(world_x, world_z + 1, y_top)
+                    sv3 = LVector3f(world_x + 1, world_z + 1, y_top)
+                    
+                    vertex.addData3(sv0)
+                    vertex.addData3(sv1)
+                    vertex.addData3(sv2)
+                    vertex.addData3(sv3)
+                    
+                    color_writer.addData4(0.7, 0.7, 0.7, 1.0)
+                    color_writer.addData4(0.7, 0.7, 0.7, 1.0)
+                    color_writer.addData4(1.0, 1.0, 1.0, 1.0)
+                    color_writer.addData4(1.0, 1.0, 1.0, 1.0)
+                    
+                    if tile_index is not None and texture_atlas and texture_atlas.is_loaded():
+                        tile_uvs = texture_atlas.get_tiled_uvs(tile_index, 1, face_height)
+                        for uv in tile_uvs:
+                            texcoord.addData2(uv)
+                    else:
+                        texcoord.addData2(LVector2f(0, 0))
+                        texcoord.addData2(LVector2f(1, 0))
+                        texcoord.addData2(LVector2f(1, face_height))
+                        texcoord.addData2(LVector2f(0, face_height))
+                    
+                    tris.addVertices(index, index + 1, index + 2)
+                    tris.addVertices(index, index + 2, index + 3)
+                    index += 4
                 
-                # --- North side (-Z) ---
+                # --- North side (-Z) --- GREEDY: single merged quad for full height
                 if h_north < h:
-                    for y0 in range(h_north + 1, h + 1):
-                        y_bottom = y0 - 1
-                        y_top = y0
-                        
-                        sv0 = LVector3f(world_x, world_z, y_bottom)
-                        sv1 = LVector3f(world_x + 1, world_z, y_bottom)
-                        sv2 = LVector3f(world_x + 1, world_z, y_top)
-                        sv3 = LVector3f(world_x, world_z, y_top)
-                        
-                        vertex.addData3(sv0)
-                        vertex.addData3(sv1)
-                        vertex.addData3(sv2)
-                        vertex.addData3(sv3)
-                        
-                        color_writer.addData4(0.7, 0.7, 0.7, 1.0)
-                        color_writer.addData4(0.7, 0.7, 0.7, 1.0)
-                        color_writer.addData4(1.0, 1.0, 1.0, 1.0)
-                        color_writer.addData4(1.0, 1.0, 1.0, 1.0)
-                        
-                        if tile_index is not None and texture_atlas and texture_atlas.is_loaded():
-                            tile_uvs = texture_atlas.get_tile_uvs(tile_index)
-                            for uv in tile_uvs:
-                                texcoord.addData2(uv)
-                        else:
-                            texcoord.addData2(LVector2f(0, 0))
-                            texcoord.addData2(LVector2f(1, 0))
-                            texcoord.addData2(LVector2f(1, 1))
-                            texcoord.addData2(LVector2f(0, 1))
-                        
-                        tris.addVertices(index, index + 1, index + 2)
-                        tris.addVertices(index, index + 2, index + 3)
-                        index += 4
+                    face_height = h - h_north
+                    y_bottom = h_north
+                    y_top = h
+                    
+                    sv0 = LVector3f(world_x, world_z, y_bottom)
+                    sv1 = LVector3f(world_x + 1, world_z, y_bottom)
+                    sv2 = LVector3f(world_x + 1, world_z, y_top)
+                    sv3 = LVector3f(world_x, world_z, y_top)
+                    
+                    vertex.addData3(sv0)
+                    vertex.addData3(sv1)
+                    vertex.addData3(sv2)
+                    vertex.addData3(sv3)
+                    
+                    color_writer.addData4(0.7, 0.7, 0.7, 1.0)
+                    color_writer.addData4(0.7, 0.7, 0.7, 1.0)
+                    color_writer.addData4(1.0, 1.0, 1.0, 1.0)
+                    color_writer.addData4(1.0, 1.0, 1.0, 1.0)
+                    
+                    if tile_index is not None and texture_atlas and texture_atlas.is_loaded():
+                        tile_uvs = texture_atlas.get_tiled_uvs(tile_index, 1, face_height)
+                        for uv in tile_uvs:
+                            texcoord.addData2(uv)
+                    else:
+                        texcoord.addData2(LVector2f(0, 0))
+                        texcoord.addData2(LVector2f(1, 0))
+                        texcoord.addData2(LVector2f(1, face_height))
+                        texcoord.addData2(LVector2f(0, face_height))
+                    
+                    tris.addVertices(index, index + 1, index + 2)
+                    tris.addVertices(index, index + 2, index + 3)
+                    index += 4
         
         # Create Geom and GeomNode
         geom = Geom(vdata)

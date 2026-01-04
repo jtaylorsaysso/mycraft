@@ -6,6 +6,24 @@ This register tracks technical debt, bugs, and future enhancements. Items are or
 
 ---
 
+## 🚀 Playtest Polish Sprint (Immediate Focus)
+
+**Goal:** Ensure a smooth, "no-hiccup" experience for the upcoming playtest.
+
+### Gameplay Polish
+
+- [ ] **Water Physics & Controls** - `water_physics.py`: Implement water resistance, swim vertical control (jump/crouch), and input hooks.
+- [ ] **Dodge Timing Logic** - `dodge_system.py`: Replace "perfect timing" placeholder with actual windup/attack window detection.
+- [ ] **Game Flow** - `ui_system.py`: Implement functional "Quit to Menu" / "Exit Game" flow to prevent `Alt+F4` necessity.
+
+### Visual Polish
+
+- [ ] **Water Visuals** - Improve from "jelly" to basic transparent + foam edge. Add underwater fog effect.
+- [ ] **Transparency Support** - `mesh.py`: Implement transparency culling (leaves shouldn't cull solid blocks behind them).
+- [ ] **Sky/Atmosphere** - Add basic skybox or atmosphere gradient to remove "void" feel.
+
+---
+
 ## 🔥 High Priority
 
 ### Combat Animation Integration
@@ -165,9 +183,9 @@ Remaining items from state management cleanup:
 
 **Priority:** Medium-Low | **Effort:** Varies
 
-- [ ] Side face meshing is non-greedy - could be optimized further
+- [x] Side face meshing is now greedy - merged quads with tiled UVs (2026-01-04)
 - [ ] No LOD system for distant chunks
-- [ ] Aggressive frustum culling disabled - incorrectly hid chunks at spawn; needs robust implementation with camera forward vector checks
+- [x] Frustum culling implemented with minimum radius guard (2026-01-04)
 - [ ] Separate client runner from main code?
 - [ ] No performance benchmarks or regression tests
 - [ ] No CI/CD pipeline

@@ -267,6 +267,11 @@ def create_terrain_system(world, event_bus, base, texture_atlas=None, seed=0):
     
     generator = VoxelWorldGenerator(seed=seed)
     
+    # Get config if available
+    complex_water = False
+    if hasattr(base, 'config_manager'):
+        complex_water = base.config_manager.get('complex_water', False)
+    
     return ChunkManager(
         world=world,
         event_bus=event_bus,
@@ -277,7 +282,8 @@ def create_terrain_system(world, event_bus, base, texture_atlas=None, seed=0):
         load_radius=6,
         unload_radius=8,
         max_chunks_per_frame=3,
-        sea_level=0
+        sea_level=0,
+        complex_water=complex_water
     )
 
 
