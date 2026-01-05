@@ -42,6 +42,9 @@ def main():
     parser.add_argument("--record", metavar="NAME", help="Record session to recordings/<NAME>.json")
     parser.add_argument("--replay", metavar="FILE", help="Replay a recorded session file")
     
+    # Test Arena
+    parser.add_argument("--test-arena", action="store_true", help="Use small 5x5 chunk test arena")
+    
     args = parser.parse_args()
     
     # Default Configuration
@@ -55,7 +58,8 @@ def main():
         'config_path': None,
         'hot_config': None,
         'record_session': None,
-        'replay_session': None
+        'replay_session': None,
+        'test_arena': args.test_arena
     }
     
     # 1. Apply Preset

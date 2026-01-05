@@ -10,6 +10,12 @@ from engine.components.camera_state import CameraState, CameraMode
 
 @register_component
 @dataclass
+class Name(Component):
+    """Entity name for UI and identification."""
+    name: str = "Entity"
+
+@register_component
+@dataclass
 class Transform(Component):
     """Spatial representation."""
     position: Vec3 = field(default_factory=lambda: Vec3(0, 0, 0))

@@ -208,8 +208,8 @@ class VoxelWorldGenerator:
         # Scale 0.01 = large features, ensuring POIs are spaced out
         poi_noise = get_noise(chunk_x * 100, chunk_z * 100, scale=0.01, octaves=1)
         
-        # ~8% spawn chance (customizable)
-        if poi_noise > 0.92:
+        # ~30% spawn chance (increased for playtest)
+        if poi_noise > 0.70:
             # Deterministic POI selection
             # Use distinct prime multipliers to mix up pattern relative to coordinates
             val = (chunk_x * 73 + chunk_z * 31) % 100

@@ -85,7 +85,7 @@ class CampGenerator(POIGenerator):
         
         # 4. Enemy Spawns
         # Add 3 enemies inside the camp
-        for _ in range(3):
+        for i in range(3):
             ex = x + rng.randint(-2, 2)
             ez = z + rng.randint(-2, 2)
             # Ensure inside wall

@@ -22,6 +22,12 @@ This register tracks technical debt, bugs, and future enhancements. Items are or
 - [ ] **Transparency Support** - `mesh.py`: Implement transparency culling (leaves shouldn't cull solid blocks behind them).
 - [ ] **Sky/Atmosphere** - Add basic skybox or atmosphere gradient to remove "void" feel.
 
+### Physics & World Stability (Critical Deferral)
+
+- [ ] **Chunk Collision Coordinates** - `chunk_manager.py`: Collision geometry generation uses world coordinates (`base_x + x`) while `CollisionNode` is attached to a `NodePath` that may be at (0,0,0) or chunk origin. This causes a disconnect between visual and physical world, leading to players falling through the "ground" in the Test Arena.
+- [ ] **Spawn Logic Verification** - `spawn_manager.py`: Currently trusts `terrain_system.get_height` (which returns hardcoded 5.0 for Test Arena) without physical verification. Needs to implement a true physics raycast check before spawning to prevent falling into void.
+- [ ] **Physics Debugging** - Add `showCollisions()` toggle to debug menu for easier diagnosis.
+
 ---
 
 ## 🔥 High Priority

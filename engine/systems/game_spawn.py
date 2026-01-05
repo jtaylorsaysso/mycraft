@@ -91,12 +91,12 @@ class GameSpawnSystem(System):
         
         # Get existing players for cooperative spawning
         existing_players = []
-        for entity_id in self.world.get_entities_with():
-            # Check if this is a player entity (but not the one we're about to spawn)
-            if self.world.has_tag(entity_id, "player"):
-                transform = self.world.get_component(entity_id, Transform)
-                if transform:
-                    existing_players.append(transform.position)
+        # Get existing players (currently only supports one local player tag)
+        player_id = self.world.get_entity_by_tag("player")
+        if player_id:
+            transform = self.world.get_component(player_id, Transform)
+            if transform:
+                existing_players.append(transform.position)
         
         # Calculate spawn position
         from games.voxel_world.biomes.biomes import BiomeRegistry

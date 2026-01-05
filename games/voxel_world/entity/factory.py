@@ -8,7 +8,7 @@ centralizing component assembly and configuration.
 from typing import Tuple, Optional
 from panda3d.core import LVector3f
 
-from engine.components.core import Transform, Health, CombatState, Name, InputState
+from engine.components.core import Transform, Health, CombatState, Name
 from engine.physics import KinematicState
 from engine.components.avatar_colors import AvatarColors
 from engine.components.enemy import EnemyComponent
@@ -45,25 +45,20 @@ class EntityFactory:
         world.add_component(entity, KinematicState())
         
         # Combat components
-        world.add_component(entity, InputState()) # Required for combat system to read "inputs" (AI driven later)
+        # InputState not needed for AI (uses AI state machine events)
+        # world.add_component(entity, InputState())
         
         # 1. Base Stats & AI
         if enemy_type == "skeleton":
             # Fast, lower health
             world.add_component(entity, Health(current=50, max_hp=50))
-            world.add_component(entity, CombatState(
-                attack_damage=20.0,
-                attack_range=2.0
-            ))
+            world.add_component(entity, CombatState())  # System defines damage/range
             base_color = (0.9, 0.9, 0.85, 1.0) # Bone white
             
         elif enemy_type == "zombie":
             # Slow, high health
             world.add_component(entity, Health(current=80, max_hp=80))
-            world.add_component(entity, CombatState(
-                attack_damage=15.0,
-                attack_range=1.5
-            ))
+            world.add_component(entity, CombatState())  # System defines damage/range
             base_color = (0.4, 0.5, 0.4, 1.0) # Decay green
             
         else:

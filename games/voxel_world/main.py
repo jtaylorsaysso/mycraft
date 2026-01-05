@@ -15,13 +15,27 @@ def run(**kwargs):
     game = VoxelGame(name=name, config_manager=hot_config)
     
     # Register voxel_world's terrain system (uses engine ChunkManager)
-    from games.voxel_world.systems.world_gen import create_terrain_system
-    terrain_system = create_terrain_system(
-        game.world, 
-        game.world.event_bus, 
-        game, 
-        game.texture_atlas
-    )
+    # Register voxel_world's terrain system (uses engine ChunkManager)
+    use_test_arena = kwargs.get('test_arena', False)
+    
+    if use_test_arena:
+        from games.voxel_world.systems.test_arena_generator import create_test_arena_system
+        print("🏟️  Using Test Arena Generator")
+        terrain_system = create_test_arena_system(
+            game.world, 
+            game.world.event_bus, 
+            game, 
+            game.texture_atlas
+        )
+    else:
+        from games.voxel_world.systems.world_gen import create_terrain_system
+        terrain_system = create_terrain_system(
+            game.world, 
+            game.world.event_bus, 
+            game, 
+            game.texture_atlas
+        )
+        
     game.register_terrain_system(terrain_system)
 
     

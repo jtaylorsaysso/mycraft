@@ -85,9 +85,14 @@ class VoxelGame(ShowBase):
         # Environment and Rendering
         from engine.rendering.environment import EnvironmentManager
         from engine.rendering.texture_atlas import TextureAtlas
+        from engine.rendering.skybox import Skybox
         
         self.environment = EnvironmentManager(self)
         self.texture_atlas = TextureAtlas("Spritesheets/terrain.png", self.loader)
+        
+        # Initialize Skybox
+        self.skybox = Skybox(self.render, self.loader)
+        self.skybox.setup_simple_atmosphere(self)
         
         # Initialize default systems
         self._setup_default_systems()

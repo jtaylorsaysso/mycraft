@@ -64,7 +64,7 @@ class ShrineGenerator(POIGenerator):
         # Shrine visual style (stone bricks)
         base_block = "stone_bricks"
         pillar_block = "stone" 
-        accent_block = "planks_oak"
+        accent_block = "wood"
         
         # Dimensions
         base_radius = 2
@@ -84,7 +84,7 @@ class ShrineGenerator(POIGenerator):
                 # Corner pillars
                 if abs(dx) == base_radius and abs(dz) == base_radius:
                      blocks.append((x + dx, y + 1, z + dz, pillar_block))
-                     blocks.append((x + dx, y + 2, z + dz, "torch")) # Mock torch
+                     blocks.append((x + dx, y + 2, z + dz, "wood")) # Mock torch (replaced with wood for now)
         
         # 2. Central Pillar
         for h in range(1, pillar_height):
@@ -98,7 +98,7 @@ class ShrineGenerator(POIGenerator):
                 blocks.append((x, y + h, z - 1, accent_block))
         
         # 3. Top Marker (Glowing if possible, for now just a distinctive block)
-        blocks.append((x, y + pillar_height, z, "gold_block")) # Placeholder for glow
+        blocks.append((x, y + pillar_height, z, "sand")) # Placeholder for glow (replaced with sand for now)
         
         # 4. Loot Chest
         loot_pos = (x, y + 1, z - 1)

@@ -85,7 +85,7 @@ class EnemySystem(System):
         """Instantiate EnemyVisual."""
         # Attach to render via Game instance or similar
         # We need a parent node. Usually 'render' or a specialized node
-        parent = self.game.base.render
+        parent = self.game.render
         
         # Create anchor node for this enemy
         node = parent.attachNewNode(f"enemy_{entity_id}")

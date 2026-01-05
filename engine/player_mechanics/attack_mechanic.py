@@ -60,6 +60,10 @@ class AttackMechanic(PlayerMechanic):
         
         self.attack_pressed_last_frame = attack_pressed
         
+        # Update particles if they exist
+        if hasattr(self, 'particle_system'):
+            self.particle_system.update(ctx.dt)
+        
         # 2. Hitbox Logic (if active)
         if self.hitbox_active:
             self._process_hitbox(ctx)
@@ -68,9 +72,14 @@ class AttackMechanic(PlayerMechanic):
         """Check for entities within attack cone."""
         from engine.components.core import Health, Transform
         from panda3d.core import LVector3f
+        from engine.animation.particles import VoxelParticleSystem, create_impact_effect
         
         render = ctx.world.base.render
         player_pos = ctx.transform.position
+        
+        # Initialize particle system on demand if needed
+        if not hasattr(self, 'particle_system'):
+            self.particle_system = VoxelParticleSystem(ctx.world.base.render, max_particles=100)
         player_fwd = render.getRelativeVector(ctx.transform.node, LVector3f(0, 1, 0))
         player_fwd.normalize()
         
@@ -120,4 +129,15 @@ class AttackMechanic(PlayerMechanic):
                     position=target_transform.position
                 )
                 
+                # Emit particles
+                if hasattr(self, 'particle_system'):
+                    # Calculate hit normal (direction from target to player, roughly)
+                    hit_normal = (player_pos - target_transform.position).normalized()
+                    create_impact_effect(
+                        self.particle_system,
+                        target_transform.position + LVector3f(0, 0, 1.0), # Hit "center" roughly
+                        hit_normal
+                    )
+                    self.particle_system.update(0.01) # Force immediate update? No, needs loop.
+
                 print(f"💥 HIT entity {target_id} for {damage} damage!")

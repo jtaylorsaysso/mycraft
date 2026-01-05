@@ -408,6 +408,39 @@ BlockRegistry.register(Block(
 ))
 
 BlockRegistry.register(Block(
+    name="chest",
+    color=(0.55, 0.35, 0.15),  # Dark wood brown
+    tile_top=TileRegistry.LOG_TOP,
+    tile_side=TileRegistry.LOG_SIDE,
+    tile_bottom=TileRegistry.LOG_TOP,
+    display_name="Chest",
+    solid=True,
+    transparent=False
+))
+
+BlockRegistry.register(Block(
+    name="stone_bricks",
+    color=(0.6, 0.6, 0.6),  # Light grey
+    tile_top=TileRegistry.BRICK,
+    tile_side=TileRegistry.BRICK,
+    tile_bottom=TileRegistry.BRICK,
+    display_name="Stone Bricks",
+    solid=True,
+    transparent=False
+))
+
+BlockRegistry.register(Block(
+    name="torch",
+    color=(1.0, 0.8, 0.2),  # Bright orange/yellow
+    tile_top=TileRegistry.LOG_TOP, # Placeholder
+    tile_side=TileRegistry.LOG_SIDE,
+    tile_bottom=TileRegistry.LOG_TOP,
+    display_name="Torch",
+    solid=False,
+    transparent=True
+))
+
+BlockRegistry.register(Block(
     name="cobblestone",
     color=(0.4, 0.4, 0.4),
     tile_top=TileRegistry.COBBLESTONE,

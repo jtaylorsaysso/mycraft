@@ -3,7 +3,8 @@ from engine.player_mechanics.context import PlayerContext
 from engine.input.keybindings import InputAction
 from engine.components.camera_state import CameraState, CameraMode
 from engine.components.core import Transform, Health
-from panda3d.core import LVector3f
+from panda3d.core import LVector3f, LVector4f
+from engine.rendering.target_indicator import TargetIndicator
 import math
 
 class TargetingMechanic(PlayerMechanic):
@@ -15,6 +16,7 @@ class TargetingMechanic(PlayerMechanic):
     def __init__(self):
         self.lock_cooldown = 0.0
         self.max_lock_distance = 25.0  # Range in units
+        self.indicator = None  # Created on-demand
     
     def update(self, ctx: PlayerContext) -> None:
         self.lock_cooldown = max(0, self.lock_cooldown - ctx.dt)
@@ -26,6 +28,13 @@ class TargetingMechanic(PlayerMechanic):
             
         # Verify current target is still valid
         self._validate_lock(ctx)
+        
+        # Update indicator position if target is locked
+        cam_state = ctx.world.get_component(ctx.player_id, CameraState)
+        if cam_state and cam_state.target_entity and self.indicator:
+            target_transform = ctx.world.get_component(cam_state.target_entity, Transform)
+            if target_transform:
+                self.indicator.update(ctx.dt, target_transform.position)
             
     def _toggle_lock(self, ctx: PlayerContext):
         cam_state = ctx.world.get_component(ctx.player_id, CameraState)
@@ -43,6 +52,18 @@ class TargetingMechanic(PlayerMechanic):
             if target:
                 cam_state.mode = CameraMode.COMBAT
                 cam_state.target_entity = target
+                
+                # Create indicator if needed
+                if not self.indicator:
+                    self.indicator = TargetIndicator(ctx.world.base.render)
+                
+                # Show indicator at target position
+                target_transform = ctx.world.get_component(target, Transform)
+                if target_transform:
+                    # Red for enemies (has Health component)
+                    color = LVector4f(1.0, 0.2, 0.2, 0.8)
+                    self.indicator.show(target_transform.position, color)
+                
                 print(f"🔒 Locked on target: {target}")
             else:
                 # Could play a "fail" sound or feedback
@@ -52,6 +73,10 @@ class TargetingMechanic(PlayerMechanic):
     def _unlock(self, cam_state: CameraState):
         cam_state.mode = CameraMode.EXPLORATION
         cam_state.target_entity = None
+        
+        # Hide indicator
+        if self.indicator:
+            self.indicator.hide()
         
     def _validate_lock(self, ctx: PlayerContext):
         """Ensure current target is still valid (alive, in range)."""
