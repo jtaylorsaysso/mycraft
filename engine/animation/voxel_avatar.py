@@ -57,8 +57,19 @@ class VoxelAvatar:
         # Runtime validation (opt-out via validate=False)
         if validate:
             self.validate_avatar()
-        
+            
+        if validate:
+            self.validate_avatar()
+            
         self._build_visuals()
+        
+        # DEBUG: Print Hips Transform
+        hips = self.skeleton.get_bone("hips")
+        # DEBUG: Print Hips Transform
+        # hips = self.skeleton.get_bone("hips")
+        # if hips:
+        #      print(f"DEBUG: VoxelAvatar Hips Local HPR: {hips.local_transform.rotation}")
+        #      print(f"DEBUG: VoxelAvatar Hips Local Pos: {hips.local_transform.position}")
         
     # Old _create_cube_visual removed. Logic moved to _create_bone_geometry.
 

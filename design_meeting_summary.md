@@ -1,4 +1,7 @@
 
+> [!NOTE]
+> **Historical Document**: This file summarizes early design discussions. For current execution specs, refer to [`GAME_DESIGN_DOCUMENT.md`](GAME_DESIGN_DOCUMENT.md).
+
 🌟 MYCRAFT PROJECT — FULL SUMMARY (So Far)
 🎯 Core Idea
 

@@ -30,7 +30,7 @@ Open your terminal or command prompt and run:
 pip install -r requirements.txt
 ```
 
-### 3. Launch the Game
+### 3. Launch MyCraft
 
 We have a graphical launcher to make things easy.
 
@@ -45,14 +45,22 @@ Open terminal in this folder and run:
 ./launcher.py
 ```
 
-### 4. Join a Game
+### 4. Choose Your Path
 
-- **Solo**: Just click **LAUNCH**.
-- **Multiplayer**:
-    1. One person runs `run_server.py` (or clicks "Launch Server" if we add that later).
-    2. Everyone else opens the Launcher.
-    3. Click **Refresh** to auto-detect the server on your WiFi.
-    4. Click the server name and hit **LAUNCH**.
+On first launch, you'll be asked: **Play** or **Create**?
+
+| **🎮 PLAY Tab** | **🎨 CREATE Tab** |
+|-----------------|-------------------|
+| Jump into the game | Design characters & animations |
+| Single Player or LAN Multiplayer | No coding required |
+| Creative, Testing, Performance presets | Character, Animation, Preview workspaces |
+
+### 5. Join a Multiplayer Game
+
+1. One person goes to **ADVANCED** tab → Click **LAUNCH SERVER**
+2. Everyone else opens the Launcher
+3. Click **Refresh** to auto-detect the server on your WiFi
+4. Click the server name and hit **JOIN LAN SERVER**
 
 > **Need help regarding controls?** Check out the [Player Guide](PLAYER_GUIDE.md).
 

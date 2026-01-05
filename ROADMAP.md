@@ -140,6 +140,13 @@ Sprint-level details and task tracking are managed in [`docs/tech_debt.md`](docs
   - Visual: Decayed appearance, must look like zombies
   - Stronger color tint than skeletons
 
+##### Momentum Combat (NEW)
+
+- **Momentum-Based Damage**:
+  - Damage scaling based on player velocity
+  - Encourages lunges, aerial attacks, and movement
+  - Core differentiator from static button-mashing
+
 ##### Color Combat Loop (NEW)
 
 - **Starter Palette**: 8 basic colors (primary + secondary) available immediately

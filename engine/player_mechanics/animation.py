@@ -199,13 +199,18 @@ class AnimationMechanic(PlayerMechanic):
                     return LVector3f(origin.x, origin.y, result)
                 return None
 
-            # Create FootIK controller with Phase 1 optimizations (update every 2 frames)
+            # FootIK Controller
+            # DISABLED: IK system needs more comprehensive fixes
+            # The rotation delta fix preserves base orientation, but there are still
+            # issues with how IK targets are set and how the full chain is handled.
+            # For now, disable to unblock playtest.
             self.foot_ik = FootIKController(
                 raycast_callback=terrain_raycast,
                 hip_adjustment=0.8,
                 foot_offset=0.1,
                 update_interval=2
             )
+            self.foot_ik.set_enabled(False)  # Disabled for playtest
 
             # Create IK layer
             self.ik_layer = IKLayer(self.avatar.skeleton)
@@ -226,6 +231,18 @@ class AnimationMechanic(PlayerMechanic):
             # Subscribe to parry success event for animation transitions
             world.event_bus.subscribe("parry_success", self._on_parry_success)
             
+            # Subscribe to throw start
+            world.event_bus.subscribe("throw_projectile_start", self._on_throw_start)
+            
+            # Throw release callback
+            def on_throw_release(data):
+                # Optional: publish a release event if the projectile system wants to sync exactly with animation
+                world.event_bus.subscribe("throw_projectile_release", lambda d: None) # Just ensuring event exists?
+                # Actually, publish it so ProjectileSystem can use it if we want advanced sync later
+                world.event_bus.publish("throw_projectile_release", entity_id=self._player_id)
+                
+            self.combat_source.register_event_callback("throw_release", on_throw_release)
+            
             print("✅ AnimationMechanic: VoxelAvatar, Layered Animation & FootIK initialized")
             
         except ImportError as e:
@@ -236,6 +253,11 @@ class AnimationMechanic(PlayerMechanic):
             import traceback
             traceback.print_exc()
             self.avatar = None
+
+    def _on_throw_start(self, event):
+        """Handle throw projectile start event."""
+        if hasattr(event, 'entity_id') and event.entity_id == self._player_id:
+            self.combat_source.play("throw")
             
     def update(self, ctx: PlayerContext) -> None:
         if not self.avatar or not self.layered_animator:
@@ -329,7 +351,12 @@ class AnimationMechanic(PlayerMechanic):
             
             # Apply IK targets to IK layer
             for bone_name, target in foot_targets.items():
-                self.ik_layer.set_target(bone_name, target.position, target.weight)
+                self.ik_layer.set_target(
+                    bone_name, 
+                    target.position, 
+                    target.weight,
+                    chain_root=target.chain_root
+                )
         else:
             # Clear IK targets when airborne
             self.ik_layer.clear_all_targets()

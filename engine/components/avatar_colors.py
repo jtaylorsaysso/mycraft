@@ -24,6 +24,7 @@ class AvatarColors(Component):
     
     # Base color applied to all bones (unless overridden)
     body_color: Tuple[float, float, float, float] = (0.2, 0.8, 0.2, 1.0)
+    current_color_name: str = "green" # Track name for projectiles
     
     # Per-bone color overrides (bone_name -> RGBA)
     bone_colors: Dict[str, Tuple[float, float, float, float]] = field(default_factory=dict)

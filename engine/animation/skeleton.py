@@ -4,6 +4,8 @@ Provides hierarchical bone structures with forward kinematics (FK) and constrain
 Designed for voxel characters with articulated limbs (elbows, knees, etc.).
 """
 
+# TODo: Consider refactoring
+
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 from panda3d.core import NodePath, LVector3f, LQuaternionf
@@ -602,7 +604,9 @@ class HumanoidSkeleton(Skeleton):
         self.bones["hips"].local_transform.position = LVector3f(0, 0, 0.95)
         # Rotate Hips to point UP (+Z). This allows the pelvic block to align vertically.
         # Pivot is at bottom of pelvis, +Y extends Up.
-        self.bones["hips"].local_transform.rotation = LVector3f(0, 90, 0) 
+        # FIX: Rotate 180 around Z (Backwards) then 90 around X (Up).
+        # Result: Y-axis (Head) points Up (+Z), Z-axis (Face) points Forward (+Y).
+        self.bones["hips"].local_transform.rotation = LVector3f(180, 90, 0) 
         
         # 2. Spine Chain (Upwards, +Z)
         # Spine is child of Hips. Hips are pointing Up.
@@ -676,16 +680,18 @@ class HumanoidSkeleton(Skeleton):
         # We want Thigh to point Down (World -Z).
         # Hips Space: Y is Up.
         # We want Thigh Y to be Down.
-        # Rotation 180 degrees (Pitch).
-        self.bones["thigh_left"].local_transform.rotation = LVector3f(0, 180, 0)
+        # Rotation 180 degrees.
+        # FIX: Use Heading 180 instead of Pitch 180.
+        # Why? Pitch 180 violates constraints (max_p=60).
+        # Heading 180 also flips Y->-Y (Down), but keeps Pitch=0.
+        # Result: Thigh Y points Down. Thigh X points -HipX (World Right).
+        self.bones["thigh_left"].local_transform.rotation = LVector3f(180, 0, 0)
         
         # Position: Left(-X), Back(-Y in World).
-        # Hips Space (X=WorldX, Y=WorldZ, Z=-WorldY).
-        # Target World Offset: (-0.1, -0.05, 0).
-        # Local X = -0.1.
-        # Local Y (Up) = 0.
-        # Local Z (Back) = 0.05 (since Z is -WorldY).
-        self.bones["thigh_left"].local_transform.position = LVector3f(-0.10, 0, 0.05)
+        # Hips Space (X=WorldX, Y=WorldZ, Z=-WorldY). <- OLD COMMENT, IGNORE
+        # New Hips Space: X=Left, Y=Up, Z=Forward.
+        # We want Thigh Left (World -X) -> Local +X (0.10).
+        self.bones["thigh_left"].local_transform.position = LVector3f(0.10, 0, 0.05)
         
         # Legs extend along +Y (which is now Down/World -Z).
         self.bones["shin_left"].local_transform.rotation = LVector3f(0, 0, 0)
@@ -694,8 +700,8 @@ class HumanoidSkeleton(Skeleton):
         self.bones["foot_left"].local_transform.rotation = LVector3f(0, 0, 0)
         self.bones["foot_left"].local_transform.position = LVector3f(0, self.SHIN_LENGTH, 0)
         
-        self.bones["thigh_right"].local_transform.rotation = LVector3f(0, 180, 0)
-        self.bones["thigh_right"].local_transform.position = LVector3f(0.10, 0, 0.05)
+        self.bones["thigh_right"].local_transform.rotation = LVector3f(180, 0, 0)
+        self.bones["thigh_right"].local_transform.position = LVector3f(-0.10, 0, 0.05)
         
         self.bones["shin_right"].local_transform.rotation = LVector3f(0, 0, 0)
         self.bones["shin_right"].local_transform.position = LVector3f(0, self.THIGH_LENGTH, 0)

@@ -86,10 +86,9 @@ class HUD:
             "Combat:",
             "Mouse 1 - Attack",
             "Mouse 2 - Parry",
+            "R - Throw Color",
             "",
             "Esc - Pause Menu",
-            "F3 - Debug Info",
-            "F9 - Screenshot",
         ]
         
         if networking:
@@ -159,6 +158,42 @@ class HUD:
         self.last_fps = 0
         self.debug_visible = False
         
+        # Color Indicator (bottom-center) - shows current throwable color
+        self.color_indicator_frame = DirectFrame(
+            frameColor=(0, 0, 0, 0.5),
+            frameSize=(-0.08, 0.08, -0.08, 0.08),
+            pos=(0, 0, -0.85)
+        )
+        self.color_indicator = DirectFrame(
+            parent=self.color_indicator_frame,
+            frameColor=(0.2, 0.8, 0.2, 1.0),  # Default green
+            frameSize=(-0.06, 0.06, -0.06, 0.06),
+            pos=(0, 0, 0)
+        )
+        
+        # Cooldown bar (below color indicator)
+        self.cooldown_bar_bg = DirectFrame(
+            frameColor=(0.2, 0.2, 0.2, 0.8),
+            frameSize=(-0.08, 0.08, -0.015, 0.015),
+            pos=(0, 0, -0.95)
+        )
+        self.cooldown_bar_fill = DirectFrame(
+            parent=self.cooldown_bar_bg,
+            frameColor=(1, 1, 1, 0.9),
+            frameSize=(-0.08, 0.08, -0.012, 0.012),
+            pos=(0, 0, 0)
+        )
+        
+        # Color indicator label
+        self.color_label = OnscreenText(
+            text='R',
+            pos=(0, -0.95),
+            scale=0.03,
+            fg=(1, 1, 1, 0.7),
+            align=TextNode.ACenter,
+            mayChange=False
+        )
+        
     def update(self, dt: float):
         """Update HUD elements. Call this every frame.
         
@@ -206,6 +241,29 @@ class HUD:
             if self.welcome_timer >= self.welcome_duration:
                 self.welcome_message.hide()
                 self.welcome_timer = 0
+        
+        # Update color indicator and cooldown bar
+        if self.world and self.player_entity_id:
+            from engine.components.avatar_colors import AvatarColors
+            from engine.color.palette import ColorPalette
+            
+            colors = self.world.get_component(self.player_entity_id, AvatarColors)
+            if colors:
+                # Update color indicator
+                color_name = colors.current_color_name
+                color_def = ColorPalette.get_color(color_name)
+                if color_def:
+                    r, g, b, a = color_def.rgba
+                    self.color_indicator['frameColor'] = (r, g, b, 1.0)
+            
+            # Update cooldown bar (get from PlayerControlSystem if available)
+            # We need to access cooldown from the system - use event bus or store on component
+            # For now, check if there's a cooldown attribute on AvatarColors or use a simple approach
+            # HACK: Store cooldown on world temporarily
+            cooldown_ratio = getattr(self.world, '_projectile_cooldown_ratio', 1.0)
+            # Bar grows from center outward
+            bar_half_width = 0.08 * cooldown_ratio
+            self.cooldown_bar_fill['frameSize'] = (-bar_half_width, bar_half_width, -0.012, 0.012)
         
         # Update multiplayer info if networking is enabled
         # TODO: Wire up to actual network client when needed
@@ -297,5 +355,11 @@ class HUD:
         self.connection_text.destroy()
         self.player_count_text.destroy()
         self.loading_text.destroy()
+        
+        # Color indicator cleanup
+        self.color_indicator_frame.destroy()
+        self.cooldown_bar_bg.destroy()
+        self.color_label.destroy()
+        
         if self.settings:
             self.settings.frame.destroy()

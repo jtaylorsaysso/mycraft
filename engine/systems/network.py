@@ -4,6 +4,7 @@ Networking systems: Automatic Component Sync.
 from engine.ecs.system import System
 from engine.ecs.component import Component, get_component_class
 from engine.components.core import Transform, Health
+from engine.components.avatar_colors import AvatarColors
 from engine.core.logger import get_logger
 from typing import Dict, Any, List
 import json
@@ -25,7 +26,8 @@ class SyncSystem(System):
         # Components to automatically sync
         self.sync_registry = {
             Transform,
-            Health
+            Health,
+            AvatarColors
         }
         
         # Track dirty components (changed since last sync)
@@ -145,6 +147,15 @@ class SyncSystem(System):
             # The existing client already sends position updates
             # This is redundant with the existing system, so we skip it
             pass
+            
+        colors = self.world.get_component(player_id, AvatarColors)
+        if colors:
+             # Send color updates?
+             # Usually client authority for customization, or server?
+             # For now, assume client is authority on their own colors (e.g. customization UI)
+             # But actually, finding loot happens on server.
+             # So Server -> Client sync is the main one.
+             pass
 
     def apply_remote_update(self, entity_id: str, component_name: str, data: Dict[str, Any]):
         """Apply an update received from the network."""
@@ -170,6 +181,18 @@ class SyncSystem(System):
                 component.current = data["current"]
             if "max_hp" in data:
                 component.max_hp = data["max_hp"]
+        elif isinstance(component, AvatarColors):
+             if "body_color" in data:
+                 component.body_color = tuple(data["body_color"])
+             if "bone_colors" in data:
+                 # JSON keys are always strings, which fits bone names
+                 # Values might come in as lists, need tuples for Panda3D friendliness sometimes?
+                 # Panda3D accepts lists for color usually.
+                 component.bone_colors = data["bone_colors"]
+             if "unlocked_colors" in data:
+                 component.unlocked_colors = data["unlocked_colors"]
+             if "temporary_color" in data:
+                 component.temporary_color = tuple(data["temporary_color"]) if data["temporary_color"] else None
         else:
             # Generic update for other components
             for key, value in data.items():

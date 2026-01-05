@@ -14,6 +14,7 @@
     "player_hitbox_height": 1.8,
     "player_hitbox_depth": 0.6,
     "god_mode": false,
+    "complex_water": false,
     "debug_overlay": false,
     "view_distance": 5,
     "fov": 90,

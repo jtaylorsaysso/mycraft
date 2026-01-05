@@ -9,6 +9,7 @@ import random
 import math
 
 from engine.world.noise import get_noise
+from engine.color.palette import ColorPalette
 from .poi_generator import POIGenerator, POIData
 
 class CampGenerator(POIGenerator):
@@ -57,6 +58,11 @@ class CampGenerator(POIGenerator):
         entities = []
         rng = random.Random(seed)
         
+        # Pick camp-wide color palette (2-4 colors)
+        all_loot_colors = ColorPalette.get_loot_color_names()
+        # Seed ensures this camp always has same colors
+        camp_colors = rng.sample(all_loot_colors, min(len(all_loot_colors), rng.randint(2, 4)))
+        
         radius = 4
         wall_height = 2
         
@@ -84,7 +90,10 @@ class CampGenerator(POIGenerator):
             ez = z + rng.randint(-2, 2)
             # Ensure inside wall
             if math.sqrt((ex-x)**2 + (ez-z)**2) < radius - 1:
-                entities.append(("skeleton", ex, y + 1, ez))
+                # Assign distinct color from camp palette
+                color_name = camp_colors[i % len(camp_colors)]
+                # Add tuple: (type, x, y, z, color)
+                entities.append(("skeleton", ex, y + 1, ez, color_name))
                 
         return POIData(
             poi_type="camp_enemy",

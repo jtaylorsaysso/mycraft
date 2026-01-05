@@ -144,6 +144,16 @@ zombie_tint = 0.6    # Strong (decayed flesh holds color)
 
 ---
 
+### Momentum Combat
+
+**Movement is power.**
+
+- **Velocity Scaling**: Attacks deal more damage when moving fast.
+- **Technique**: Slide-attacks, aerial lunges, and sprinting strikes are optimal.
+- **Defense**: Dodge and Parry are available, but spacing (using movement) is primary.
+
+---
+
 ### Camp Seeding
 
 #### Deterministic Color Distribution

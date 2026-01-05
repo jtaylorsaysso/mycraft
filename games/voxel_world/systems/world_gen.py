@@ -4,7 +4,7 @@ This module implements the ChunkGenerator protocol for voxel_world,
 delegating chunk streaming to the engine's ChunkManager.
 """
 
-from typing import Dict, Tuple, Any
+from typing import Dict, Tuple, Any, List
 
 from games.voxel_world.biomes.biomes import BiomeRegistry
 from games.voxel_world.blocks.blocks import BlockRegistry
@@ -39,8 +39,8 @@ class VoxelWorldGenerator:
         chunk_x: int, 
         chunk_z: int,
         chunk_size: int
-    ) -> Dict[Tuple[int, int, int], str]:
-        """Generate voxel grid for a chunk.
+    ) -> Tuple[Dict[Tuple[int, int, int], str], List[Tuple[str, int, int, int]]]:
+        """Generate voxel grid and entities for a chunk.
         
         Args:
             chunk_x: Chunk X coordinate
@@ -48,7 +48,9 @@ class VoxelWorldGenerator:
             chunk_size: Size of chunk in blocks
             
         Returns:
-            Dict mapping (local_x, y, local_z) -> block_name
+            Tuple containing:
+            - Dict mapping (local_x, y, local_z) -> block_name
+            - List of entities to spawn (type, x, y, z)
         """
         # 1. Generate heightmap and biome data
         heights = []
@@ -70,9 +72,9 @@ class VoxelWorldGenerator:
         self._add_structures_to_grid(voxel_grid, chunk_x, chunk_z, biomes, heights, chunk_size)
         
         # 4. Add Points of Interest
-        self._add_pois_to_chunk(chunk_x, chunk_z, voxel_grid, biomes, heights, chunk_size)
+        entities = self._add_pois_to_chunk(chunk_x, chunk_z, voxel_grid, biomes, heights, chunk_size)
         
-        return voxel_grid
+        return voxel_grid, entities
     
     def get_height(self, x: float, z: float) -> float:
         """Get terrain height at world position.
@@ -245,6 +247,9 @@ class VoxelWorldGenerator:
                             
                     # Track POI
                     self._pois.append(poi_data)
+                    return poi_data.entities
+        
+        return []
 
 
 
@@ -267,6 +272,11 @@ def create_terrain_system(world, event_bus, base, texture_atlas=None, seed=0):
     
     generator = VoxelWorldGenerator(seed=seed)
     
+    # Get config if available
+    complex_water = False
+    if hasattr(base, 'config_manager'):
+        complex_water = base.config_manager.get('complex_water', False)
+    
     return ChunkManager(
         world=world,
         event_bus=event_bus,
@@ -277,7 +287,8 @@ def create_terrain_system(world, event_bus, base, texture_atlas=None, seed=0):
         load_radius=6,
         unload_radius=8,
         max_chunks_per_frame=3,
-        sea_level=0
+        sea_level=0,
+        complex_water=complex_water
     )
 
 
