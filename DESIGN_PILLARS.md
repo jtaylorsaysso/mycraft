@@ -96,3 +96,32 @@ If it fails **any one** of those, it is either:
 * Premature
 * Overdesigned
 * Or for a different game
+
+---
+
+## 6. Social Playfulness
+
+**Interaction should be expressive, not just utilitarian.**
+
+* **Toys over Tools**: Mechanics can be fun without being "optimal".
+* **Expression is Gameplay**: How you look and act is content for others.
+* **Positive Sum**: Helping others (or harmlessly pranking them) feels good.
+
+**Veto test:**
+
+> Does this feature create a memorable moment between players?
+
+If it's purely solitary or stats-based, it misses the social mark.
+
+## Sanity Check
+
+If a feature:
+
+* Preserves foundations
+* Composes with existing systems
+* Forces tradeoffs
+* Encourages problem solving
+* Communicates cleanly and caps mastery
+* **Creates social sparks**
+
+…it belongs.

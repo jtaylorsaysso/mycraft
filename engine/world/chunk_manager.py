@@ -109,8 +109,32 @@ class ChunkManager(System):
         Returns:
             NodePath containing chunk mesh and collision
         """
-        # 1. Generate voxel grid from game-specific generator
-        voxel_grid = self.generator.generate_chunk(chunk_x, chunk_z, self.chunk_size)
+        # 1. Generate voxel grid and entities from game-specific generator
+        voxel_grid, entities = self.generator.generate_chunk(chunk_x, chunk_z, self.chunk_size)
+        
+        # 1b. Spawn entities
+        if entities:
+            # Lazy import to avoid circular dependency
+            from games.voxel_world.entity.factory import EntityFactory
+            
+            for entity_tuple in entities:
+                # Check if tuple has color
+                if len(entity_tuple) == 5:
+                    entity_type, ex, ey, ez, color_name = entity_tuple
+                else:
+                    entity_type, ex, ey, ez = entity_tuple
+                    color_name = None
+
+                # Use chunk coordinates to create a stable seed for the entity
+                entity_seed = hash((ex, ey, ez))
+                
+                EntityFactory.create_enemy(
+                    self.world, 
+                    entity_type, 
+                    (float(ex), float(ey), float(ez)), 
+                    entity_seed,
+                    color_name=color_name
+                )
         
         # 2. Add water blocks below sea level
         self._add_water_to_grid(voxel_grid, chunk_x, chunk_z)

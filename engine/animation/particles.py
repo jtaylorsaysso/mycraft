@@ -197,3 +197,27 @@ def create_dust_cloud(
         count=20,
         spread=0.8
     )
+
+
+def create_color_splat(
+    particle_system: VoxelParticleSystem,
+    position: LVector3f,
+    color: LVector4f
+):
+    """Create paint splat effect for color projectile impacts.
+    
+    Args:
+        particle_system: Particle system to emit from
+        position: Impact position
+        color: Projectile color
+    """
+    # Burst outward in all directions
+    particle_system.emit(
+        position=position,
+        velocity=LVector3f(0, 0, 3.0),  # Upward bias
+        color=color,
+        size=0.25,  # Larger particles for visibility
+        lifetime=1.2,  # Longer lifetime
+        count=25,  # More particles
+        spread=4.0  # Wide spread for splat look
+    )

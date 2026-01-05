@@ -37,9 +37,9 @@ class Transform:
         # Build matrix from components
         # Panda3D uses HPR (heading, pitch, roll) for rotation
         mat = LMatrix4f()
-        mat.setRow(3, self.position)  # Set translation
         
-        # Apply rotation (HPR)
+        # Apply rotation (HPR) FIRST
+        # Note: extractToMatrix() overwrites the entire matrix, so we must do this before setting translation
         h, p, r = self.rotation.x, self.rotation.y, self.rotation.z
         quat = LQuaternionf()
         quat.setHpr((h, p, r))
@@ -49,6 +49,9 @@ class Transform:
         mat.setRow(0, mat.getRow(0) * self.scale.x)
         mat.setRow(1, mat.getRow(1) * self.scale.y)
         mat.setRow(2, mat.getRow(2) * self.scale.z)
+        
+        # Set translation LAST (after rotation and scale)
+        mat.setRow(3, self.position)
         
         return mat
 

@@ -25,6 +25,7 @@ class IKTarget:
     bone_name: str  # End effector bone (e.g., "foot_left", "hand_right")
     weight: float = 1.0  # Blend weight (0-1)
     pole_target: Optional[LVector3f] = None  # Hint for joint orientation
+    chain_root: Optional[str] = None  # Specific root bone for the IK chain (stops automatic root selection)
 
 
 class FABRIKSolver:
@@ -51,7 +52,8 @@ class FABRIKSolver:
         self,
         chain: List[Bone],
         target_position: LVector3f,
-        root_position: Optional[LVector3f] = None
+        root_position: Optional[LVector3f] = None,
+        rest_transforms: Optional[Dict[str, Transform]] = None
     ) -> Dict[str, Transform]:
         """Solve IK for a bone chain.
         
@@ -59,9 +61,10 @@ class FABRIKSolver:
             chain: List of bones from root to end effector
             target_position: Desired end effector position
             root_position: Optional fixed root position
+            rest_transforms: Rest pose transforms for calculating deltas
             
         Returns:
-            Dictionary of bone transforms
+            Dictionary of bone transforms (relative to rest pose)
         """
         if len(chain) < 2:
             return {}
@@ -139,8 +142,8 @@ class FABRIKSolver:
         # Apply constraints
         positions = self._apply_constraints(chain, positions, root_position)
         
-        # Convert positions to transforms
-        return self._positions_to_transforms(chain, positions)
+        # Convert positions to transforms (with rest pose awareness)
+        return self._positions_to_transforms(chain, positions, rest_transforms or {})
     
     def _apply_constraints(
         self,
@@ -197,33 +200,54 @@ class FABRIKSolver:
     def _positions_to_transforms(
         self,
         chain: List[Bone],
-        positions: List[LVector3f]
+        positions: List[LVector3f],
+        rest_transforms: Dict[str, Transform]
     ) -> Dict[str, Transform]:
         """Convert joint positions to bone transforms.
         
         Args:
             chain: Bone chain
             positions: Joint positions
+            rest_transforms: Rest pose transforms for delta calculation
             
         Returns:
-            Bone transforms
+            Bone transforms (deltas from rest pose)
         """
         transforms = {}
         
         for i, bone in enumerate(chain):
             if i < len(positions):
+                # Get rest transform for this bone
+                rest_transform = rest_transforms.get(bone.name, Transform())
+                
                 # Calculate rotation from bone direction
                 if i < len(positions) - 1:
                     direction = positions[i + 1] - positions[i]
-                    # Convert direction to rotation (simplified)
-                    # Full implementation would use quaternions and proper rotation calculation
-                    rotation = self._direction_to_rotation(direction)
+                    # Get absolute rotation for this direction
+                    abs_rotation = self._direction_to_rotation(direction)
+                    
+                    # Calculate delta from rest pose
+                    # This preserves the bone's base orientation (e.g., thigh pointing down)
+                    rest_rot = rest_transform.rotation
+                    delta_rotation = LVector3f(
+                        abs_rotation.x - rest_rot.x,
+                        abs_rotation.y - rest_rot.y,
+                        abs_rotation.z - rest_rot.z
+                    )
+                    
+                    # Apply delta to rest rotation
+                    final_rotation = LVector3f(
+                        rest_rot.x + delta_rotation.x,
+                        rest_rot.y + delta_rotation.y,
+                        rest_rot.z + delta_rotation.z
+                    )
                 else:
-                    rotation = LVector3f(0, 0, 0)
+                    # End effector keeps rest rotation
+                    final_rotation = rest_transform.rotation
                 
                 transforms[bone.name] = Transform(
-                    position=positions[i],
-                    rotation=rotation,
+                    position=rest_transform.position,  # Keep rest position
+                    rotation=final_rotation,
                     scale=LVector3f(1, 1, 1)
                 )
         
@@ -269,18 +293,20 @@ class IKLayer:
         self.solver = solver or FABRIKSolver()
         self.targets: Dict[str, IKTarget] = {}
     
-    def set_target(self, bone_name: str, position: LVector3f, weight: float = 1.0):
+    def set_target(self, bone_name: str, position: LVector3f, weight: float = 1.0, chain_root: Optional[str] = None):
         """Set an IK target.
         
         Args:
             bone_name: End effector bone name
             position: Target position
             weight: Blend weight (0-1)
+            chain_root: Specific root bone for chain (e.g. 'thigh_left' for leg IK)
         """
         self.targets[bone_name] = IKTarget(
             position=position,
             bone_name=bone_name,
-            weight=weight
+            weight=weight,
+            chain_root=chain_root
         )
     
     def clear_target(self, bone_name: str):
@@ -314,27 +340,36 @@ class IKLayer:
             
             # Get bone chain for this target
             try:
-                chain = skeleton.get_chain(skeleton.root.name, target.bone_name)
+                root_name = target.chain_root if target.chain_root else skeleton.root.name
+                chain = skeleton.get_chain(root_name, target.bone_name)
+                
                 if len(chain) < 2:
                     continue
                 
-                # Solve IK for this chain
-                ik_transforms = self.solver.solve(chain, target.position)
+                # Collect rest transforms for the chain
+                rest_transforms = {bone.name: bone.rest_transform for bone in chain}
                 
-                # Blend transforms by weight
-                for bone_name, transform in ik_transforms.items():
+                # Solve IK for this chain (now returns local transforms relative to rest pose)
+                ik_transforms = self.solver.solve(
+                    chain, 
+                    target.position,
+                    rest_transforms=rest_transforms
+                )
+                
+                # IK transforms are already in local space relative to rest pose
+                # Just apply weight blending if needed
+                for bone_name, local_transform in ik_transforms.items():
                     if target.weight < 1.0:
                         # Blend with existing transform (if any)
                         if bone_name in transforms:
-                            # Simple lerp (full implementation would use slerp for rotations)
                             existing = transforms[bone_name]
-                            transform = Transform(
-                                position=existing.position + (transform.position - existing.position) * target.weight,
-                                rotation=existing.rotation + (transform.rotation - existing.rotation) * target.weight,
+                            local_transform = Transform(
+                                position=existing.position + (local_transform.position - existing.position) * target.weight,
+                                rotation=existing.rotation + (local_transform.rotation - existing.rotation) * target.weight,
                                 scale=existing.scale
                             )
                     
-                    transforms[bone_name] = transform
+                    transforms[bone_name] = local_transform
             
             except ValueError:
                 # Chain not found - skip this target

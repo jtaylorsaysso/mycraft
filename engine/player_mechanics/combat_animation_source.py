@@ -42,6 +42,60 @@ class CombatAnimationSource:
         self.clips["parry_start"] = self._create_parry_start()
         self.clips["parry_success"] = self._create_parry_success()
         self.clips["parry_fail"] = self._create_parry_fail()
+        
+        # Throw animation
+        self.clips["throw"] = self._create_throw_animation()
+        
+    def _create_throw_animation(self) -> AnimationClip:
+        """Create throw projectile animation.
+        
+        Wind up, throw, follow through.
+        Duration: 0.4s
+        Event: 'throw_release' at 0.15s
+        """
+        from engine.animation.core import AnimationEvent
+        
+        keyframes = [
+            # Frame 0: Wind up (arm back)
+            Keyframe(
+                time=0.0,
+                transforms={
+                    'upper_arm_right': Transform(rotation=LVector3f(-45, -45, 0)),
+                    'forearm_right': Transform(rotation=LVector3f(0, -90, 0)),
+                    'chest': Transform(rotation=LVector3f(0, -15, 0))
+                }
+            ),
+            # Frame 1: Release (arm forward, snap)
+            Keyframe(
+                time=0.15,
+                transforms={
+                    'upper_arm_right': Transform(rotation=LVector3f(-10, 45, 0)),
+                    'forearm_right': Transform(rotation=LVector3f(0, 0, 0)),
+                    'chest': Transform(rotation=LVector3f(0, 15, 0))
+                }
+            ),
+            # Frame 2: Follow through / Return to idle
+            Keyframe(
+                time=0.4,
+                transforms={
+                   'upper_arm_right': Transform(rotation=LVector3f(0, 0, 0)),
+                   'forearm_right': Transform(rotation=LVector3f(0, 0, 0)),
+                   'chest': Transform(rotation=LVector3f(0, 0, 0))
+                }
+            )
+        ]
+        
+        events = [
+            AnimationEvent(time=0.15, event_name='throw_release', data={})
+        ]
+        
+        return AnimationClip(
+            name='throw',
+            duration=0.4,
+            keyframes=keyframes,
+            events=events,
+            looping=False
+        )
     
     def _create_dodge_animation(self) -> CombatClip:
         """Create dodge step animation.

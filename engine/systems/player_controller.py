@@ -13,7 +13,10 @@ from engine.player_mechanics.dodge_mechanic import DodgeMechanic
 from engine.player_mechanics.parry_mechanic import ParryMechanic
 from engine.player_mechanics.attack_mechanic import AttackMechanic
 from engine.player_mechanics.targeting_mechanic import TargetingMechanic
-from panda3d.core import CollisionTraverser
+from engine.player_mechanics.targeting_mechanic import TargetingMechanic
+from panda3d.core import CollisionTraverser, LVector3f
+from engine.components.avatar_colors import AvatarColors
+from engine.components.projectile import ColorProjectileComponent
 
 class PlayerControlSystem(System):
     """Coordinates player mechanics."""
@@ -43,15 +46,21 @@ class PlayerControlSystem(System):
         
         # Reusable context (created in on_ready, updated each frame)
         self.player_context = None
+        
+        # Projectile State
+        self.projectile_cooldown = 0.0
+        self.projectile_max_cooldown = 3.0
     
     def get_dependencies(self):
         return ["player"]
     
     def initialize(self):
-        # Initialize input mechanic
         for mech in self.mechanics:
             if hasattr(mech, 'setup'):
                 mech.setup(self.base)
+                
+        # Register Projectile Input
+        self.base.accept('r', self.throw_projectile)
     
     def on_ready(self):
         player_id = self.world.get_entity_by_tag("player")
@@ -125,3 +134,80 @@ class PlayerControlSystem(System):
         
         # Clear transition requests
         self.player_context.clear_requests()
+        
+        # Update cooldown
+        if self.projectile_cooldown > 0:
+            self.projectile_cooldown -= dt
+        
+        # Publish cooldown ratio for HUD (1.0 = ready, 0.0 = just fired)
+        cooldown_ratio = 1.0 - (self.projectile_cooldown / self.projectile_max_cooldown) if self.projectile_max_cooldown > 0 else 1.0
+        cooldown_ratio = max(0.0, min(1.0, cooldown_ratio))
+        self.world._projectile_cooldown_ratio = cooldown_ratio
+            
+    def throw_projectile(self):
+        """Throw a color projectile."""
+        # Check cooldown
+        if self.projectile_cooldown > 0:
+            print("Projectile on cooldown")
+            return
+            
+        player_id = self.world.get_entity_by_tag("player")
+        if not player_id:
+            print("No player found")
+            return
+            
+        # Get color
+        colors = self.world.get_component(player_id, AvatarColors)
+        if not colors:
+            print("No AvatarColors found")
+            return
+            
+        color_name = colors.current_color_name
+        
+        # Get spawn position (Head level + offset)
+        transform = self.world.get_component(player_id, Transform)
+        if not transform:
+            print("No Transform found")
+            return
+            
+        # Get camera orientation from CameraState component
+        from engine.components.camera_state import CameraState
+        import math
+        
+        camera_state = self.world.get_component(player_id, CameraState)
+        if not camera_state:
+            print("No CameraState found")
+            return
+        
+        # Convert yaw/pitch to radians
+        # Yaw: rotation around Z axis (heading)
+        # Pitch: rotation around X axis (looking up/down)
+        yaw_rad = math.radians(camera_state.yaw)
+        pitch_rad = math.radians(camera_state.pitch)
+        
+        # Calculate forward vector in world space
+        # In Panda3D: +Y is forward, +X is right, +Z is up
+        # Yaw rotates around Z, Pitch rotates around local X
+        forward = LVector3f(
+            -math.sin(yaw_rad) * math.cos(pitch_rad),  # X component
+            math.cos(yaw_rad) * math.cos(pitch_rad),   # Y component  
+            math.sin(pitch_rad)                         # Z component
+        )
+        forward.normalize()
+        
+        spawn_pos = transform.position + LVector3f(0, 0, 1.6) + (forward * 1.0)
+        
+        velocity = forward * 25.0  # Increased speed for better range
+        # Publish animation start event
+        self.event_bus.publish("throw_projectile_start", entity_id=player_id)
+        
+        # Publish request event
+        self.event_bus.publish("spawn_projectile", 
+            position=spawn_pos, 
+            velocity=velocity, 
+            color_name=color_name, 
+            owner_id=player_id
+        )
+        
+        self.projectile_cooldown = self.projectile_max_cooldown
+        print(f"Threw {color_name} projectile!")

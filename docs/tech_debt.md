@@ -54,6 +54,10 @@ All phases of combat animation integration complete. Combat prototype fully func
 - [x] **Hand IK Controller** - Completed for climbing mechanics (similar to FootIK)
 - [ ] **VoxelAvatar Material System** - Current implementation uses single color per bone; needs texture/material support
 - [ ] **GLB Skinning Support** - Current GLB system uses rigid parenting; true weighted skinning not yet implemented
+- [ ] **IK System Rework** - FootIK disabled for playtest. Requires core rewrite:
+  - **Rotation Math**: Replace Euler-based `_direction_to_rotation` with proper quaternion-based solution to avoid gimbal lock and orientation loss.
+  - **Chain Handling**: FABRIK solver currently fails to return valid transforms for full leg chains (only thighs update).
+  - **Architecture**: Separate position solving from rotation alignment. Implement proper 2-bone analytical IK for legs.
 
 **Technical Debt from Phase 1:**
 

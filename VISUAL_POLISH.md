@@ -141,6 +141,21 @@
 
 ---
 
+## Roadmap Mapping
+
+How these phases align with `ROADMAP.md`:
+
+| Visual Polish Phase | Roadmap Milestone |
+|---------------------|-------------------|
+| Phase 0: Baseline | **v0.x** Engine Foundation |
+| Phase 1: State/Movement | **v0.2** Combat Prototype |
+| Phase 2: Animation | **v0.2** Combat Prototype |
+| Phase 3: Terrain Reads | **v1.1** Content Expansion (Biomes) |
+| Phase 4: Feedback | **v1.0** Alpha Polish |
+| Phase 5: Playtest Slice | **v1.0-Hybrid** Alpha Playtest |
+
+---
+
 ## Timeline Characteristics (Intentionally)
 
 * Front-loaded on systems, not content

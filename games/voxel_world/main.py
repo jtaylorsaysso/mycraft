@@ -38,6 +38,20 @@ def run(**kwargs):
     # Register avatar color system (M2: Avatar Rendering)
     from engine.systems.avatar_color_system import AvatarColorSystem
     game.world.add_system(AvatarColorSystem(game.world, game.world.event_bus, game))
+
+    # Register Health and Loot systems (M3: Combat Loop)
+    from games.voxel_world.systems.health_system import HealthSystem
+    from games.voxel_world.systems.loot_system import LootSystem
+    game.world.add_system(HealthSystem(game.world, game.world.event_bus))
+    game.world.add_system(LootSystem(game.world, game.world.event_bus))
+    
+    # Register Enemy System (M3)
+    from games.voxel_world.systems.enemy_system import EnemySystem
+    game.world.add_system(EnemySystem(game.world, game.world.event_bus, game))
+    
+    # Register Projectile System (M5)
+    from games.voxel_world.systems.projectile_system import ProjectileSystem
+    game.world.add_system(ProjectileSystem(game.world, game.world.event_bus, game))
     
     # Register blocks 
     # (Engine provides defaults in BlockRegistry, we can add game-specific ones here if needed)

@@ -108,10 +108,14 @@ class FootIKController:
                     hit_point.z + self.foot_offset
                 )
                 
+                # Determine chain root based on foot side
+                chain_root = "thigh_left" if "left" in foot_bone_name else "thigh_right"
+                
                 targets[foot_bone_name] = IKTarget(
                     position=target_position,
                     bone_name=foot_bone_name,
-                    weight=1.0
+                    weight=1.0,
+                    chain_root=chain_root
                 )
                 
                 ground_heights.append(hit_point.z)
