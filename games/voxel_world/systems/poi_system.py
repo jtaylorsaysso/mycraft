@@ -6,6 +6,7 @@ with minimum spacing requirements and metadata tracking.
 
 from typing import Dict, Tuple, Optional, List
 from dataclasses import dataclass
+import os
 from games.voxel_world.structures.shrine_structures import (
     PlainsAltarGenerator,
     ForestClearingGenerator,

@@ -39,7 +39,7 @@ class VoxelWorldGenerator:
         chunk_x: int, 
         chunk_z: int,
         chunk_size: int
-    ) -> Tuple[Dict[Tuple[int, int, int], str], List[Tuple[str, int, int, int]]]:
+    ) -> Tuple[Dict[Tuple[int, int, int], str], List[Tuple[str, int, int, int]], Dict[Tuple[int, int, int], List[str]]]:
         """Generate voxel grid and entities for a chunk.
         
         Args:
@@ -51,6 +51,7 @@ class VoxelWorldGenerator:
             Tuple containing:
             - Dict mapping (local_x, y, local_z) -> block_name
             - List of entities to spawn (type, x, y, z)
+            - Dict mapping chest world positions to item lists
         """
         # 1. Generate heightmap and biome data
         heights = []
@@ -72,9 +73,9 @@ class VoxelWorldGenerator:
         self._add_structures_to_grid(voxel_grid, chunk_x, chunk_z, biomes, heights, chunk_size)
         
         # 4. Add Points of Interest
-        entities = self._add_pois_to_chunk(chunk_x, chunk_z, voxel_grid, biomes, heights, chunk_size)
+        entities, chest_loot = self._add_pois_to_chunk(chunk_x, chunk_z, voxel_grid, biomes, heights, chunk_size)
         
-        return voxel_grid, entities
+        return voxel_grid, entities, chest_loot
     
     def get_height(self, x: float, z: float) -> float:
         """Get terrain height at world position.
@@ -204,12 +205,20 @@ class VoxelWorldGenerator:
         chunk_size: int
     ):
         """Try to spawn POIs in this chunk."""
-        # Simple spawn chance check using noise
-        # Scale 0.01 = large features, ensuring POIs are spaced out
-        poi_noise = get_noise(chunk_x * 100, chunk_z * 100, scale=0.01, octaves=1)
+        # POI spawn chance check using noise
+        # NOTE: Perlin noise returns 0.0 at integer grid points, so we add prime offsets
+        # to avoid landing on grid boundaries after scaling.
+        # Using coordinates + seed offset, scaled to create large features (POIs spaced out)
+        poi_noise = get_noise(
+            chunk_x + self.world_seed + 0.37,  # Prime-ish offset
+            chunk_z + self.world_seed + 0.73,  # Different offset to decorrelate
+            scale=0.08,  # Larger scale = smaller features = more variation between chunks
+            octaves=2
+        )
         
-        # ~30% spawn chance (increased for playtest)
-        if poi_noise > 0.70:
+        # ~10% spawn chance - noise typically ranges from -0.6 to 0.5, so 0.15 is top ~15-20%
+        # Lowered from 0.70 which never triggered (max noise ~0.53)
+        if poi_noise > 0.15:
             # Deterministic POI selection
             # Use distinct prime multipliers to mix up pattern relative to coordinates
             val = (chunk_x * 73 + chunk_z * 31) % 100
@@ -219,37 +228,41 @@ class VoxelWorldGenerator:
             else:
                 generator = CampGenerator(self.world_seed)
             
-            if generator.should_spawn_at(chunk_x, chunk_z):
-                # Attempt to find position
-                pos = generator.get_spawn_position(
-                    chunk_x, chunk_z, chunk_size, biomes, self.get_height
+            # NOTE: Removed generator.should_spawn_at() - it was a redundant noise check
+            # that compounded with the check above, resulting in very few spawns.
+            
+            # Attempt to find position
+            pos = generator.get_spawn_position(
+                chunk_x, chunk_z, chunk_size, biomes, self.get_height
+            )
+            
+
+            
+            if pos:
+                wx, wy, wz = pos
+                
+                # Flatten terrain
+                generator.flatten_terrain(
+                    wx, wz, wy, 3, voxel_grid, chunk_x, chunk_z, chunk_size
                 )
                 
-                if pos:
-                    wx, wy, wz = pos
+                # Generate structure
+                poi_data = generator.generate(wx, wy, wz, self.world_seed)
+                
+                # Add blocks to grid
+                for bx, by, bz, bname in poi_data.blocks:
+                    # Convert to chunk-local
+                    rx = bx - (chunk_x * chunk_size)
+                    rz = bz - (chunk_z * chunk_size)
                     
-                    # Flatten terrain
-                    generator.flatten_terrain(
-                        wx, wz, wy, 3, voxel_grid, chunk_x, chunk_z, chunk_size
-                    )
-                    
-                    # Generate structure
-                    poi_data = generator.generate(wx, wy, wz, self.world_seed)
-                    
-                    # Add blocks to grid
-                    for bx, by, bz, bname in poi_data.blocks:
-                        # Convert to chunk-local
-                        rx = bx - (chunk_x * chunk_size)
-                        rz = bz - (chunk_z * chunk_size)
+                    if 0 <= rx < chunk_size and 0 <= rz < chunk_size:
+                        voxel_grid[(rx, by, rz)] = bname
                         
-                        if 0 <= rx < chunk_size and 0 <= rz < chunk_size:
-                            voxel_grid[(rx, by, rz)] = bname
-                            
-                    # Track POI
-                    self._pois.append(poi_data)
-                    return poi_data.entities
+                # Track POI
+                self._pois.append(poi_data)
+                return poi_data.entities, poi_data.loot
         
-        return []
+        return [], {}
 
 
 

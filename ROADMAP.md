@@ -116,10 +116,10 @@ Sprint-level details and task tracking are managed in [`docs/tech_debt.md`](docs
 #### Core Systems ✅
 
 - Timing-based combat (dodge/parry)
-- Movement mechanics (walk, run, jump, climb, vault)
+- Movement mechanics (walk, sprint, jump implemented; climb/vault planned)
 - Multiplayer co-op (networking infrastructure ready)
 - 8 normal biomes (Plains, Forest, Rocky, Desert, Mountain, Canyon, River, Beach/Swamp)
-- POI System (Shrines + Camps)
+- POI System (Shrines + Camps - structures complete, spawning not integrated)
 
 #### New for v1.0-Hybrid 🎯
 

@@ -59,6 +59,10 @@ def run(**kwargs):
     game.world.add_system(HealthSystem(game.world, game.world.event_bus))
     game.world.add_system(LootSystem(game.world, game.world.event_bus))
     
+    # Register Interaction System (for chests)
+    from games.voxel_world.systems.interaction_system import InteractionSystem
+    game.world.add_system(InteractionSystem(game.world, game.world.event_bus, game.camera, game))
+    
     # Register Enemy System (M3)
     from games.voxel_world.systems.enemy_system import EnemySystem
     game.world.add_system(EnemySystem(game.world, game.world.event_bus, game))

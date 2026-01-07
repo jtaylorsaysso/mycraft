@@ -17,8 +17,10 @@ class UISystem(System):
         self.hud = None
         self.pause_overlay = None
         self.chat_overlay = None
+        self.chest_overlay = None
         self.initialized = False
         self.chat_input_active = False
+        self.chest_open = False
         
     def initialize(self):
         """Called when system is added"""
@@ -40,6 +42,22 @@ class UISystem(System):
             on_chat_closed=self._on_chat_closed
         )
         
+        # Initialize chest overlay
+        from engine.ui.chest_inventory_overlay import ChestInventoryOverlay
+        
+        # Get loot system for spawning pickups
+        loot_system = self.world.get_system_by_type('LootSystem')
+        
+        self.chest_overlay = ChestInventoryOverlay(
+            self.game,
+            self.world,
+            loot_system,
+            on_close=self._on_chest_closed
+        )
+        
+        # Subscribe to chest opened event
+        self.event_bus.subscribe("chest_opened", self._on_chest_opened)
+        
         # Key bindings - use Panda3D's accept() directly for reliability
         self.game.accept("escape", self._on_escape)
         self.game.accept("p", self._on_escape)  # P key as fallback
@@ -60,9 +78,11 @@ class UISystem(System):
             self.hud.player_entity_id = player_id
 
     def _on_escape(self):
-        """Handle escape key press - toggle pause."""
-        # Don't toggle pause if chat is open - close chat instead
-        if self.chat_input_active:
+        """Handle escape key press - toggle pause or close overlays."""
+        # Priority: close chest > close chat > toggle pause
+        if self.chest_open:
+            self.chest_overlay.close()
+        elif self.chat_input_active:
             self.chat_overlay.close_input(send_message=False)
         else:
             self.toggle_pause()
@@ -88,6 +108,33 @@ class UISystem(System):
         if hasattr(self.game, 'input_manager') and self.game.input_manager:
             self.game.input_manager.unblock_input("chat")
         logger.debug("Chat input closed - player input restored")
+    
+    def _on_chest_opened(self, event):
+        """Called when a chest is opened."""
+        self.chest_open = True
+        self.chest_overlay.open(event.chest_entity)
+        
+        # Pause game and show cursor
+        from engine.game import GameState
+        self.game.set_game_state(GameState.PAUSED)
+        
+        # Block player input
+        if hasattr(self.game, 'input_manager') and self.game.input_manager:
+            self.game.input_manager.block_input("chest")
+        logger.debug("Chest opened - game paused")
+    
+    def _on_chest_closed(self):
+        """Called when chest UI is closed."""
+        self.chest_open = False
+        
+        # Resume game and hide cursor
+        from engine.game import GameState
+        self.game.set_game_state(GameState.PLAYING)
+        
+        # Restore player input
+        if hasattr(self.game, 'input_manager') and self.game.input_manager:
+            self.game.input_manager.unblock_input("chest")
+        logger.debug("Chest closed - game resumed")
 
     def update(self, dt):
         """Update UI elements."""
@@ -153,6 +200,8 @@ class UISystem(System):
             self.pause_overlay.cleanup()
         if self.chat_overlay:
             self.chat_overlay.cleanup()
+        if self.chest_overlay:
+            self.chest_overlay.cleanup()
         self.game.ignore("escape")
         self.game.ignore("p")
         self.game.ignore("f3")

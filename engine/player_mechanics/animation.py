@@ -263,8 +263,43 @@ class AnimationMechanic(PlayerMechanic):
         if not self.avatar or not self.layered_animator:
             return
             
-        # 1. Handle Visibility based on Camera Mode
         from engine.components.camera_state import CameraState, CameraMode
+            
+        # Debug Log (temporary)
+        if not hasattr(self, "_debug_timer"): self._debug_timer = 0
+        self._debug_timer += 1
+        if self._debug_timer % 60 == 0:
+            print(f"DEBUG: Avatar Pos: {self.avatar.root.getPos()}, Entity Pos: {ctx.transform.position}")
+            cam = ctx.world.get_component(ctx.player_id, CameraState)
+            print(f"DEBUG: Hidden: {self.avatar.root.isHidden()}, Mode: {cam.mode if cam else 'None'}")
+            vel = LVector3f(ctx.state.velocity_x, ctx.state.velocity_y, ctx.state.velocity_z)
+            print(f"DEBUG: Velocity: {vel}, Grounded: {ctx.state.grounded}")
+            
+            # Collision Debug
+            c_nodes = ctx.world.base.render.findAllMatches("**/chunk_collision*")
+            print(f"DEBUG: Found {c_nodes.getNumPaths()} collision nodes in scene.")
+            if c_nodes.getNumPaths() > 0:
+                print(f"DEBUG: Sample Node: {c_nodes[0]}")
+                
+            # Check specific node
+            specific = ctx.world.base.render.find("**/chunk_collision_0_-1")
+            if not specific.isEmpty():
+                print(f"DEBUG: Specific Node (-1, -1) found. Solids: {specific.node().getNumSolids()}")
+                # Print first solid bounds
+                if specific.node().getNumSolids() > 0:
+                    print(f"DEBUG: First Solid: {specific.node().getSolid(0)}")
+            else:
+                print("DEBUG: Specific Node (-1, -1) NOT FOUND")
+                
+            # Manual Raycast
+            from engine.physics import raycast_ground_height
+            class MockEntity:
+                def __init__(self, t): self.x, self.y, self.z = t.position.x, t.position.y, t.position.z
+            
+            check = raycast_ground_height(MockEntity(ctx.transform), ctx.world.collision_traverser, ctx.world.base.render, max_distance=100.0)
+            print(f"DEBUG: Manual Raycast Result: {check}")
+            
+        # 1. Handle Visibility based on Camera Mode
         camera_state = ctx.world.get_component(ctx.player_id, CameraState)
         
         if camera_state and camera_state.mode == CameraMode.FIRST_PERSON:

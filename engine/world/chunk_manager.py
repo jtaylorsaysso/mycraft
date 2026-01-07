@@ -109,8 +109,8 @@ class ChunkManager(System):
         Returns:
             NodePath containing chunk mesh and collision
         """
-        # 1. Generate voxel grid and entities from game-specific generator
-        voxel_grid, entities = self.generator.generate_chunk(chunk_x, chunk_z, self.chunk_size)
+        # 1. Generate voxel grid, entities, and chest loot from game-specific generator
+        voxel_grid, entities, chest_loot = self.generator.generate_chunk(chunk_x, chunk_z, self.chunk_size)
         
         # 1b. Spawn entities
         if entities:
@@ -134,6 +134,35 @@ class ChunkManager(System):
                     (float(ex), float(ey), float(ez)), 
                     entity_seed,
                     color_name=color_name
+                )
+        
+        # 1c. Spawn chest entities
+        if chest_loot:
+            # Lazy import to avoid circular dependency
+            from engine.components.chest import ChestComponent
+            from engine.components.core import Transform
+            from panda3d.core import LVector3f
+            
+            for chest_pos, items in chest_loot.items():
+                # Create chest entity
+                chest_entity = self.world.create_entity()
+                
+                # Add Transform at chest block position (center of block)
+                cx, cy, cz = chest_pos
+                self.world.add_component(
+                    chest_entity,
+                    Transform(position=LVector3f(float(cx) + 0.5, float(cy) + 0.5, float(cz) + 0.5))
+                )
+                
+                # Add ChestComponent with loot data
+                self.world.add_component(
+                    chest_entity,
+                    ChestComponent(
+                        position=chest_pos,
+                        items=items,
+                        is_open=False,
+                        poi_type="poi"  # Could be enhanced to track specific POI type
+                    )
                 )
         
         # 2. Add water blocks below sea level
