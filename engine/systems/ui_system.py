@@ -3,7 +3,6 @@ from engine.ui.hud import HUD
 from engine.ui.pause_overlay import PauseOverlay
 from engine.ui.chat_overlay import ChatOverlay
 from engine.core.logger import get_logger
-from engine.game import GameState
 
 logger = get_logger("systems.ui")
 
@@ -90,7 +89,7 @@ class UISystem(System):
     def _on_chat_key(self):
         """Handle T key press - open chat."""
         # Only open chat if not paused
-        if self.game.game_state == GameState.PLAYING and not self.chat_input_active:
+        if self.game.game_state == 'Playing' and not self.chat_input_active:
             self.chat_overlay.open_input()
     
     def _on_chat_opened(self):
@@ -115,8 +114,7 @@ class UISystem(System):
         self.chest_overlay.open(event.chest_entity)
         
         # Pause game and show cursor
-        from engine.game import GameState
-        self.game.set_game_state(GameState.PAUSED)
+        self.game.set_game_state('Paused')
         
         # Block player input
         if hasattr(self.game, 'input_manager') and self.game.input_manager:
@@ -128,8 +126,7 @@ class UISystem(System):
         self.chest_open = False
         
         # Resume game and hide cursor
-        from engine.game import GameState
-        self.game.set_game_state(GameState.PLAYING)
+        self.game.set_game_state('Playing')
         
         # Restore player input
         if hasattr(self.game, 'input_manager') and self.game.input_manager:
@@ -155,7 +152,7 @@ class UISystem(System):
                     self.hud.pos_text.hide()
             
             # Sync pause overlay with pause state
-            if self.game.game_state == GameState.PAUSED:
+            if self.game.game_state == 'Paused':
                 if not self.pause_overlay.visible:
                     self.pause_overlay.show()
                 # Also show settings if available
@@ -183,15 +180,15 @@ class UISystem(System):
     def toggle_pause(self):
         """Toggle pause state (Escape key).
         
-        This automatically manages cursor lock/unlock via GameState.
+        This automatically manages cursor lock/unlock via GameFSM.
         """
         self.game.toggle_pause()
-        logger.debug(f"Pause toggled: {self.game.game_state.name}")
+        logger.debug(f"Pause toggled: {self.game.game_state}")
 
     
     def _on_resume(self):
         """Handle resume from pause overlay."""
-        self.game.set_game_state(GameState.PLAYING)
+        self.game.set_game_state('Playing')
             
     def cleanup(self):
         if self.hud:

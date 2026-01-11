@@ -105,7 +105,7 @@ class PreviewWorkspace(Workspace):
         self._stop_playback()
         
     def accept_shortcuts(self):
-        self.app.accept('space', self._toggle_playback)
+        self.accept('space', self._toggle_playback)
 
     def _toggle_playback(self):
         if self.playing:

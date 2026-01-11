@@ -103,6 +103,17 @@ class AnimationWorkspace(Workspace):
         }
         self.timeline_panel = TimelinePanel(self.app.aspect2d, callbacks_timeline)
         self.timeline_panel.frame.hide()
+        
+        # Event Log Label (for animation event debugging)
+        self.event_log_label = DirectLabel(
+            parent=self.app.aspect2d,
+            text="",
+            scale=0.04,
+            pos=(0, 0, -0.7),
+            text_fg=(1.0, 0.8, 0.2, 1),
+            frameColor=(0.1, 0.1, 0.1, 0.7)
+        )
+        self.event_log_label.hide()
 
     # ─────────────────────────────────────────────────────────────────
     # Lifecycle
@@ -131,8 +142,8 @@ class AnimationWorkspace(Workspace):
         self._stop_playback()
         
     def accept_shortcuts(self):
-        self.app.accept('space', self._toggle_playback)
-        self.app.accept('x', self._delete_selected_keyframe)
+        self.accept('space', self._toggle_playback)
+        self.accept('x', self._delete_selected_keyframe)
 
     # ─────────────────────────────────────────────────────────────────
     # Logic

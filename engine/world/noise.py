@@ -3,10 +3,15 @@ Procedural noise utilities for terrain generation.
 
 This module provides Perlin-like noise generators suitable for
 terrain height maps, biome selection, and other procedural content.
+
+Includes both scalar (per-point) and vectorized (NumPy) implementations
+for flexibility and performance optimization.
 """
 
 import math
-from typing import Tuple
+from typing import Tuple, Optional
+import numpy as np
+from numpy.typing import NDArray
 
 
 class PerlinNoise2D:
@@ -16,6 +21,8 @@ class PerlinNoise2D:
     Uses a grid-based gradient noise approach similar to Perlin noise,
     but simplified for performance. Produces smooth, continuous random
     values that are ideal for terrain generation.
+    
+    Supports both scalar (single-point) and vectorized (batch) operations.
     """
     
     def __init__(self, seed: int = 0):
@@ -27,6 +34,8 @@ class PerlinNoise2D:
         self.seed = seed
         # Permutation table for pseudo-random gradients
         self._perm = self._generate_permutation_table(seed)
+        # NumPy version of permutation table for vectorized ops
+        self._perm_np = np.array(self._perm, dtype=np.int32)
     
     def _generate_permutation_table(self, seed: int) -> list:
         """Generate a permutation table for gradient lookups."""
@@ -121,6 +130,127 @@ class PerlinNoise2D:
         # Normalize to approximately [-1, 1]
         return total / max_value
 
+    # =========================================================================
+    # Vectorized (NumPy) methods for batch processing
+    # =========================================================================
+    
+    def _fade_np(self, t: NDArray[np.float32]) -> NDArray[np.float32]:
+        """Vectorized fade function."""
+        return t * t * t * (t * (t * 6 - 15) + 10)
+    
+    def _grad_np(self, hash_arr: NDArray[np.int32], x: NDArray[np.float32], 
+                 y: NDArray[np.float32]) -> NDArray[np.float32]:
+        """Vectorized gradient calculation."""
+        h = hash_arr & 3
+        result = np.empty_like(x)
+        
+        mask0 = h == 0
+        mask1 = h == 1
+        mask2 = h == 2
+        mask3 = h == 3
+        
+        result[mask0] = x[mask0] + y[mask0]
+        result[mask1] = -x[mask1] + y[mask1]
+        result[mask2] = x[mask2] - y[mask2]
+        result[mask3] = -x[mask3] - y[mask3]
+        
+        return result
+    
+    def noise_batch(self, xs: NDArray[np.float32], ys: NDArray[np.float32]) -> NDArray[np.float32]:
+        """Generate noise for arrays of coordinates.
+        
+        Args:
+            xs: X coordinates array
+            ys: Y coordinates array
+            
+        Returns:
+            Noise values array
+        """
+        # Grid cell coordinates
+        X = np.floor(xs).astype(np.int32) & 255
+        Y = np.floor(ys).astype(np.int32) & 255
+        
+        # Relative positions within cells
+        x = xs - np.floor(xs)
+        y = ys - np.floor(ys)
+        
+        # Fade curves
+        u = self._fade_np(x)
+        v = self._fade_np(y)
+        
+        # Hash lookups (vectorized)
+        aa = self._perm_np[self._perm_np[X] + Y]
+        ab = self._perm_np[self._perm_np[X] + Y + 1]
+        ba = self._perm_np[self._perm_np[X + 1] + Y]
+        bb = self._perm_np[self._perm_np[X + 1] + Y + 1]
+        
+        # Gradient contributions
+        g_aa = self._grad_np(aa, x, y)
+        g_ba = self._grad_np(ba, x - 1, y)
+        g_ab = self._grad_np(ab, x, y - 1)
+        g_bb = self._grad_np(bb, x - 1, y - 1)
+        
+        # Bilinear interpolation
+        lerp_x0 = g_aa + u * (g_ba - g_aa)
+        lerp_x1 = g_ab + u * (g_bb - g_ab)
+        
+        return lerp_x0 + v * (lerp_x1 - lerp_x0)
+    
+    def noise_grid(self, x_start: float, z_start: float, width: int, depth: int,
+                   scale: float = 1.0) -> NDArray[np.float32]:
+        """Generate a 2D grid of noise values.
+        
+        Optimized for generating entire chunk heightmaps at once.
+        
+        Args:
+            x_start: World X coordinate of grid origin
+            z_start: World Z coordinate of grid origin
+            width: Grid width (X axis)
+            depth: Grid depth (Z axis)
+            scale: Coordinate scale factor
+            
+        Returns:
+            2D array of noise values (width, depth)
+        """
+        # Create coordinate grids
+        x_coords = (np.arange(width) + x_start) * scale
+        z_coords = (np.arange(depth) + z_start) * scale
+        xs, zs = np.meshgrid(x_coords, z_coords, indexing='ij')
+        
+        return self.noise_batch(xs.flatten(), zs.flatten()).reshape(width, depth)
+    
+    def octave_noise_grid(self, x_start: float, z_start: float, width: int, depth: int,
+                          scale: float = 1.0, octaves: int = 4,
+                          persistence: float = 0.5, lacunarity: float = 2.0) -> NDArray[np.float32]:
+        """Generate fractal noise for entire grid at once.
+        
+        Args:
+            x_start: World X coordinate of grid origin
+            z_start: World Z coordinate of grid origin
+            width: Grid width
+            depth: Grid depth
+            scale: Base coordinate scale
+            octaves: Number of noise layers
+            persistence: Amplitude multiplier per octave
+            lacunarity: Frequency multiplier per octave
+            
+        Returns:
+            2D array of noise values (width, depth)
+        """
+        total = np.zeros((width, depth), dtype=np.float32)
+        frequency = 1.0
+        amplitude = 1.0
+        max_value = 0.0
+        
+        for _ in range(octaves):
+            total += self.noise_grid(x_start, z_start, width, depth, 
+                                     scale * frequency) * amplitude
+            max_value += amplitude
+            amplitude *= persistence
+            frequency *= lacunarity
+        
+        return total / max_value
+
 
 # Global noise generator instance (can be re-seeded)
 _noise_generator = PerlinNoise2D(seed=12345)
@@ -141,6 +271,24 @@ def get_noise(x: float, y: float, scale: float = 1.0, octaves: int = 4) -> float
     return _noise_generator.octave_noise(x * scale, y * scale, octaves=octaves)
 
 
+def get_noise_grid(x_start: float, z_start: float, width: int, depth: int,
+                   scale: float = 1.0, octaves: int = 4) -> NDArray[np.float32]:
+    """Get a grid of noise values (vectorized, faster for chunks).
+    
+    Args:
+        x_start: World X coordinate of grid origin
+        z_start: World Z coordinate of grid origin
+        width: Grid width
+        depth: Grid depth
+        scale: Coordinate scale factor
+        octaves: Number of noise layers
+        
+    Returns:
+        2D array of noise values (width, depth)
+    """
+    return _noise_generator.octave_noise_grid(x_start, z_start, width, depth, scale, octaves)
+
+
 def set_noise_seed(seed: int):
     """Change the global noise generator seed.
     
@@ -149,3 +297,4 @@ def set_noise_seed(seed: int):
     """
     global _noise_generator
     _noise_generator = PerlinNoise2D(seed=seed)
+

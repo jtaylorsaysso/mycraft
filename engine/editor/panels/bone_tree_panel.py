@@ -1,5 +1,9 @@
-from direct.gui.DirectGui import DirectFrame, DirectLabel, DirectButton
+from direct.gui.DirectGui import DirectFrame, DirectButton, DGG
 from panda3d.core import TextNode
+
+from engine.editor.ui.theme import Colors, Spacing, TextScale, FrameSize
+from engine.editor.ui.widgets import EditorLabel, EditorButton
+
 
 class BoneTreePanel:
     """Left sidebar showing bone hierarchy."""
@@ -11,25 +15,23 @@ class BoneTreePanel:
         # Main container
         self.frame = DirectFrame(
             parent=parent,
-            frameColor=(0.12, 0.12, 0.14, 1),
-            frameSize=(-0.35, 0.35, -0.9, 0.9),
+            frameColor=Colors.BG_PANEL,
+            frameSize=FrameSize.SIDEBAR,
             pos=(-1.0, 0, 0)
         )
         
         # Header
-        DirectLabel(
+        EditorLabel(
             parent=self.frame,
             text="Skeleton",
-            scale=0.045,
             pos=(-0.3, 0, 0.85),
-            text_fg=(0.9, 0.9, 0.9, 1),
-            text_align=TextNode.ALeft,
-            frameColor=(0,0,0,0)
+            scale="header",
+            color="primary"
         )
         
         self.scroll_frame = DirectFrame(
             parent=self.frame,
-            frameColor=(0,0,0,0),
+            frameColor=(0, 0, 0, 0),
             frameSize=(-0.33, 0.33, -0.85, 0.8),
             pos=(0, 0, 0)
         )
@@ -48,25 +50,24 @@ class BoneTreePanel:
             
         y_pos = 0.75
         
-        # Simple flat list for now, preserving ModelEditor behavior
         for bone_name in skeleton.bones.keys():
             display = self.bone_display_names.get(bone_name, bone_name.replace('_', ' ').title())
             
             btn = DirectButton(
                 parent=self.scroll_frame,
                 text=display,
-                scale=0.035,
+                text_scale=TextScale.LABEL,
                 pos=(-0.3, 0, y_pos),
-                frameColor=(0.2, 0.2, 0.22, 1),
-                text_fg=(0.8, 0.8, 0.8, 1),
+                frameColor=Colors.BTN_DEFAULT,
+                text_fg=Colors.TEXT_SECONDARY,
                 text_align=TextNode.ALeft,
                 frameSize=(-0.02, 0.6, -0.015, 0.035),
                 command=self._on_bone_click,
                 extraArgs=[bone_name],
-                relief=1  # DGG.RAISED
+                relief=DGG.FLAT
             )
             self.bone_buttons[bone_name] = btn
-            y_pos -= 0.09
+            y_pos -= Spacing.ITEM_GAP
             
     def _on_bone_click(self, bone_name):
         if self.selection:
@@ -77,11 +78,12 @@ class BoneTreePanel:
         """Highlight active bone."""
         for name, btn in self.bone_buttons.items():
             if name == selected_bone:
-                btn['frameColor'] = (0.2, 0.6, 0.2, 1) # Green
-                btn['text_fg'] = (1, 1, 1, 1)
+                btn['frameColor'] = Colors.SELECTION_ACTIVE
+                btn['text_fg'] = Colors.TEXT_PRIMARY
             else:
-                btn['frameColor'] = (0.2, 0.2, 0.22, 1)
-                btn['text_fg'] = (0.8, 0.8, 0.8, 1)
+                btn['frameColor'] = Colors.BTN_DEFAULT
+                btn['text_fg'] = Colors.TEXT_SECONDARY
                 
     def cleanup(self):
         self.frame.destroy()
+

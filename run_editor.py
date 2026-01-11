@@ -28,7 +28,7 @@ def main():
     parser = argparse.ArgumentParser(description="MyCraft Editor Suite")
     parser.add_argument(
         "--workspace", "-w",
-        choices=["Character", "Animation", "Preview"],
+        choices=["Character", "Animation", "Preview", "POI"],
         help="Workspace to open on launch (default: Character)"
     )
     args = parser.parse_args()

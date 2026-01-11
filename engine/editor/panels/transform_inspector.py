@@ -1,6 +1,7 @@
 from direct.gui.DirectGui import DirectFrame, DirectLabel, DirectSlider
 from panda3d.core import TextNode
 from engine.core.logger import get_logger
+from engine.editor.ui.theme import Colors, Spacing, TextScale, FrameSize
 
 logger = get_logger(__name__)
 
@@ -22,8 +23,8 @@ class TransformInspectorPanel:
         # Main container
         self.frame = DirectFrame(
             parent=parent,
-            frameColor=(0.12, 0.12, 0.14, 1),
-            frameSize=(-0.35, 0.35, -0.9, 0.9),
+            frameColor=Colors.BG_PANEL,
+            frameSize=FrameSize.SIDEBAR,
             pos=(1.0, 0, 0)
         )
         
@@ -31,11 +32,11 @@ class TransformInspectorPanel:
         DirectLabel(
             parent=self.frame,
             text="Properties",
-            scale=0.045,
+            scale=TextScale.HEADER,
             pos=(-0.3, 0, 0.85),
-            text_fg=(0.9, 0.9, 0.9, 1),
+            text_fg=Colors.TEXT_PRIMARY,
             text_align=TextNode.ALeft,
-            frameColor=(0,0,0,0)
+            frameColor=(0, 0, 0, 0)
         )
         
         self.sliders = {}
@@ -49,10 +50,10 @@ class TransformInspectorPanel:
         self.bone_label = DirectLabel(
             parent=self.frame,
             text="None",
-            scale=0.04,
+            scale=TextScale.SUBHEADER,
             pos=(0, 0, y),
-            text_fg=(0.4, 0.8, 1.0, 1),
-            frameColor=(0,0,0,0)
+            text_fg=Colors.TEXT_HIGHLIGHT,
+            frameColor=(0, 0, 0, 0)
         )
         y -= 0.1
         

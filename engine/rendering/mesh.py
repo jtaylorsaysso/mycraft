@@ -22,10 +22,13 @@ class MeshBuilder:
     ) -> GeomNode:
         """Generate mesh from a sparse voxel grid (dictionary).
         
+        Uses chunk-local coordinates (0 to chunk_size).
+        The chunk NodePath will be positioned at world coordinates.
+        
         Args:
-            voxel_grid: Dict mapping (x, y, z) -> block_name
-            chunk_x: Chunk X coordinate
-            chunk_z: Chunk Z coordinate
+            voxel_grid: Dict mapping (x, y, z) -> block_name (local coords)
+            chunk_x: Chunk X coordinate (unused, for compatibility)
+            chunk_z: Chunk Z coordinate (unused, for compatibility)
             chunk_size: Size of chunk
             texture_atlas: TextureAtlas instance
             block_registry: BlockRegistry for property lookups
@@ -33,8 +36,6 @@ class MeshBuilder:
         Returns:
             GeomNode: The generated mesh node
         """
-        base_x = chunk_x * chunk_size
-        base_z = chunk_z * chunk_size
         
         # Create vertex format (position + color + UV)
         vformat = GeomVertexFormat.getV3c4t2()
@@ -71,8 +72,7 @@ class MeshBuilder:
             if not block_def:
                 continue
                 
-            world_x = base_x + x
-            world_z = base_z + z
+            # Use local coordinates directly (no world offset)
             
             # Check 6 faces
             for dx, dy, dz, face_name in directions:
@@ -95,41 +95,39 @@ class MeshBuilder:
                 # Use simple AO: 1.0 (optimize later)
                 ao = 1.0
                 
-                # Vertices in Panda3D coords (X, Z_depth, Y_up is handled by Z_height)
-                # Correction: Panda3D is Z-up. 
-                # Our logic: x=horizontal, y=height(Z), z=horizontal(depth/Y)
-                # So in Panda3D: (world_x, world_z, y)
+                # Vertices in chunk-local Panda3D coords (x, z, y)
+                # x=horizontal, y=height(Z), z=horizontal(depth/Y)
                 
                 if face_name == 'top':
-                    v0 = LVector3f(world_x, world_z, y + 1)
-                    v1 = LVector3f(world_x + 1, world_z, y + 1)
-                    v2 = LVector3f(world_x + 1, world_z + 1, y + 1)
-                    v3 = LVector3f(world_x, world_z + 1, y + 1)
+                    v0 = LVector3f(x, z, y + 1)
+                    v1 = LVector3f(x + 1, z, y + 1)
+                    v2 = LVector3f(x + 1, z + 1, y + 1)
+                    v3 = LVector3f(x, z + 1, y + 1)
                 elif face_name == 'bottom':
-                    v0 = LVector3f(world_x, world_z + 1, y)
-                    v1 = LVector3f(world_x + 1, world_z + 1, y)
-                    v2 = LVector3f(world_x + 1, world_z, y)
-                    v3 = LVector3f(world_x, world_z, y)
+                    v0 = LVector3f(x, z + 1, y)
+                    v1 = LVector3f(x + 1, z + 1, y)
+                    v2 = LVector3f(x + 1, z, y)
+                    v3 = LVector3f(x, z, y)
                 elif face_name == 'north': # -Z direction in grid -> -Y in Panda
-                    v0 = LVector3f(world_x, world_z, y)
-                    v1 = LVector3f(world_x + 1, world_z, y)
-                    v2 = LVector3f(world_x + 1, world_z, y + 1)
-                    v3 = LVector3f(world_x, world_z, y + 1)
+                    v0 = LVector3f(x, z, y)
+                    v1 = LVector3f(x + 1, z, y)
+                    v2 = LVector3f(x + 1, z, y + 1)
+                    v3 = LVector3f(x, z, y + 1)
                 elif face_name == 'south': # +Z direction -> +Y
-                    v0 = LVector3f(world_x + 1, world_z + 1, y)
-                    v1 = LVector3f(world_x, world_z + 1, y)
-                    v2 = LVector3f(world_x, world_z + 1, y + 1)
-                    v3 = LVector3f(world_x + 1, world_z + 1, y + 1)
+                    v0 = LVector3f(x + 1, z + 1, y)
+                    v1 = LVector3f(x, z + 1, y)
+                    v2 = LVector3f(x, z + 1, y + 1)
+                    v3 = LVector3f(x + 1, z + 1, y + 1)
                 elif face_name == 'east': # +X
-                    v0 = LVector3f(world_x + 1, world_z, y)
-                    v1 = LVector3f(world_x + 1, world_z + 1, y)
-                    v2 = LVector3f(world_x + 1, world_z + 1, y + 1)
-                    v3 = LVector3f(world_x + 1, world_z, y + 1)
+                    v0 = LVector3f(x + 1, z, y)
+                    v1 = LVector3f(x + 1, z + 1, y)
+                    v2 = LVector3f(x + 1, z + 1, y + 1)
+                    v3 = LVector3f(x + 1, z, y + 1)
                 elif face_name == 'west': # -X
-                    v0 = LVector3f(world_x, world_z + 1, y)
-                    v1 = LVector3f(world_x, world_z, y)
-                    v2 = LVector3f(world_x, world_z, y + 1)
-                    v3 = LVector3f(world_x, world_z + 1, y + 1)
+                    v0 = LVector3f(x, z + 1, y)
+                    v1 = LVector3f(x, z, y)
+                    v2 = LVector3f(x, z, y + 1)
+                    v3 = LVector3f(x, z + 1, y + 1)
 
                 vertex.addData3(v0)
                 vertex.addData3(v1)
@@ -529,17 +527,12 @@ class MeshBuilder:
         # Convert list to set for fast lookup
         water_set = set(water_blocks)
         
-        base_x = chunk_x * chunk_size
-        base_z = chunk_z * chunk_size
-        
         # Water color (cyan-blue)
         water_color = LVector3f(0.2, 0.5, 0.8)
         
         for (x, y, z) in water_blocks:
-            # water_blocks contains (chunk_x, height, chunk_z) coordinates
-            # Convert to world coordinates and Panda3D coordinate system
-            world_x = base_x + x  # X stays X
-            world_z = base_z + z  # chunk Z becomes world Y (depth)
+            # water_blocks contains (local_x, height, local_z) coordinates
+            # Use local coordinates directly
             height = y  # This is the actual height (Panda3D Z axis)
             
             # Check neighbors for face culling (in chunk-local coords)
@@ -558,43 +551,44 @@ class MeshBuilder:
                     continue  # Skip face if neighbor is also water
                 
                 # Generate face vertices in Panda3D coords (X, Y_depth, Z_height)
+                # Using local coordinates
                 if face_name == 'top':
-                    v0 = LVector3f(world_x, world_z, height + 1)
-                    v1 = LVector3f(world_x + 1, world_z, height + 1)
-                    v2 = LVector3f(world_x + 1, world_z + 1, height + 1)
-                    v3 = LVector3f(world_x, world_z + 1, height + 1)
+                    v0 = LVector3f(x, z, height + 1)
+                    v1 = LVector3f(x + 1, z, height + 1)
+                    v2 = LVector3f(x + 1, z + 1, height + 1)
+                    v3 = LVector3f(x, z + 1, height + 1)
                 elif face_name == 'bottom':
-                    v0 = LVector3f(world_x, world_z + 1, height)
-                    v1 = LVector3f(world_x + 1, world_z + 1, height)
-                    v2 = LVector3f(world_x + 1, world_z, height)
-                    v3 = LVector3f(world_x, world_z, height)
+                    v0 = LVector3f(x, z + 1, height)
+                    v1 = LVector3f(x + 1, z + 1, height)
+                    v2 = LVector3f(x + 1, z, height)
+                    v3 = LVector3f(x, z, height)
                 elif face_name == 'north':
-                    v0 = LVector3f(world_x, world_z, height)
-                    v1 = LVector3f(world_x + 1, world_z, height)
-                    v2 = LVector3f(world_x + 1, world_z, height + 1)
-                    v3 = LVector3f(world_x, world_z, height + 1)
+                    v0 = LVector3f(x, z, height)
+                    v1 = LVector3f(x + 1, z, height)
+                    v2 = LVector3f(x + 1, z, height + 1)
+                    v3 = LVector3f(x, z, height + 1)
                 elif face_name == 'south':
-                    v0 = LVector3f(world_x + 1, world_z + 1, height)
-                    v1 = LVector3f(world_x, world_z + 1, height)
-                    v2 = LVector3f(world_x, world_z + 1, height + 1)
-                    v3 = LVector3f(world_x + 1, world_z + 1, height + 1)
+                    v0 = LVector3f(x + 1, z + 1, height)
+                    v1 = LVector3f(x, z + 1, height)
+                    v2 = LVector3f(x, z + 1, height + 1)
+                    v3 = LVector3f(x + 1, z + 1, height + 1)
                 elif face_name == 'east':
-                    v0 = LVector3f(world_x + 1, world_z, height)
-                    v1 = LVector3f(world_x + 1, world_z + 1, height)
-                    v2 = LVector3f(world_x + 1, world_z + 1, height + 1)
-                    v3 = LVector3f(world_x + 1, world_z, height + 1)
+                    v0 = LVector3f(x + 1, z, height)
+                    v1 = LVector3f(x + 1, z + 1, height)
+                    v2 = LVector3f(x + 1, z + 1, height + 1)
+                    v3 = LVector3f(x + 1, z, height + 1)
                 else:  # west
-                    v0 = LVector3f(world_x, world_z + 1, height)
-                    v1 = LVector3f(world_x, world_z, height)
-                    v2 = LVector3f(world_x, world_z, height + 1)
-                    v3 = LVector3f(world_x, world_z + 1, height + 1)
+                    v0 = LVector3f(x, z + 1, height)
+                    v1 = LVector3f(x, z, height)
+                    v2 = LVector3f(x, z, height + 1)
+                    v3 = LVector3f(x, z + 1, height + 1)
                 
                 # Add vertices
                 for v in [v0, v1, v2, v3]:
                     vertex.addData3(v)
                     color_writer.addData4(water_color.x, water_color.y, water_color.z, 0.7)
                     texcoord.addData2(LVector2f(0, 0))  # Dummy UVs
-                    block_id_writer.addData3(world_x, height, world_z)
+                    block_id_writer.addData3(x, height, z)  # Use local coords for block_id
                 
                 # Add triangles
                 tris.addVertices(index, index + 1, index + 2)

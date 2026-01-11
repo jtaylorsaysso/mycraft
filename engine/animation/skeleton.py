@@ -448,6 +448,14 @@ class Skeleton:
             if name in node_map:
                 bone.world_transform.apply_to_node(node_map[name])
 
+    def reset_pose(self):
+        """Reset all bones to their rest pose."""
+        for bone in self.bones.values():
+            bone.local_transform.position = LVector3f(bone.rest_transform.position)
+            bone.local_transform.rotation = LVector3f(bone.rest_transform.rotation)
+            bone.local_transform.scale = LVector3f(bone.rest_transform.scale)
+        self.update_world_transforms()
+
 
 class HumanoidSkeleton(Skeleton):
     """Preset 17-bone humanoid skeleton.

@@ -2,7 +2,6 @@
 VoxelGame entry point.
 """
 from typing import Optional, Dict, Any, Type
-from enum import Enum, auto
 import sys
 
 # Engine imports
@@ -32,17 +31,8 @@ from panda3d.core import LVector3f, WindowProperties
 logger = get_logger(__name__)
 
 
-class GameState(Enum):
-    """Game state for pause/menu management.
-    
-    Controls cursor locking and physics updates:
-    - PLAYING: Cursor locked, physics active
-    - PAUSED: Cursor unlocked, physics frozen, menu visible
-    - MENU: Cursor unlocked, physics frozen, in menu screen
-    """
-    PLAYING = auto()
-    PAUSED = auto()
-    MENU = auto()
+# Import hierarchical FSM (replaces simple GameState enum)
+from engine.core.game_fsm import GameFSM, PlayingFSM
 
 
 class VoxelGame(ShowBase):
@@ -70,12 +60,13 @@ class VoxelGame(ShowBase):
         self.key_binding_manager = KeyBindingManager()
         self.input_manager = InputManager(self, self.key_binding_manager)
         
-        # Game state management
-        self._game_state = GameState.PLAYING
+        # Hierarchical game state management (FSM)
+        self.game_fsm = GameFSM(self)
+        self.playing_fsm = PlayingFSM(self)
         
-        # Lock cursor for initial PLAYING state
-        # (set_game_state not called during init, so we lock manually)
-        self.input_manager.lock_mouse()
+        # Start in Playing > Exploring state
+        self.game_fsm.request('Playing')
+        self.playing_fsm.request('Exploring')
         
         # Core key bindings
         self.accept('f9', self.take_screenshot)
@@ -102,11 +93,12 @@ class VoxelGame(ShowBase):
         
     def update_loop(self, task):
         """Main game loop."""
-        # print(f"DEBUG: update_loop called, game_state={self._game_state.name}")  # Too spammy
         dt = globalClock.getDt()
         
         # Always update UI systems (they need to handle pause menu, etc)
-        # Only update gameplay systems when PLAYING
+        # Only update gameplay systems when in Playing state
+        is_playing = self.game_fsm.state == 'Playing'
+        
         for system in self.world._systems:
             if not system.enabled or not system.ready:
                 continue
@@ -114,51 +106,31 @@ class VoxelGame(ShowBase):
             # UI systems always update
             if system.__class__.__name__ in ['UISystem', 'FeedbackSystem']:
                 system.update(dt)
-            # Gameplay systems only update when PLAYING
-            elif self._game_state == GameState.PLAYING:
+            # Gameplay systems only update when Playing
+            elif is_playing:
                 system.update(dt)
         
         return task.cont
     
     @property
-    def game_state(self) -> GameState:
-        """Get current game state."""
-        return self._game_state
+    def game_state(self) -> str:
+        """Get current game state (FSM state name)."""
+        return self.game_fsm.state
     
-    def set_game_state(self, new_state: GameState):
-        """Set game state and manage cursor automatically.
+    def set_game_state(self, new_state: str):
+        """Request game state transition.
         
         Args:
-            new_state: The new game state
+            new_state: Target state name ('Playing', 'Paused', 'MainMenu')
         """
-        if new_state == self._game_state:
-            return
-        
-        old_state = self._game_state
-        self._game_state = new_state
-        
-        # Auto cursor management based on state
-        if new_state == GameState.PLAYING:
-            self._lock_cursor()
-            logger.debug("Game state: PLAYING (cursor locked, physics active)")
-        else:  # PAUSED or MENU
-            self._unlock_cursor()
-            logger.debug(f"Game state: {new_state.name} (cursor unlocked, physics frozen)")
+        self.game_fsm.request(new_state)
     
     def toggle_pause(self):
-        """Toggle between PLAYING and PAUSED states."""
-        if self._game_state == GameState.PLAYING:
-            self.set_game_state(GameState.PAUSED)
-        elif self._game_state == GameState.PAUSED:
-            self.set_game_state(GameState.PLAYING)
-    
-    def _lock_cursor(self):
-        """Lock and hide cursor for gameplay."""
-        self.input_manager.lock_mouse()
-    
-    def _unlock_cursor(self):
-        """Unlock and show cursor for UI interaction."""
-        self.input_manager.unlock_mouse()
+        """Toggle between Playing and Paused states."""
+        if self.game_fsm.state == 'Playing':
+            self.game_fsm.request('Paused')
+        elif self.game_fsm.state == 'Paused':
+            self.game_fsm.request('Playing')
     
     def take_screenshot(self):
         """Capture and save screenshot."""

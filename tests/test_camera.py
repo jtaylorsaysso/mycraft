@@ -124,6 +124,77 @@ class TestCamera(unittest.TestCase):
         # With yaw at 45°, it should move closer to 180°
         self.assertNotEqual(camera_state.yaw, initial_yaw, 
                            "Auto-center should change yaw when moving")
+    
+    def test_exploration_camera_side_offset_framing(self):
+        """Test that look-at target shifts opposite to side_offset for OTS framing."""
+        mock_node = MagicMock()
+        mock_node.getPos.return_value = LVector3f(0, 0, 0)
+        
+        # Create camera with positive side offset (camera to the right)
+        cam = ExplorationCamera(mock_node, side_offset=2.0)
+        
+        camera_state = CameraState(
+            mode=CameraMode.EXPLORATION,
+            yaw=0.0,
+            pitch=0.0,
+            distance=5.0,
+            current_distance=5.0
+        )
+        
+        ctx = CameraUpdateContext(
+            camera_node=mock_node,
+            camera_state=camera_state,
+            target_position=LVector3f(0, 0, 0),
+            player_velocity=LVector3f(0, 0, 0),
+            mouse_delta=(0, 0),
+            dt=0.016
+        )
+        
+        cam.update(ctx)
+        
+        # Capture the lookAt call argument
+        look_at_call = mock_node.lookAt.call_args
+        look_at_target = look_at_call[0][0]  # First positional argument
+        
+        # With positive side_offset, look target should shift left (negative X at yaw=0)
+        # This frames the player to the right of screen
+        self.assertNotEqual(look_at_target.x, 0.0, 
+                           "Look-at target should shift horizontally with side_offset")
+    
+    def test_exploration_camera_minimum_distance(self):
+        """Test that camera respects minimum distance even during collision."""
+        mock_node = MagicMock()
+        mock_node.getPos.return_value = LVector3f(0, -10, 5)
+        
+        cam = ExplorationCamera(mock_node)
+        
+        camera_state = CameraState(
+            mode=CameraMode.EXPLORATION,
+            yaw=0.0,
+            pitch=0.0,
+            distance=5.0,
+            current_distance=0.5  # Very close (below min_distance)
+        )
+        
+        ctx = CameraUpdateContext(
+            camera_node=mock_node,
+            camera_state=camera_state,
+            target_position=LVector3f(0, 0, 0),
+            player_velocity=LVector3f(0, 0, 0),
+            mouse_delta=(0, 0),
+            dt=0.016
+        )
+        
+        cam.update(ctx)
+        
+        # Camera should have been positioned using current_distance
+        mock_node.setPos.assert_called()
+        set_pos_call = mock_node.setPos.call_args[0][0]
+        
+        # Verify camera is at some distance from target, not on top of player
+        distance_from_target = set_pos_call.length()
+        self.assertGreater(distance_from_target, 0.3, 
+                          "Camera should maintain some distance from player")
 
 if __name__ == '__main__':
     unittest.main()

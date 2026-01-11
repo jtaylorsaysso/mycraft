@@ -129,12 +129,24 @@ class ExplorationCamera(BaseCamera):
         )
         
         # Constrain camera to stay above ground
+        # Enhanced: Check multiple points around camera position for robust collision
         if self.collision_traverser and self.render_node:
+            # Check terrain height at camera position
             terrain_height = self._get_terrain_height_at(desired_pos.x, desired_pos.y)
             if terrain_height is not None:
                 min_z = terrain_height + self.min_camera_height_above_ground
                 if desired_pos.z < min_z:
                     desired_pos.z = min_z
+            
+            # Also check slightly in front of camera (toward player) to prevent clipping on slopes
+            check_offset = 0.5
+            front_x = desired_pos.x - math.sin(yaw_rad) * check_offset
+            front_y = desired_pos.y + math.cos(yaw_rad) * check_offset
+            front_height = self._get_terrain_height_at(front_x, front_y)
+            if front_height is not None:
+                min_z_front = front_height + self.min_camera_height_above_ground
+                if desired_pos.z < min_z_front:
+                    desired_pos.z = min_z_front
         
         # Smooth camera movement (lerp)
         current_pos = self.camera.getPos()
@@ -143,7 +155,11 @@ class ExplorationCamera(BaseCamera):
         self.camera.setPos(new_pos)
         
         # Look at target (with height offset for better framing)
-        look_at_target = ctx.target_position + LVector3f(0, 0, self.height_offset * 0.5)
+        # Shift look target opposite to camera side offset for true over-the-shoulder framing
+        # This positions the player to one side of screen instead of center
+        look_offset_x = -right_x * self.side_offset * 0.4
+        look_offset_y = -right_y * self.side_offset * 0.4
+        look_at_target = ctx.target_position + LVector3f(look_offset_x, look_offset_y, self.height_offset * 0.5)
         self.camera.lookAt(look_at_target)
     
     def _apply_auto_center(self, ctx: CameraUpdateContext) -> None:

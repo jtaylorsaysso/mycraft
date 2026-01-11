@@ -2,16 +2,22 @@ import sys
 import pytest
 from unittest.mock import MagicMock, Mock, patch
 
-# Mock Panda3D modules before importing workspace
-gui_mock = MagicMock()
-sys.modules['direct'] = MagicMock()
+# Robust mocking for Panda3D modules
+# We need to ensure 'direct' behaves like a package while allowing submodules to be mocked
+direct_mock = MagicMock()
+sys.modules['direct'] = direct_mock
 sys.modules['direct.showbase'] = MagicMock()
 sys.modules['direct.showbase.DirectObject'] = MagicMock()
 sys.modules['direct.showbase.ShowBase'] = MagicMock()
 sys.modules['direct.gui'] = MagicMock()
-sys.modules['direct.gui.DirectGui'] = gui_mock
+sys.modules['direct.interval'] = MagicMock()
+sys.modules['direct.interval.IntervalGlobal'] = MagicMock()
+sys.modules['direct.fsm'] = MagicMock()
+sys.modules['direct.fsm.FSM'] = MagicMock()
 
 # Setup DirectGui components
+gui_mock = MagicMock()
+sys.modules['direct.gui.DirectGui'] = gui_mock
 gui_mock.DirectFrame = MagicMock()
 gui_mock.DirectButton = MagicMock()
 gui_mock.DirectLabel = MagicMock()

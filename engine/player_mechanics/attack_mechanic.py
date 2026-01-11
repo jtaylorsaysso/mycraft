@@ -80,7 +80,15 @@ class AttackMechanic(PlayerMechanic):
         # Initialize particle system on demand if needed
         if not hasattr(self, 'particle_system'):
             self.particle_system = VoxelParticleSystem(ctx.world.base.render, max_particles=100)
-        player_fwd = render.getRelativeVector(ctx.transform.node, LVector3f(0, 1, 0))
+        # Calculate forward vector from camera orientation (since avatar follows camera or movement)
+        from engine.components.camera_state import CameraState
+        camera_state = ctx.world.get_component(ctx.player_id, CameraState)
+        if camera_state:
+            import math
+            h_rad = math.radians(camera_state.yaw)
+            player_fwd = LVector3f(-math.sin(h_rad), math.cos(h_rad), 0)
+        else:
+            player_fwd = LVector3f(0, 1, 0)
         player_fwd.normalize()
         
         # Attack range and angle

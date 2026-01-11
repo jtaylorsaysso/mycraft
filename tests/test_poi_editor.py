@@ -1,5 +1,17 @@
 
 import pytest
+import sys
+from unittest.mock import MagicMock
+
+# Mock Panda3D modules before imports
+sys.modules['direct'] = MagicMock()
+sys.modules['direct.interval'] = MagicMock()
+sys.modules['direct.interval.IntervalGlobal'] = MagicMock()
+sys.modules['direct.fsm'] = MagicMock()
+sys.modules['direct.fsm.FSM'] = MagicMock()
+sys.modules['panda3d'] = MagicMock()
+sys.modules['panda3d.core'] = MagicMock()
+
 import os
 from engine.assets.poi_template import POITemplate
 from games.voxel_world.pois.template_poi_generator import TemplatePOIGenerator

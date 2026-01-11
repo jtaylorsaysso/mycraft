@@ -11,7 +11,7 @@ from panda3d.core import loadPrcFileData
 loadPrcFileData("", "window-type none")
 loadPrcFileData("", "audio-library-name null")
 
-from engine.game import VoxelGame, GameState
+from engine.game import VoxelGame
 from engine.ui.animation_editor import AnimationEditorWindow
 
 # Mock InputManager to avoid headless issues
@@ -49,10 +49,10 @@ def test_editor_architecture(mock_input_manager):
         print("FAILED: Editor should be visible")
         return
         
-    # Check Game State (Should be PAUSED)
+    # Check Game State (Should be Paused)
     print(f"Game State: {game.game_state}")
-    if game.game_state != GameState.PAUSED:
-        print(f"FAILED: Game state should be PAUSED, is {game.game_state}")
+    if game.game_state != 'Paused':
+        print(f"FAILED: Game state should be Paused, is {game.game_state}")
         return
         
     print("Toggling Animation Editor OFF...")
@@ -64,8 +64,8 @@ def test_editor_architecture(mock_input_manager):
         return
         
     print(f"Game State: {game.game_state}")
-    if game.game_state != GameState.PLAYING:
-        print(f"FAILED: Game state should be PLAYING, is {game.game_state}")
+    if game.game_state != 'Playing':
+        print(f"FAILED: Game state should be Playing, is {game.game_state}")
         return
 
     print("SUCCESS: Editor architecture verification passed!")

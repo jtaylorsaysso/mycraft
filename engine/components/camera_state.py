@@ -44,3 +44,6 @@ class CameraState(Component):
     
     # Animation state
     bob_time: float = 0.0
+    
+    # Collision recovery (smoothing after forced zoom)
+    collision_recovery_timer: float = 0.0

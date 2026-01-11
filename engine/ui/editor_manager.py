@@ -68,19 +68,13 @@ class EditorManager:
             
     def _on_editor_opened(self):
         """Called when any editor becomes active."""
-        # Pause game and unlock cursor
-        # Note: We import GameState here to avoid circular imports if possible,
-        # or rely on the game instance passing enums correctly.
-        # Ideally, GameState should be in a shared core module.
-        # For now, we assume game has set_game_state and GameState enum access
-        from engine.game import GameState
-        self.game.set_game_state(GameState.PAUSED)
+        # Pause game and unlock cursor (handled by GameFSM)
+        self.game.set_game_state('Paused')
         logger.info("Editor opened - Game Paused")
         
     def _on_editor_closed(self):
         """Called when all editors are closed."""
-        from engine.game import GameState
-        self.game.set_game_state(GameState.PLAYING)
+        self.game.set_game_state('Playing')
         logger.info("Editor closed - Game Resumed")
 
     def cleanup(self):

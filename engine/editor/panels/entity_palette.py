@@ -6,112 +6,109 @@ from panda3d.core import TextNode
 class EntityPalette(DirectFrame):
     """Palette for selecting entity markers."""
     
-    ENTITY_TYPES = [
-        # Enemies
-        {"id": "skeleton", "name": "Skeleton", "category": "Enemy"},
-        {"id": "zombie", "name": "Zombie", "category": "Enemy"},
-        
-        # Interactive
-        {"id": "chest", "name": "Loot Chest", "category": "Interactive"},
-        {"id": "shrine_interact", "name": "Shrine Trigger", "category": "Interactive"},
-        
-        # Markers
-        {"id": "spawn", "name": "Player Spawn", "category": "Marker"},
-        {"id": "patrol_point", "name": "Patrol Point", "category": "Marker"},
-    ]
+from engine.editor.ui.theme import Colors, Spacing, TextScale, FrameSize
+from engine.editor.ui.base_panel import BasePanel
+from engine.editor.ui.widgets import EditorLabel, EditorButton
+
+try:
+    from engine.entities.entity_registry import EntityRegistry
+except ImportError:
+    EntityRegistry = None
+
+class EntityPalette(BasePanel):
+    """Scrollable palette of available entities."""
     
     def __init__(self, parent, on_select_callback: Callable[[str], None]):
-        super().__init__(
-            parent=parent,
-            frameColor=(0.1, 0.1, 0.1, 0.9),
-            frameSize=(-0.3, 0.3, -0.6, 0.6),
-            pos=(0, 0, 0)
-        )
+        # Custom smaller size for entity palette (bottom left)
+        # Using BasePanel directly to control size
+        size = (-0.35, 0.35, -0.5, 0.5) 
+        super().__init__(parent, title="Entities", pos=(-1.4, 0, -0.6), frame_size=size)
         
         self.on_select = on_select_callback
-        self.selected_type = None
+        self.selected_entity = None
         self.buttons = {}
         
-        # Title
-        DirectLabel(
-            parent=self,
-            text="Entities",
-            scale=0.05,
-            pos=(0, 0, 0.53),
-            text_fg=(1, 1, 1, 1)
-        )
-        
+        # Scrollable Area
         self.scroll_frame = DirectScrolledFrame(
-            parent=self,
-            frameSize=(-0.28, 0.28, -0.5, 0.5),
-            canvasSize=(-0.25, 0.25, -2.0, 0),
-            frameColor=(0, 0, 0, 0.2),
+            parent=self.frame,
+            frameSize=(-0.33, 0.33, -0.45, 0.4), # Fit inside frame
+            canvasSize=(-0.3, 0.3, -2.0, 0),
+            frameColor=(0, 0, 0, 0),
             scrollBarWidth=0.02,
             pos=(0, 0, -0.05)
         )
         
-        self._build_list()
+        self.refresh()
         
-    def _build_list(self):
+    def refresh(self):
+        """Reload entities from registry."""
+        # Clear existing
+        for btn in self.buttons.values():
+            btn.destroy()
+        self.buttons.clear()
+        
+        if not EntityRegistry:
+            # Fallback for dev if registry missing
+            categories = {
+                "Mobs": ["skeleton", "zombie", "spider"],
+                "NPCs": ["villager", "trader"],
+                "Items": ["chest", "barrel"]
+            }
+        else:
+            categories = EntityRegistry.get_categories() # Hypothetical API
+            
+        # Layout
         y = -0.05
-        current_cat = None
         
-        for entity in self.ENTITY_TYPES:
-            cat = entity["category"]
-            
+        for category, entities in categories.items():
             # Category Header
-            if cat != current_cat:
-                DirectLabel(
-                    parent=self.scroll_frame.getCanvas(),
-                    text=cat,
-                    text_scale=0.04,
-                    text_align=TextNode.ALeft,
-                    text_fg=(0.7, 0.7, 0.7, 1),
-                    pos=(-0.2, 0, y)
-                )
-                y -= 0.06
-                current_cat = cat
-            
-            # Button
-            btn = DirectButton(
+            EditorLabel(
                 parent=self.scroll_frame.getCanvas(),
-                text=entity["name"],
-                text_scale=0.035,
-                text_align=TextNode.ALeft,
-                text_pos=(0.04, -0.015),
-                frameColor=(0.2, 0.2, 0.2, 1),
-                frameSize=(-0.22, 0.22, -0.04, 0.04),
-                pos=(0, 0, y),
-                command=self._on_click,
-                extraArgs=[entity["id"]],
-                relief=DGG.FLAT
+                text=category,
+                pos=(-0.28, 0, y),
+                scale="small",
+                color="highlight"
             )
+            y -= 0.08
             
-            # Icon placeholder
-            DirectFrame(
-                parent=btn,
-                frameColor=(0.5, 0.5, 0.5, 1),
-                frameSize=(-0.02, 0.02, -0.02, 0.02),
-                pos=(-0.18, 0, 0)
-            )
+            for name in entities:
+                btn = EditorButton(
+                    parent=self.scroll_frame.getCanvas(),
+                    text=name.replace("_", " ").title(),
+                    pos=(0, 0, y),
+                    command=self._on_click,
+                    extraArgs=[name],
+                    size="small"
+                )
+                # Adjust button width
+                btn['frameSize'] = (-0.28, 0.28, -0.025, 0.035)
+                btn['text_align'] = TextNode.ALeft
+                btn['text_pos'] = (-0.25, -0.01)
+                
+                self.buttons[name] = btn
+                y -= 0.07
+                
+            y -= 0.05 # Gap between categories
             
-            self.buttons[entity["id"]] = btn
-            y -= 0.1
-            
+        # Resize canvas
         z_min = y + 0.05
-        self.scroll_frame["canvasSize"] = (-0.25, 0.25, z_min, 0)
+        self.scroll_frame["canvasSize"] = (-0.3, 0.3, z_min, 0)
         self.scroll_frame.setCanvasSize()
 
-    def _on_click(self, type_id):
-        self.set_selected(type_id)
+    def _on_click(self, name):
+        """Handle selection."""
+        self.set_selected(name)
         if self.on_select:
-            self.on_select(type_id)
+            self.on_select(name)
             
-    def set_selected(self, type_id):
-        if self.selected_type and self.selected_type in self.buttons:
-            self.buttons[self.selected_type]["frameColor"] = (0.2, 0.2, 0.2, 1)
+    def set_selected(self, name):
+        """Highlight selected entity."""
+        if self.selected_entity and self.selected_entity in self.buttons:
+            self.buttons[self.selected_entity]["frameColor"] = Colors.BTN_DEFAULT
+            self.buttons[self.selected_entity]["text_fg"] = Colors.TEXT_PRIMARY
             
-        self.selected_type = type_id
+        self.selected_entity = name
         
-        if type_id in self.buttons:
-            self.buttons[type_id]["frameColor"] = (0.4, 0.4, 0.6, 1)
+        if name and name in self.buttons:
+            self.buttons[name]["frameColor"] = Colors.BTN_SELECTED
+            self.buttons[name]["text_fg"] = Colors.TEXT_HIGHLIGHT

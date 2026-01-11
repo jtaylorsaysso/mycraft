@@ -443,7 +443,8 @@ def raycast_ground_height(
     )
     
     # Create ray from above entity pointing down (Panda3D: Z is up)
-    ray_origin = LPoint3f(entity.x, entity.y, entity.z + ray_origin_offset)
+    # Use max_distance as the offset to ensure we can detect ground even when falling
+    ray_origin = LPoint3f(entity.x, entity.y, entity.z + max_distance)
     ray_direction = LVector3f(0, 0, -1)  # Down in Panda3D
     
     ray = CollisionRay()
@@ -465,7 +466,8 @@ def raycast_ground_height(
     collision_traverser.traverse(render_node)
     
     # Get closest hit
-    if handler.getNumEntries() > 0:
+    num_entries = handler.getNumEntries()
+    if num_entries > 0:
         handler.sortEntries()
         entry = handler.getEntry(0)
         hit_point = entry.getSurfacePoint(render_node)

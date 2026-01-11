@@ -9,6 +9,8 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "ursina>=7.0.0",  # Temporary, will migrate to Panda3D
+    "numpy>=1.26.0",
+    "trimesh>=4.0.0",
 ]
 
 [project.optional-dependencies]

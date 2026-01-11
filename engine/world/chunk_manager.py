@@ -5,6 +5,8 @@ Handles distance-based loading/unloading, collision generation,
 water handling, and mesh creation for voxel worlds.
 """
 
+# TODO: Refactor this; getting untidy
+
 from typing import Dict, Tuple, Optional, Any
 from panda3d.core import (
     NodePath, CollisionNode, CollisionPolygon, LVector3f,
@@ -13,6 +15,16 @@ from panda3d.core import (
 
 from engine.ecs.system import System
 from engine.rendering.mesh import MeshBuilder
+# Import trimesh utilities safely
+try:
+    from engine.rendering import (
+        trimesh_available,
+        voxel_to_trimesh
+    )
+except ImportError:
+    # Fallback if imports fail (though rendering.__init__ should handle this)
+    trimesh_available = lambda: False
+    voxel_to_trimesh = lambda grid: None
 
 
 class ChunkManager(System):
@@ -23,6 +35,7 @@ class ChunkManager(System):
     - Collision geometry generation from voxel grids
     - Water block insertion for heights below sea level
     - Mesh creation via MeshBuilder
+    - [NEW] Trimesh caching for physics queries
     
     Games provide a ChunkGenerator implementation that defines
     how terrain is generated; ChunkManager handles the rest.
@@ -75,6 +88,11 @@ class ChunkManager(System):
         # Track water meshes separately for animation
         self.water_nodes: Dict[Tuple[int, int], NodePath] = {}
         
+        # [NEW] Check for trimesh availability once
+        self.has_trimesh = trimesh_available()
+        # [NEW] Cache trimesh objects for physics queries: (chunk_x, chunk_z) -> trimesh.Trimesh
+        self.chunk_meshes: Dict[Tuple[int, int], Any] = {}
+        
         # Track last player chunk to optimize updates
         self.last_player_chunk: Optional[Tuple[int, int]] = None
         
@@ -84,6 +102,16 @@ class ChunkManager(System):
         # Frustum culling settings
         # Chunks within this radius (in chunks) are ALWAYS visible to prevent spawn issues
         self.frustum_culling_min_radius: int = 2
+        
+        # Store voxel grids for cross-chunk collision checks
+        self.voxel_grids: Dict[Tuple[int, int], Dict[Tuple[int, int, int], str]] = {}
+        
+        # Debug tracking
+        self.debug_enabled = True
+        self.frame_count = 0
+        self.last_debug_time = 0.0
+        self.chunk_create_times = []  # Track chunk creation times
+        self.total_time = 0.0
     
     def get_height(self, x: float, z: float) -> float:
         """Get terrain height at world position.
@@ -98,6 +126,26 @@ class ChunkManager(System):
             Height at this position
         """
         return self.generator.get_height(x, z)
+        
+    def get_terrain_mesh(self) -> Optional[Any]:
+        """Get a combined trimesh of all loaded chunks.
+        
+        Useful for batch ray queries or analysis.
+        
+        Returns:
+            Combined trimesh.Trimesh object or None if trimesh not available/no chunks.
+        """
+        if not self.has_trimesh or not self.chunk_meshes:
+            return None
+            
+        import trimesh
+        # Efficiently concatenate all cached meshes
+        # Note: This creates a new mesh copy, so don't call every frame!
+        try:
+            return trimesh.util.concatenate(list(self.chunk_meshes.values()))
+        except Exception as e:
+            print(f"Error concatenating meshes: {e}")
+            return None
     
     def create_chunk(self, chunk_x: int, chunk_z: int) -> NodePath:
         """Generate and attach a chunk to the scene.
@@ -109,6 +157,8 @@ class ChunkManager(System):
         Returns:
             NodePath containing chunk mesh and collision
         """
+        import time
+        start_time = time.time()
         # 1. Generate voxel grid, entities, and chest loot from game-specific generator
         voxel_grid, entities, chest_loot = self.generator.generate_chunk(chunk_x, chunk_z, self.chunk_size)
         
@@ -171,8 +221,6 @@ class ChunkManager(System):
         # 3. Separate water blocks from solid blocks
         water_blocks = []
         solid_grid = {}
-        water_blocks = []
-        solid_grid = {}
         for pos, block_name in voxel_grid.items():
             if block_name == "water" and self.complex_water:
                 water_blocks.append(pos)
@@ -193,6 +241,13 @@ class ChunkManager(System):
         
         # 5. Create NodePath and attach to scene
         chunk_np = self.base.render.attachNewNode(geom_node)
+        
+        # 5b. Position chunk at world coordinates
+        # Since mesh and collision use local coordinates (0 to chunk_size),
+        # we position the chunk NodePath at the chunk's world position
+        world_x = chunk_x * self.chunk_size
+        world_z = chunk_z * self.chunk_size
+        chunk_np.setPos(world_x, world_z, 0)
         
         # 6. Apply texture if available
         if self.texture_atlas and self.texture_atlas.is_loaded():
@@ -235,13 +290,162 @@ class ChunkManager(System):
                     world_z = base_z + z
                     water_system.register_water_block(world_x, y, world_z)
         
-        # 9. Add collision geometry
+        # 9. Store voxel grid for cross-chunk collision checks
+        self.voxel_grids[(chunk_x, chunk_z)] = solid_grid
+        
+        # 10. Add collision geometry
         self._add_collision_to_chunk(chunk_np, solid_grid, chunk_x, chunk_z)
         
-        # 10. Store reference
+        # [NEW] 10b. Generate and cache trimesh for this chunk
+        if self.has_trimesh:
+            try:
+                # Convert the solid grid to a trimesh object
+                mesh = voxel_to_trimesh(solid_grid)
+                if not mesh.is_empty:
+                    # Translate mesh to world coordinates
+                    # voxel_to_trimesh creates mesh at local 0,0,0
+                    # We need to shift it by world_x, world_z
+                    # Note: Y is up in Trimesh usually, but here Y and Z might be swapped?
+                    # In voxel_to_trimesh: vertices are (x, y, z) where y is height.
+                    # In Panda3D world: (x, depth_y, height_z).
+                    # Actually, in `_add_collision_face`:
+                    # v0 = LVector3f(world_x, world_z, y + 1) -> X, Y(depth), Z(height)
+                    # So Y in voxel grid (height) maps to Z in Panda3D.
+                    # Z in voxel grid (depth) maps to Y in Panda3D.
+                    
+                    # Our voxel_to_trimesh implementation in trimesh_utils.py just creates boxes at (x, y, z).
+                    # If we want to use this for raycasting in Panda3D space, we need to transform it.
+                    # OR we just cache it as-is (local voxel coords) and handle transform later.
+                    # But `voxel_to_trimesh` likely produces a mesh where coordinates match the keys.
+                    # So a voxel at (0, 5, 0) becomes a box at (0, 5, 0).
+                    # But in Panda3D world, that should be at (ChunkWorldX + 0, ChunkWorldZ + 0, 5).
+                    
+                    # Let's transform it to World Space for easier batch raycasting later.
+                    # Transform matrix: 
+                    # X_mesh -> X_world
+                    # Y_mesh (height) -> Z_world (height)
+                    # Z_mesh (depth) -> Y_world (depth)
+                    
+                    # Wait, trimesh uses XYZ.
+                    chunk_world_x = chunk_x * self.chunk_size
+                    chunk_world_z = chunk_z * self.chunk_size
+                    
+                    # Create transform matrix
+                    import numpy as np
+                    transform = np.eye(4)
+                    
+                    # Rotation/Permutation to swap Y and Z?
+                    # Voxel (x, y=height, z=depth) -> World (x, depth, height)
+                    # So:
+                    # New X = Old X + WorldX
+                    # New Y = Old Z + WorldZ
+                    # New Z = Old Y
+                    
+                    # Actually, looking at `mesh_numpy.generate_smooth_terrain_mesh`:
+                    # we did `vertices_xzy = np.column_stack([x, z, y])`
+                    # We should probably do similar here if we want the cached mesh to match world space.
+                    # HOWEVER, trimesh objects are usually manipulated with 4x4 matrices.
+                    
+                    # Let's simple apply a translation to correct X and Z (depth), 
+                    # and swap Y/Z axes.
+                    
+                    # Step 1: Swap Y and Z to match Panda3D (up=Z)
+                    # This changes (x, y, z) to (x, z, y)
+                    permut = np.array([
+                        [1, 0, 0, 0],
+                        [0, 0, 1, 0],
+                        [0, 1, 0, 0],
+                        [0, 0, 0, 1]
+                    ])
+                    mesh.apply_transform(permut)
+                    
+                    # Step 2: Translate to world position
+                    # Now mesh is (x, depth, height)
+                    trans = np.eye(4)
+                    trans[0, 3] = chunk_world_x
+                    trans[1, 3] = chunk_world_z
+                    mesh.apply_transform(trans)
+                    
+                    self.chunk_meshes[(chunk_x, chunk_z)] = mesh
+            except Exception as e:
+                print(f"Failed to generate trimesh for chunk ({chunk_x}, {chunk_z}): {e}")
+        
+        # 11. Store reference
         self.chunks[(chunk_x, chunk_z)] = chunk_np
         
+        # Debug: Track chunk creation time
+        if self.debug_enabled:
+            elapsed = time.time() - start_time
+            self.chunk_create_times.append(elapsed)
+            if elapsed > 0.016:  # More than one frame at 60fps
+                print(f"⚠️ Chunk ({chunk_x}, {chunk_z}) took {elapsed*1000:.1f}ms to create")
+        
         return chunk_np
+    
+    def _is_neighbor_solid(
+        self,
+        x: int, y: int, z: int,
+        chunk_x: int, chunk_z: int,
+        voxel_grid: Dict[Tuple[int, int, int], str]
+    ) -> bool:
+        """Check if a neighbor block is solid, including cross-chunk neighbors.
+        
+        Args:
+            x, y, z: Local coordinates within current chunk (may be outside 0-chunk_size range)
+            chunk_x, chunk_z: Current chunk coordinates
+            voxel_grid: Current chunk's voxel grid
+            
+        Returns:
+            True if neighbor is solid, False otherwise
+        """
+        # Check if neighbor is within current chunk
+        if 0 <= x < self.chunk_size and 0 <= z < self.chunk_size:
+            if (x, y, z) in voxel_grid:
+                neighbor_name = voxel_grid[(x, y, z)]
+                try:
+                    block_def = self.generator.get_block_registry().get_block(neighbor_name)
+                    return block_def.solid
+                except KeyError:
+                    return False
+            return False
+        
+        # Neighbor is in adjacent chunk - calculate which chunk
+        neighbor_chunk_x = chunk_x
+        neighbor_chunk_z = chunk_z
+        local_x = x
+        local_z = z
+        
+        # Adjust chunk coordinates if neighbor crosses boundary
+        if x < 0:
+            neighbor_chunk_x -= 1
+            local_x = self.chunk_size + x  # x is negative, so this wraps around
+        elif x >= self.chunk_size:
+            neighbor_chunk_x += 1
+            local_x = x - self.chunk_size
+            
+        if z < 0:
+            neighbor_chunk_z -= 1
+            local_z = self.chunk_size + z  # z is negative, so this wraps around
+        elif z >= self.chunk_size:
+            neighbor_chunk_z += 1
+            local_z = z - self.chunk_size
+        
+        # Look up neighboring chunk's voxel grid
+        neighbor_chunk_key = (neighbor_chunk_x, neighbor_chunk_z)
+        if neighbor_chunk_key not in self.voxel_grids:
+            # Chunk not loaded yet - assume not solid (will be corrected when chunk loads)
+            return False
+        
+        neighbor_grid = self.voxel_grids[neighbor_chunk_key]
+        if (local_x, y, local_z) not in neighbor_grid:
+            return False
+        
+        neighbor_name = neighbor_grid[(local_x, y, local_z)]
+        try:
+            block_def = self.generator.get_block_registry().get_block(neighbor_name)
+            return block_def.solid
+        except KeyError:
+            return False
     
     def _add_water_to_grid(
         self, 
@@ -286,9 +490,12 @@ class ChunkManager(System):
     ):
         """Add collision geometry for solid blocks.
         
+        Creates collision in world coordinates and attaches directly to render.
+        This ensures collision detection works properly with the physics system.
+        
         Args:
-            chunk_np: NodePath to attach collision to
-            voxel_grid: Voxel grid with block data
+            chunk_np: NodePath for the chunk (for reference)
+            voxel_grid: Voxel grid with block data (in local coordinates)
             chunk_x: Chunk X coordinate
             chunk_z: Chunk Z coordinate
         """
@@ -298,8 +505,9 @@ class ChunkManager(System):
         cnode.setFromCollideMask(BitMask32.bit(1))
         cnode.setIntoCollideMask(BitMask32.bit(1))
         
-        base_x = chunk_x * self.chunk_size
-        base_z = chunk_z * self.chunk_size
+        # Calculate world offset for this chunk
+        world_x_offset = chunk_x * self.chunk_size
+        world_z_offset = chunk_z * self.chunk_size
         
         # Face directions: (dx, dy, dz, name)
         directions = [
@@ -322,29 +530,36 @@ class ChunkManager(System):
                 continue
             
             x, y, z = pos
-            world_x = base_x + x
-            world_z = base_z + z
+            # Convert to world coordinates for collision
+            world_x = world_x_offset + x
+            world_z = world_z_offset + z
             
             # Check each face for exposure
             for dx, dy, dz, face in directions:
-                neighbor = (x + dx, y + dy, z + dz)
+                # Skip bottom faces - player never collides from below
+                if face == 'bottom':
+                    continue
+                    
+                neighbor_x = x + dx
+                neighbor_y = y + dy
+                neighbor_z = z + dz
                 
-                # Face is exposed if neighbor is empty or non-solid
-                exposed = True
-                if neighbor in voxel_grid:
-                    neighbor_name = voxel_grid[neighbor]
-                    try:
-                        neighbor_def = block_registry.get_block(neighbor_name)
-                        if neighbor_def.solid:
-                            exposed = False
-                    except KeyError:
-                        pass
+                # Check if neighbor is solid (including cross-chunk)
+                if self._is_neighbor_solid(neighbor_x, neighbor_y, neighbor_z, chunk_x, chunk_z, voxel_grid):
+                    # Neighbor is solid - face is not exposed
+                    continue
                 
-                if exposed:
-                    # Create collision quad for this face
-                    self._add_collision_face(cnode, world_x, y, world_z, face)
+                # Face is exposed - create collision quad
+                self._add_collision_face(cnode, world_x, y, world_z, face)
         
-        chunk_np.attachNewNode(cnode)
+        # Attach collision directly to render (not to chunk_np)
+        # This ensures collision is in world space
+        collision_np = self.base.render.attachNewNode(cnode)
+        
+        # Store collision node reference for cleanup
+        if not hasattr(self, 'collision_nodes'):
+            self.collision_nodes = {}
+        self.collision_nodes[(chunk_x, chunk_z)] = collision_np
     
     def _add_collision_face(
         self,
@@ -355,6 +570,8 @@ class ChunkManager(System):
         face: str
     ):
         """Add a collision quad for a block face.
+        
+        Uses world coordinates since collision is attached to render.
         
         Args:
             cnode: CollisionNode to add to
@@ -488,6 +705,19 @@ class ChunkManager(System):
         """
         chunk_key = (chunk_x, chunk_z)
         
+        # Remove collision node
+        if hasattr(self, 'collision_nodes') and chunk_key in self.collision_nodes:
+            self.collision_nodes[chunk_key].removeNode()
+            del self.collision_nodes[chunk_key]
+        
+        # Remove stored voxel grid
+        if hasattr(self, 'voxel_grids') and chunk_key in self.voxel_grids:
+            del self.voxel_grids[chunk_key]
+        
+        # [NEW] Remove cached trimesh
+        if hasattr(self, 'chunk_meshes') and chunk_key in self.chunk_meshes:
+            del self.chunk_meshes[chunk_key]
+        
         # Unregister water blocks from physics system
         if chunk_key in self.water_nodes:
             from engine.systems.water_physics import WaterPhysicsSystem
@@ -515,6 +745,20 @@ class ChunkManager(System):
         Args:
             dt: Delta time since last update
         """
+        import time
+        frame_start = time.time()
+        
+        # Debug: Track frame time and FPS
+        self.frame_count += 1
+        self.total_time += dt
+        
+        if self.debug_enabled and self.total_time - self.last_debug_time >= 2.0:
+            fps = self.frame_count / (self.total_time - self.last_debug_time)
+            avg_chunk_time = sum(self.chunk_create_times) / len(self.chunk_create_times) if self.chunk_create_times else 0
+            print(f"📊 FPS: {fps:.1f} | Chunks loaded: {len(self.chunks)} | Avg chunk time: {avg_chunk_time*1000:.1f}ms")
+            self.last_debug_time = self.total_time
+            self.frame_count = 0
+            self.chunk_create_times = []
         # Update water animation time
         self.water_time += dt
         for water_np in self.water_nodes.values():
@@ -562,11 +806,19 @@ class ChunkManager(System):
         
         # Load chunks (throttled)
         chunks_loaded = 0
+        if chunks_to_load and self.debug_enabled:
+            print(f"🔄 Player moved to chunk {player_chunk}, loading {len(chunks_to_load)} chunks...")
+        
         for chunk_pos, _ in chunks_to_load:
             if chunks_loaded >= self.max_chunks_per_frame:
+                if self.debug_enabled:
+                    print(f"⏸️ Throttled: {len(chunks_to_load) - chunks_loaded} chunks deferred to next frame")
                 break
             self.create_chunk(chunk_pos[0], chunk_pos[1])
             chunks_loaded += 1
+        
+        if chunks_loaded > 0 and self.debug_enabled:
+            print(f"✅ Loaded {chunks_loaded} chunks this frame")
         
         # Unload distant chunks
         chunks_to_unload = []
@@ -578,5 +830,14 @@ class ChunkManager(System):
             if distance_sq > self.unload_radius * self.unload_radius:
                 chunks_to_unload.append(chunk_pos)
         
+        if chunks_to_unload and self.debug_enabled:
+            print(f"🗑️ Unloading {len(chunks_to_unload)} distant chunks")
+        
         for chunk_pos in chunks_to_unload:
             self.unload_chunk(chunk_pos[0], chunk_pos[1])
+        
+        # Debug: Track total frame time
+        if self.debug_enabled:
+            frame_time = time.time() - frame_start
+            if frame_time > 0.016:  # More than one frame at 60fps
+                print(f"⚠️ ChunkManager.update() took {frame_time*1000:.1f}ms (target: 16ms)")

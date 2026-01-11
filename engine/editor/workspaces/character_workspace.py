@@ -190,16 +190,15 @@ class CharacterWorkspace(Workspace):
         return task.cont
         
     def accept_shortcuts(self):
-        self.app.accept('g', self._set_mode, [DragMode.MOVE])
-        self.app.accept('r', self._set_mode, [DragMode.ROTATE])
-        self.app.accept('s', self._set_mode, [DragMode.SCALE])
-        self.app.accept('f', self._frame_selection)
-        self.app.accept("control-z", self._on_undo)
-        self.app.accept("control-shift-z", self._on_redo)
-        self.app.accept("mouse1", self._on_mouse_press)
-        self.app.accept("mouse1-up", self._on_mouse_release)
-        # No need to bind scroll here, OrbitCamera handles it in enable()
-        pass
+        self.accept('g', self._set_mode, [DragMode.MOVE])
+        self.accept('r', self._set_mode, [DragMode.ROTATE])
+        self.accept('s', self._set_mode, [DragMode.SCALE])
+        self.accept('f', self._frame_selection)
+        self.accept("control-z", self._on_undo)
+        self.accept("control-shift-z", self._on_redo)
+        self.accept("mouse1", self._on_mouse_press)
+        self.accept("mouse1-up", self._on_mouse_release)
+        # Note: OrbitCamera binds scroll/mouse3 in its own enable()
         
     # ─────────────────────────────────────────────────────────────────
     # Interaction Logic (Ported)
@@ -247,7 +246,7 @@ class CharacterWorkspace(Workspace):
         # 1. Handle symmetry if enabled and dragging
         if self.symmetry_enabled and self.drag_controller.is_dragging():
             bone_name = self.drag_controller.drag_state.bone_name
-            self.symmetry_controller.sync_bone_to_pair(bone_name)
+            self.symmetry_controller.mirror_transform(bone_name)
             
         # 2. Synchronize NodePaths to Skeleton data
         # DragController only modifies skeleton data; we must push to Panda3D nodes
@@ -319,10 +318,85 @@ class CharacterWorkspace(Workspace):
             if self.selection.bone in self.avatar.bone_nodes:
                 self.transform_gizmo.attach_to(self.avatar.bone_nodes[self.selection.bone])
 
-    # Slider Callbacks (Simplified)
-    def _on_position_slider(self, axis, val=None): pass
-    def _on_rotation_slider(self, axis, val=None): pass
-    def _on_length_slider(self, val=None): pass
+    # Slider Callbacks
+    def _on_position_slider(self, axis, val=None):
+        """Handle position slider change."""
+        if not self.selection or not self.selection.bone or not self.avatar:
+            return
+        bone_name = self.selection.bone
+        bone = self.avatar.skeleton.get_bone(bone_name)
+        if not bone:
+            return
+            
+        # Get current position, update the axis
+        pos = bone.local_transform.position
+        if axis == 'x':
+            pos = (val, pos[1], pos[2])
+        elif axis == 'y':
+            pos = (pos[0], val, pos[2])
+        elif axis == 'z':
+            pos = (pos[0], pos[1], val)
+        bone.local_transform.position = pos
+        
+        # Sync to node and refresh
+        self._sync_bone_to_node(bone_name)
+        
+    def _on_rotation_slider(self, axis, val=None):
+        """Handle rotation slider change."""
+        if not self.selection or not self.selection.bone or not self.avatar:
+            return
+        bone_name = self.selection.bone
+        bone = self.avatar.skeleton.get_bone(bone_name)
+        if not bone:
+            return
+            
+        # Get current rotation, update the axis
+        rot = bone.local_transform.rotation
+        if axis == 'h':
+            rot = (val, rot[1], rot[2])
+        elif axis == 'p':
+            rot = (rot[0], val, rot[2])
+        elif axis == 'r':
+            rot = (rot[0], rot[1], val)
+        bone.local_transform.rotation = rot
+        
+        # Sync to node and refresh
+        self._sync_bone_to_node(bone_name)
+        
+    def _on_length_slider(self, val=None):
+        """Handle length slider change."""
+        if not self.selection or not self.selection.bone or not self.avatar:
+            return
+        bone_name = self.selection.bone
+        bone = self.avatar.skeleton.get_bone(bone_name)
+        if not bone:
+            return
+            
+        bone.length = val
+        self._sync_bone_to_node(bone_name)
+        
+    def _sync_bone_to_node(self, bone_name):
+        """Sync a single bone's transform to its Panda3D node."""
+        if bone_name not in self.avatar.bone_nodes:
+            return
+            
+        bone = self.avatar.skeleton.get_bone(bone_name)
+        node = self.avatar.bone_nodes[bone_name]
+        t = bone.local_transform
+        node.setPos(t.position)
+        node.setHpr(t.rotation[0], t.rotation[1], t.rotation[2])
+        
+        # Update visual geometry for length
+        visual = node.find(f"visual_{bone_name}")
+        if not visual.isEmpty():
+            thickness = VoxelAvatar.BONE_THICKNESS_MAP.get(bone_name, 0.1)
+            visual.setScale(thickness, bone.length, thickness)
+            visual.setPos(0, bone.length / 2.0, 0)
+            
+        # Refresh skeleton renderer
+        if self.skeleton_renderer:
+            self.skeleton_renderer._rebuild_visualization()
+            self.skeleton_renderer.highlight_bone(bone_name)
     
     def _on_spline_changed(self):
         pass # Todo implementation

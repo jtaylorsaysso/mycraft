@@ -1,45 +1,47 @@
 
 from typing import Callable, Optional
-from direct.gui.DirectGui import DirectFrame, DirectButton, DirectLabel, DGG, DirectScrolledFrame
-from panda3d.core import TextNode, Vec4
+from direct.gui.DirectGui import DirectButton, DGG, DirectFrame
+from panda3d.core import TextNode
+
+from engine.editor.ui.theme import Colors, Spacing, TextScale, FrameSize
+from engine.editor.ui.base_panel import SidebarPanel
+from engine.editor.ui.widgets import EditorLabel
 
 try:
     from games.voxel_world.blocks.blocks import BlockRegistry
 except ImportError:
     BlockRegistry = None
 
-class BlockPalette(DirectFrame):
+class BlockPalette(SidebarPanel):
     """Scrollable palette of available blocks."""
     
     def __init__(self, parent, on_select_callback: Callable[[str], None]):
-        super().__init__(
-            parent=parent,
-            frameColor=(0.1, 0.1, 0.1, 0.9),
-            frameSize=(-0.3, 0.3, -0.6, 0.6),
-            pos=(0, 0, 0)
-        )
+        super().__init__(parent, title="Blocks", side="left")
         
         self.on_select = on_select_callback
         self.selected_block = None
         self.buttons = {}
         
-        # Title
-        DirectLabel(
-            parent=self,
-            text="Blocks",
-            scale=0.05,
-            pos=(0, 0, 0.53),
-            text_fg=(1, 1, 1, 1)
-        )
+        # Calculate canvas size logic (dynamic)
+        # Using SidebarPanel.content as parent for scrolling? 
+        # SidebarPanel doesn't implement scrolling inherently, it gives a content frame.
+        # We need to add DirectScrolledFrame inside self.content, OR make SidebarPanel scrollable.
+        # Check base_panel.py -> SidebarPanel creates self.content as a DirectFrame.
         
-        # Scrollable Area
+        # We'll put a ScrolledFrame inside self.content
+        from direct.gui.DirectGui import DirectScrolledFrame
+        
+        # Adjust frame size to fit within Sidebar content area
+        # Sidebar content area: width ~0.6, height ~1.6
+        bg_width = FrameSize.SIDEBAR[1] - FrameSize.SIDEBAR[0]
+        
         self.scroll_frame = DirectScrolledFrame(
-            parent=self,
-            frameSize=(-0.28, 0.28, -0.5, 0.5),
-            canvasSize=(-0.25, 0.25, -2.0, 0), # Dynamic resize based on content?
-            frameColor=(0, 0, 0, 0.2),
+            parent=self.content,
+            frameSize=(-0.28, 0.28, -0.6, 0.45), # Approximate fit
+            canvasSize=(-0.25, 0.25, -2.0, 0),
+            frameColor=(0, 0, 0, 0),
             scrollBarWidth=0.02,
-            pos=(0, 0, -0.05)
+            pos=(0, 0, -0.2) # Shift down relative to content top
         )
         
         self.refresh()
@@ -59,8 +61,7 @@ class BlockPalette(DirectFrame):
         
         # Layout
         y = -0.05
-        btn_height = 0.1
-        spacing = 0.02
+        btn_height = Spacing.ITEM_GAP + 0.02
         
         for name in sorted_names:
             block = blocks[name]
@@ -73,10 +74,11 @@ class BlockPalette(DirectFrame):
             btn = DirectButton(
                 parent=self.scroll_frame.getCanvas(),
                 text=name,
-                text_scale=0.035,
+                text_scale=TextScale.LABEL,
                 text_align=TextNode.ALeft,
                 text_pos=(0.04, -0.015),
-                frameColor=(0.2, 0.2, 0.2, 1),
+                frameColor=Colors.BTN_DEFAULT,
+                text_fg=Colors.TEXT_SECONDARY,
                 frameSize=(-0.22, 0.22, -0.04, 0.04),
                 pos=(0, 0, y),
                 command=self._on_click,
@@ -93,7 +95,7 @@ class BlockPalette(DirectFrame):
             )
             
             self.buttons[name] = btn
-            y -= (btn_height + spacing)
+            y -= btn_height
             
         # Resize canvas
         z_min = y + 0.05
@@ -109,9 +111,11 @@ class BlockPalette(DirectFrame):
     def set_selected(self, name):
         """Highlight selected block."""
         if self.selected_block and self.selected_block in self.buttons:
-            self.buttons[self.selected_block]["frameColor"] = (0.2, 0.2, 0.2, 1)
+            self.buttons[self.selected_block]["frameColor"] = Colors.BTN_DEFAULT
+            self.buttons[self.selected_block]["text_fg"] = Colors.TEXT_SECONDARY
             
         self.selected_block = name
         
         if name and name in self.buttons:
-            self.buttons[name]["frameColor"] = (0.4, 0.4, 0.6, 1)
+            self.buttons[name]["frameColor"] = Colors.BTN_SELECTED
+            self.buttons[name]["text_fg"] = Colors.TEXT_PRIMARY

@@ -128,7 +128,8 @@ class GroundMovementMechanic(PlayerMechanic):
         # Ground and wall check functions for physics integration
         def ground_check(e):
             from engine.physics import raycast_ground_height
-            return raycast_ground_height(e, ctx.world.collision_traverser, ctx.world.base.render, max_distance=10.0)
+            # Use large max_distance to handle cases where player has fallen far below terrain
+            return raycast_ground_height(e, ctx.world.collision_traverser, ctx.world.base.render, max_distance=1000.0)
 
         def wall_check(e, move):
             from engine.physics import raycast_wall_check

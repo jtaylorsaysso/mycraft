@@ -3,3 +3,8 @@ screeninfo
 numpy
 PyYAML
 panda3d-gltf
+trimesh
+scikit-image
+scipy
+rtree
+manifold3d

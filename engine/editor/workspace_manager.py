@@ -91,7 +91,7 @@ class WorkspaceManager:
             btn = DirectButton(
                 parent=self.top_bar,
                 text=name,
-                scale=0.04,
+                text_scale=0.04,
                 pos=(x_pos, 0, 0.935),
                 frameColor=color,
                 frameSize=(-0.16, 0.16, -0.025, 0.035),

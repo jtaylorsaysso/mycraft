@@ -451,3 +451,14 @@ BlockRegistry.register(Block(
     transparent=False
 ))
 
+BlockRegistry.register(Block(
+    name="wool_red",
+    color=(0.8, 0.2, 0.2),  # Bright red
+    tile_top=TileRegistry.BRICK,  # Placeholder - reuse brick texture
+    tile_side=TileRegistry.BRICK,
+    tile_bottom=TileRegistry.BRICK,
+    display_name="Red Wool",
+    solid=True,
+    transparent=False
+))
+
