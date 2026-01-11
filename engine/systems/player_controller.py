@@ -14,6 +14,8 @@ from engine.player_mechanics.parry_mechanic import ParryMechanic
 from engine.player_mechanics.attack_mechanic import AttackMechanic
 from engine.player_mechanics.targeting_mechanic import TargetingMechanic
 from engine.player_mechanics.targeting_mechanic import TargetingMechanic
+from engine.player_mechanics.block_placer import BlockPlacerMechanic
+from engine.ui.block_palette_radial import BlockPaletteRadial
 from panda3d.core import CollisionTraverser, LVector3f
 from engine.components.avatar_colors import AvatarColors
 from engine.components.projectile import ColorProjectileComponent
@@ -35,6 +37,7 @@ class PlayerControlSystem(System):
             ParryMechanic(),  # Parry input handling
             AttackMechanic(),  # Attack input handling
             TargetingMechanic(), # Target locking
+            BlockPlacerMechanic(base),  # Block placement in claimed zones
             AnimationMechanic(base),
         ]
         
@@ -43,6 +46,10 @@ class PlayerControlSystem(System):
         
         # Collision system
         self.collision_traverser = CollisionTraverser('player_physics')
+        
+        # Block palette radial menu
+        self.block_palette = BlockPaletteRadial(base, self._on_block_selected)
+        self.radial_menu_open = False
         
         # Reusable context (created in on_ready, updated each frame)
         self.player_context = None
@@ -61,6 +68,79 @@ class PlayerControlSystem(System):
                 
         # Register Projectile Input
         self.base.accept('r', self.throw_projectile)
+        
+        # Register Build Mode Toggle
+        self.base.accept('b', self._toggle_build_mode)
+        
+        # Register Stake Placement (expand zones)
+        self.base.accept('p', self._place_stake)
+        
+        # Register Radial Menu (Tab key - hold to show, release to select)
+        self.base.accept('tab', self._show_radial_menu)
+        self.base.accept('tab-up', self._hide_radial_menu)
+    
+    def _toggle_build_mode(self):
+        """Toggle build mode via FSM state transition."""
+        # Get current playing FSM state
+        if hasattr(self.base, 'playing_fsm'):
+            fsm = self.base.playing_fsm
+            if fsm.state == 'Building':
+                # Exit build mode -> return to Exploring
+                fsm.request('Exploring')
+            else:
+                # Enter build mode
+                fsm.request('Building')
+        
+        # FSM will publish build_mode_changed event
+        # BlockPlacerMechanic listens to that event to set enabled flag
+                
+    def _place_stake(self):
+        """Place a claim stake at player's current position."""
+        player_id = self.world.get_entity_by_tag("player")
+        if not player_id:
+            return
+            
+        transform = self.world.get_component(player_id, Transform)
+        if not transform:
+            return
+            
+        # Get grid position from player position
+        pos = (
+            int(round(transform.position.x)),
+            int(round(transform.position.y)),
+            int(round(transform.position.z))
+        )
+        
+        # Find BlockPlacer and try to place stake
+        for mech in self.mechanics:
+            if hasattr(mech, 'try_place_stake'):
+                mech.try_place_stake(pos)
+                break
+    
+    def _show_radial_menu(self):
+        """Show radial block selection menu."""
+        if not self.radial_menu_open:
+            self.block_palette.show()
+            self.radial_menu_open = True
+    
+    def _hide_radial_menu(self):
+        """Hide radial block selection menu."""
+        if self.radial_menu_open:
+            self.block_palette.hide()
+            self.radial_menu_open = False
+    
+    def _on_block_selected(self, block_name: str):
+        """Handle block selection from radial menu.
+        
+        Args:
+            block_name: Name of selected block
+        """
+        # Set selected block in BlockPlacerMechanic
+        for mech in self.mechanics:
+            if hasattr(mech, 'set_block_type'):
+                mech.set_block_type(block_name)
+                print(f"✅ Selected block: {block_name}")
+                break
     
     def on_ready(self):
         player_id = self.world.get_entity_by_tag("player")

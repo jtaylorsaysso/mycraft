@@ -11,9 +11,13 @@ class POITemplate:
     poi_type: str  # "shrine", "camp", "dungeon", "custom"
     version: int = 1
     
+    # Canvas/Size configuration
+    size: int = 9  # Canvas dimension (e.g., 9 = -4 to +4 range)
+    
     # Placement hints
     biome_affinity: List[str] = field(default_factory=list)  # Empty = any biome
     min_clear_radius: int = 5  # Terrain flattening radius
+
     
     # Content
     # (x, y, z, block_name) - relative to center
@@ -35,6 +39,7 @@ class POITemplate:
             "name": self.name,
             "poi_type": self.poi_type,
             "version": self.version,
+            "size": self.size,
             "biome_affinity": self.biome_affinity,
             "min_clear_radius": self.min_clear_radius,
             "blocks": self.blocks,
@@ -51,6 +56,7 @@ class POITemplate:
             name=data.get("name", "Untitled"),
             poi_type=data.get("poi_type", "custom"),
             version=data.get("version", 1),
+            size=data.get("size", 9),
             biome_affinity=data.get("biome_affinity", []),
             min_clear_radius=data.get("min_clear_radius", 5),
             blocks=[tuple(b) for b in data.get("blocks", [])], # Ensure tuples

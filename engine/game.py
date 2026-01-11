@@ -180,6 +180,11 @@ class VoxelGame(ShowBase):
         # Tools & Feedback (Added Phase 6)
         from engine.systems.feedback import FeedbackSystem
         self.world.add_system(FeedbackSystem(self.world, self.world.event_bus, self))
+        
+        # Build Zone Management
+        from engine.systems.claim_system import ClaimSystem
+        self.claim_system = ClaimSystem(self.world, self.world.event_bus, self.render)
+        self.world.add_system(self.claim_system)
 
     def register_block(self, block: Block):
         """Register a new block type."""
@@ -233,6 +238,12 @@ class VoxelGame(ShowBase):
         
         # Now register tag to wake up systems (PlayerControlSystem)
         self.world.register_tag(entity_id, "player")
+        
+        # Create initial build zone at spawn location
+        if hasattr(self, 'claim_system') and self.claim_system:
+            spawn_center = (int(position[0]), int(position[1]), int(position[2]))
+            self.claim_system.claim_zone(entity_id, spawn_center, radius=8)
+            logger.info(f"✅ Created starter build zone at {spawn_center}")
         
         logger.info(f"Spawned player at {position}")
         return entity_id

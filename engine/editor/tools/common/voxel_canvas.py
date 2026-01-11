@@ -10,8 +10,16 @@ class VoxelCanvas:
     """
     Manages the 3D data and rendering for the Voxel Model Editor.
     """
-    def __init__(self, base):
+    def __init__(self, base, size: int = 9):
+        """Initialize the voxel canvas.
+        
+        Args:
+            base: Panda3D base instance
+            size: Canvas size (e.g., 9 = -4 to +4 range, 17 = -8 to +8)
+        """
         self.base = base
+        self.size = size
+        
         # Root node for the editor scene
         self.root = NodePath("VoxelEditorRoot")
         self.voxel_node = self.root.attachNewNode("VoxelMesh")
@@ -26,33 +34,43 @@ class VoxelCanvas:
         self._build_grid()
         self.rebuild_mesh()
         
+    def set_size(self, size: int):
+        """Change canvas size and rebuild grid."""
+        self.size = size
+        self._rebuild_grid()
+        
+    def _rebuild_grid(self):
+        """Rebuild grid node with current size."""
+        self.grid_node.removeNode()
+        self.grid_node = self.root.attachNewNode("Grid")
+        self._build_grid()
+        
     def _build_grid(self):
-        """Draws a reference grid on the XZ plane."""
+        """Draws a reference grid on the XY plane (Z=0)."""
         lines = LineSegs()
         lines.setColor(0.3, 0.3, 0.3, 1)
         
-        # Grid size
-        size = 10
-        step = 1
+        # Grid extends from -half to +half
+        half = self.size // 2
         
-        for i in range(-size, size + 1):
+        for i in range(-half, half + 1):
             # X lines
-            lines.moveTo(i, -size, 0)
-            lines.drawTo(i, size, 0)
+            lines.moveTo(i, -half, 0)
+            lines.drawTo(i, half, 0)
             # Y lines
-            lines.moveTo(-size, i, 0)
-            lines.drawTo(size, i, 0)
+            lines.moveTo(-half, i, 0)
+            lines.drawTo(half, i, 0)
             
         # Axes
-        lines.setColor(1, 0, 0, 1) # X
+        lines.setColor(1, 0, 0, 1)  # X - Red
         lines.moveTo(0, 0, 0)
         lines.drawTo(2, 0, 0)
         
-        lines.setColor(0, 1, 0, 1) # Y
+        lines.setColor(0, 1, 0, 1)  # Y - Green
         lines.moveTo(0, 0, 0)
         lines.drawTo(0, 2, 0)
         
-        lines.setColor(0, 0, 1, 1) # Z
+        lines.setColor(0, 0, 1, 1)  # Z - Blue
         lines.moveTo(0, 0, 0)
         lines.drawTo(0, 0, 2)
             

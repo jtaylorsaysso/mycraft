@@ -10,7 +10,7 @@ from engine.editor.ui.widgets import EditorLabel, EditorButton, EditorDropdown, 
 class POIPropertyPanel(SidebarPanel):
     """Right sidebar for editing POI properties and metadata."""
     
-    def __init__(self, parent, asset_manager=None, on_load=None, on_new=None, on_save=None):
+    def __init__(self, parent, asset_manager=None, on_load=None, on_new=None, on_save=None, on_size_change=None):
         """
         Initialize POI property panel.
         
@@ -20,6 +20,7 @@ class POIPropertyPanel(SidebarPanel):
             on_load: Callback when Load button clicked (receives template name)
             on_new: Callback when New button clicked
             on_save: Callback when Save button clicked
+            on_size_change: Callback when size changes (receives size int)
         """
         super().__init__(parent, title="Properties", side="right")
         
@@ -27,10 +28,12 @@ class POIPropertyPanel(SidebarPanel):
         self._on_load_callback = on_load
         self._on_new_callback = on_new
         self._on_save_callback = on_save
+        self._on_size_change_callback = on_size_change
         
         self.poi_name = "untitled_poi"
         self.poi_type = "structure"
         self.biome_type = "plains"
+        self.poi_size = 9  # Default canvas size
         self._selected_template = None
         
         self._build_ui()
@@ -127,6 +130,23 @@ class POIPropertyPanel(SidebarPanel):
             pos=(-0.12, 0, y),
             command=self._on_biome_change
         )
+        y -= 0.08
+        
+        # Size Dropdown
+        EditorLabel(
+            parent=self.content,
+            text="Size:",
+            pos=(-0.14, 0, y),
+            scale="label",
+            align="right"
+        )
+        
+        self.size_menu = EditorDropdown(
+            parent=self.content,
+            items=["Small (9)", "Medium (17)", "Large (33)"],
+            pos=(-0.12, 0, y),
+            command=self._on_size_change
+        )
         y -= 0.12
         
         # --- Actions ---
@@ -178,7 +198,18 @@ class POIPropertyPanel(SidebarPanel):
         
     def _on_biome_change(self, arg):
         self.biome_type = arg
-        print(f"Biome set to: {self.biome_type}")
+        
+    def _on_size_change(self, arg):
+        """Handle size dropdown selection."""
+        # Parse size from dropdown label like "Small (9)"
+        size_map = {
+            "Small (9)": 9,
+            "Medium (17)": 17,
+            "Large (33)": 33
+        }
+        self.poi_size = size_map.get(arg, 9)
+        if self._on_size_change_callback:
+            self._on_size_change_callback(self.poi_size)
         
     def _save_template(self):
         print(f"Saving POI Template: {self.poi_name} ({self.poi_type}) in {self.biome_type}")
@@ -190,5 +221,6 @@ class POIPropertyPanel(SidebarPanel):
         return {
             "name": self.poi_name,
             "type": self.poi_type,
-            "biome": self.biome_type
+            "biome": self.biome_type,
+            "size": self.poi_size
         }

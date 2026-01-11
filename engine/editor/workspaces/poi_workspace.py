@@ -172,7 +172,8 @@ class POIWorkspace(Workspace):
             asset_manager=self.app.asset_manager,
             on_load=self._on_template_load_request,
             on_new=self._on_template_new_request,
-            on_save=self._on_save
+            on_save=self._on_save,
+            on_size_change=self._on_canvas_size_change
         )
         self.properties.setPos(1.4, 0, 0)
         
@@ -262,6 +263,17 @@ class POIWorkspace(Workspace):
         """Handle layer change."""
         self.current_layer = layer
         logger.info(f"Layer: {layer}")
+        
+    def _on_canvas_size_change(self, size: int):
+        """Handle canvas size change from properties panel."""
+        if self.canvas:
+            self.canvas.set_size(size)
+            self.canvas.clear()
+            self._create_base_floor()
+            if self.picker:
+                self.picker.sync_with_canvas(self.canvas.voxels)
+            self.history.clear()
+            logger.info(f"Canvas size changed to {size}")
         
     def _update_preview_color(self):
         """Update preview block color based on selected block."""
@@ -570,8 +582,9 @@ class POIWorkspace(Workspace):
         
     def _create_base_floor(self):
         """Create the starter floor grid (not tracked in undo history)."""
-        for x in range(-4, 5):
-            for y in range(-4, 5):
+        half = self.canvas.size // 2
+        for x in range(-half, half + 1):
+            for y in range(-half, half + 1):
                 # Add directly to canvas, bypassing history
                 self.canvas.add_voxel_with_type((x, y, 0), "grass")
             

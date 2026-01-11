@@ -9,7 +9,7 @@ without texture asset management overhead.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 
 from engine.rendering import TileRegistry
@@ -25,6 +25,8 @@ class Block:
         tile_side: Tile index (0-255) in terrain.png for side faces
         tile_bottom: Tile index (0-255) in terrain.png for bottom face
         display_name: Human-readable name for UI/debugging
+        category: Category for radial menu organization
+        sort_order: Sort order within category (lower = earlier)
     """
     name: str
     color: tuple[float, float, float]
@@ -34,6 +36,8 @@ class Block:
     display_name: str = ""
     solid: bool = True
     transparent: bool = False
+    category: str = "Nature"
+    sort_order: int = 0
     
     def __post_init__(self):
         """Set display_name from name if not provided."""
@@ -122,6 +126,29 @@ class BlockRegistry:
             Dictionary of block name -> Block instance
         """
         return cls._blocks.copy()
+    
+    @classmethod
+    def get_blocks_by_category(cls, category: str) -> List[Block]:
+        """Get all blocks in a category, sorted by sort_order then name.
+        
+        Args:
+            category: Category name (e.g., 'Nature', 'Plants', 'Building', 'Utility')
+            
+        Returns:
+            List of Block instances in the category, sorted
+        """
+        blocks = [b for b in cls._blocks.values() if b.category == category]
+        return sorted(blocks, key=lambda b: (b.sort_order, b.name))
+    
+    @classmethod
+    def get_all_categories(cls) -> List[str]:
+        """Get list of all unique categories.
+        
+        Returns:
+            Sorted list of category names
+        """
+        categories = {b.category for b in cls._blocks.values()}
+        return sorted(categories)
 
 
 # Register default block types
@@ -134,7 +161,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.GRASS_TOP,
     tile_side=TileRegistry.GRASS_SIDE,
     tile_bottom=TileRegistry.DIRT,
-    display_name="Grass"
+    display_name="Grass",
+    category="Nature",
+    sort_order=0
 ))
 
 BlockRegistry.register(Block(
@@ -143,7 +172,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.DIRT,
     tile_side=TileRegistry.DIRT,
     tile_bottom=TileRegistry.DIRT,
-    display_name="Dirt"
+    display_name="Dirt",
+    category="Nature",
+    sort_order=1
 ))
 
 BlockRegistry.register(Block(
@@ -152,7 +183,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.STONE,
     tile_side=TileRegistry.STONE,
     tile_bottom=TileRegistry.STONE,
-    display_name="Stone"
+    display_name="Stone",
+    category="Nature",
+    sort_order=2
 ))
 
 BlockRegistry.register(Block(
@@ -161,7 +194,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.SAND,
     tile_side=TileRegistry.SAND,
     tile_bottom=TileRegistry.SAND,
-    display_name="Sand"
+    display_name="Sand",
+    category="Nature",
+    sort_order=3
 ))
 
 BlockRegistry.register(Block(
@@ -170,7 +205,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.GRAVEL,
     tile_side=TileRegistry.GRAVEL,
     tile_bottom=TileRegistry.GRAVEL,
-    display_name="Gravel"
+    display_name="Gravel",
+    category="Nature",
+    sort_order=4
 ))
 
 BlockRegistry.register(Block(
@@ -179,7 +216,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.SNOW,
     tile_side=TileRegistry.SNOW_SIDE,
     tile_bottom=TileRegistry.DIRT,
-    display_name="Snow"
+    display_name="Snow",
+    category="Nature",
+    sort_order=5
 ))
 
 BlockRegistry.register(Block(
@@ -188,7 +227,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.CLAY,
     tile_side=TileRegistry.CLAY,
     tile_bottom=TileRegistry.CLAY,
-    display_name="Clay"
+    display_name="Clay",
+    category="Nature",
+    sort_order=6
 ))
 
 BlockRegistry.register(Block(
@@ -197,7 +238,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.LOG_TOP,
     tile_side=TileRegistry.LOG_SIDE,
     tile_bottom=TileRegistry.LOG_TOP,
-    display_name="Wood"
+    display_name="Wood",
+    category="Building",
+    sort_order=0
 ))
 
 BlockRegistry.register(Block(
@@ -207,7 +250,9 @@ BlockRegistry.register(Block(
     tile_side=TileRegistry.LEAVES,
     tile_bottom=TileRegistry.LEAVES,
     display_name="Leaves",
-    transparent=True  # Can see through, but solid collision (by default)
+    transparent=True,  # Can see through, but solid collision (by default)
+    category="Plants",
+    sort_order=0
 ))
 
 # Natural terrain variations for diverse biomes
@@ -217,7 +262,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.COBBLESTONE_MOSSY,
     tile_side=TileRegistry.COBBLESTONE_MOSSY,
     tile_bottom=TileRegistry.COBBLESTONE_MOSSY,
-    display_name="Mossy Cobblestone"
+    display_name="Mossy Cobblestone",
+    category="Nature",
+    sort_order=7
 ))
 
 BlockRegistry.register(Block(
@@ -226,7 +273,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.DIRT_PODZOL,
     tile_side=TileRegistry.DIRT_PODZOL,
     tile_bottom=TileRegistry.DIRT,
-    display_name="Podzol"
+    display_name="Podzol",
+    category="Nature",
+    sort_order=8
 ))
 
 BlockRegistry.register(Block(
@@ -235,7 +284,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.SANDSTONE,
     tile_side=TileRegistry.SANDSTONE,
     tile_bottom=TileRegistry.SANDSTONE,
-    display_name="Sandstone"
+    display_name="Sandstone",
+    category="Nature",
+    sort_order=9
 ))
 
 # Mountain/snow terrain
@@ -247,7 +298,9 @@ BlockRegistry.register(Block(
     tile_bottom=TileRegistry.ICE_PACKED,
     display_name="Ice",
     transparent=False  # Packed ice is usually opaque in this style? Or translucent? Let's say opaque for now.
-))
+,
+    category="Nature",
+    sort_order=10))
 
 BlockRegistry.register(Block(
     name="stone_mossy",
@@ -255,7 +308,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.STONE_MOSSY,
     tile_side=TileRegistry.STONE_MOSSY,
     tile_bottom=TileRegistry.STONE_MOSSY,
-    display_name="Mossy Stone"
+    display_name="Mossy Stone",
+    category="Nature",
+    sort_order=11
 ))
 
 # Canyon/mesa terrain
@@ -265,7 +320,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.RED_SAND,
     tile_side=TileRegistry.RED_SAND,
     tile_bottom=TileRegistry.RED_SAND,
-    display_name="Red Sand"
+    display_name="Red Sand",
+    category="Nature",
+    sort_order=12
 ))
 
 BlockRegistry.register(Block(
@@ -274,7 +331,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.CLAY_TERRACOTTA,
     tile_side=TileRegistry.CLAY_TERRACOTTA,
     tile_bottom=TileRegistry.CLAY_TERRACOTTA,
-    display_name="Terracotta"
+    display_name="Terracotta",
+    category="Nature",
+    sort_order=13
 ))
 
 BlockRegistry.register(Block(
@@ -283,7 +342,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.RED_SANDSTONE,
     tile_side=TileRegistry.RED_SANDSTONE,
     tile_bottom=TileRegistry.RED_SANDSTONE,
-    display_name="Red Sandstone"
+    display_name="Red Sandstone",
+    category="Nature",
+    sort_order=14
 ))
 
 # Rock variations for visual interest
@@ -293,7 +354,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.STONE_ANDESITE,
     tile_side=TileRegistry.STONE_ANDESITE,
     tile_bottom=TileRegistry.STONE_ANDESITE,
-    display_name="Andesite"
+    display_name="Andesite",
+    category="Nature",
+    sort_order=15
 ))
 
 BlockRegistry.register(Block(
@@ -302,7 +365,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.STONE_GRANITE,
     tile_side=TileRegistry.STONE_GRANITE,
     tile_bottom=TileRegistry.STONE_GRANITE,
-    display_name="Granite"
+    display_name="Granite",
+    category="Nature",
+    sort_order=16
 ))
 
 
@@ -313,7 +378,9 @@ BlockRegistry.register(Block(
     tile_top=TileRegistry.DIRT,  # Fallback to dirt until we have mud texture
     tile_side=TileRegistry.DIRT,
     tile_bottom=TileRegistry.DIRT,
-    display_name="Mud"
+    display_name="Mud",
+    category="Nature",
+    sort_order=17
 ))
 
 # Fluids
@@ -326,7 +393,9 @@ BlockRegistry.register(Block(
     display_name="Water",
     solid=False,
     transparent=True
-))
+,
+    category="Nature",
+    sort_order=18))
 
 # Vegetation (Non-solid)
 BlockRegistry.register(Block(
@@ -338,7 +407,9 @@ BlockRegistry.register(Block(
     display_name="Tall Grass",
     solid=False,
     transparent=True
-))
+,
+    category="Plants",
+    sort_order=1))
 
 BlockRegistry.register(Block(
     name="flower",
@@ -349,7 +420,9 @@ BlockRegistry.register(Block(
     display_name="Flower",
     solid=False,
     transparent=True
-))
+,
+    category="Plants",
+    sort_order=2))
 
 BlockRegistry.register(Block(
     name="fern",
@@ -360,7 +433,9 @@ BlockRegistry.register(Block(
     display_name="Fern",
     solid=False,
     transparent=True
-))
+,
+    category="Plants",
+    sort_order=3))
 
 BlockRegistry.register(Block(
     name="mushroom",
@@ -371,7 +446,9 @@ BlockRegistry.register(Block(
     display_name="Mushroom",
     solid=False,
     transparent=True
-))
+,
+    category="Plants",
+    sort_order=4))
 
 BlockRegistry.register(Block(
     name="dead_bush",
@@ -382,7 +459,9 @@ BlockRegistry.register(Block(
     display_name="Dead Bush",
     solid=False,
     transparent=True
-))
+,
+    category="Plants",
+    sort_order=5))
 
 BlockRegistry.register(Block(
     name="cactus",
@@ -405,7 +484,9 @@ BlockRegistry.register(Block(
     display_name="Gold Block",
     solid=True,
     transparent=False
-))
+,
+    category="Plants",
+    sort_order=6))
 
 BlockRegistry.register(Block(
     name="chest",
@@ -416,7 +497,9 @@ BlockRegistry.register(Block(
     display_name="Chest",
     solid=True,
     transparent=False
-))
+,
+    category="Utility",
+    sort_order=0))
 
 BlockRegistry.register(Block(
     name="stone_bricks",
@@ -427,7 +510,9 @@ BlockRegistry.register(Block(
     display_name="Stone Bricks",
     solid=True,
     transparent=False
-))
+,
+    category="Building",
+    sort_order=2))
 
 BlockRegistry.register(Block(
     name="torch",
@@ -438,7 +523,9 @@ BlockRegistry.register(Block(
     display_name="Torch",
     solid=False,
     transparent=True
-))
+,
+    category="Utility",
+    sort_order=1))
 
 BlockRegistry.register(Block(
     name="cobblestone",
@@ -449,7 +536,9 @@ BlockRegistry.register(Block(
     display_name="Cobblestone",
     solid=True,
     transparent=False
-))
+,
+    category="Building",
+    sort_order=1))
 
 BlockRegistry.register(Block(
     name="wool_red",
@@ -460,5 +549,7 @@ BlockRegistry.register(Block(
     display_name="Red Wool",
     solid=True,
     transparent=False
-))
+,
+    category="Building",
+    sort_order=3))
 

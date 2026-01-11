@@ -105,10 +105,11 @@ class PlayingFSM(FSM):
         
         # Valid transitions - Exploring is the hub state
         self.defaultTransitions = {
-            'Exploring': ['InDialogue', 'InCutscene', 'InInventory'],
+            'Exploring': ['InDialogue', 'InCutscene', 'InInventory', 'Building'],
             'InDialogue': ['Exploring'],
             'InCutscene': ['Exploring'],
-            'InInventory': ['Exploring']
+            'InInventory': ['Exploring'],
+            'Building': ['Exploring']
         }
     
     # ------------------------------------------------------------------
@@ -170,3 +171,25 @@ class PlayingFSM(FSM):
         logger.debug("PlayingFSM: Exit InInventory")
         if hasattr(self.game, 'input_manager') and self.game.input_manager:
             self.game.input_manager.unblock_input("inventory")
+
+    # ------------------------------------------------------------------
+    # Building State
+    # ------------------------------------------------------------------
+    
+    def enterBuilding(self):
+        """Enter build mode - combat/attacks disabled, building enabled."""
+        logger.debug("PlayingFSM: Enter Building")
+        # Don't block input - we want camera and movement to work
+        # BlockPlacerMechanic has its own enabled flag
+        
+        # Publish event for UI feedback
+        if hasattr(self.game, 'world') and hasattr(self.game.world, 'event_bus'):
+            self.game.world.event_bus.publish("build_mode_changed", enabled=True)
+    
+    def exitBuilding(self):
+        """Leave build mode."""
+        logger.debug("PlayingFSM: Exit Building")
+        # Publish event for UI feedback
+        if hasattr(self.game, 'world') and hasattr(self.game.world, 'event_bus'):
+            self.game.world.event_bus.publish("build_mode_changed", enabled=False)
+
